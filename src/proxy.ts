@@ -4,7 +4,7 @@ import { authConfig } from "@/auth.config";
 
 const { auth } = NextAuth(authConfig);
 
-const publicPaths = ["/login", "/api/auth", "/manifest.json", "/validasi"];
+const publicPaths = ["/login", "/api/auth", "/api/health", "/manifest.json", "/validasi"];
 
 export const proxy = auth((request) => {
   const { pathname } = request.nextUrl;
