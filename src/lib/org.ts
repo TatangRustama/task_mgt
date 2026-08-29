@@ -2,6 +2,7 @@ import {
   AssignmentMode,
   Jabatan,
   Role,
+  TaskStatus,
   UnitType,
   type Task,
   type User,
@@ -357,11 +358,12 @@ export async function getNewTasksFromAtasan(userId: string): Promise<{
   const atasan = await getAtasan(orgUser);
   if (!atasan) return { count: 0, items: [] };
 
+  const openStatuses: TaskStatus[] = ["tersedia", "dikerjakan", "ditolak"];
   const where = {
     createdById: atasan.id,
     assignedToId: userId,
     source: "delegasi" as const,
-    status: { in: ["tersedia", "dikerjakan", "ditolak"] as const },
+    status: { in: openStatuses },
   };
 
   const [count, tasks] = await Promise.all([
