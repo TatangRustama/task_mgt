@@ -1,0 +1,242 @@
+<!DOCTYPE html><html lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Report Calendar</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                            "surface-container": "#e7eefe",
+                            "tertiary-container": "#a2a6a5",
+                            "on-surface": "#151c27",
+                            "on-primary": "#ffffff",
+                            "primary-fixed": "#ffdcc6",
+                            "on-tertiary-fixed-variant": "#434847",
+                            "on-secondary": "#ffffff",
+                            "inverse-primary": "#ffb784",
+                            "background": "#f9f9ff",
+                            "on-primary-fixed-variant": "#713700",
+                            "on-secondary-container": "#495681",
+                            "on-tertiary": "#ffffff",
+                            "tertiary-fixed": "#e0e3e2",
+                            "tertiary": "#5b5f5f",
+                            "primary-fixed-dim": "#ffb784",
+                            "surface-container-lowest": "#ffffff",
+                            "secondary-container": "#c0cdff",
+                            "surface-bright": "#f9f9ff",
+                            "secondary-fixed": "#dbe1ff",
+                            "on-surface-variant": "#574335",
+                            "on-primary-container": "#5f2e00",
+                            "surface-container-low": "#f0f3ff",
+                            "surface-container-high": "#e2e8f8",
+                            "on-background": "#151c27",
+                            "secondary": "#4f5d88",
+                            "on-secondary-fixed-variant": "#38456f",
+                            "on-secondary-fixed": "#091941",
+                            "error-container": "#ffdad6",
+                            "surface-tint": "#944a00",
+                            "inverse-on-surface": "#ebf1ff",
+                            "on-error-container": "#93000a",
+                            "on-primary-fixed": "#301400",
+                            "surface-container-highest": "#dce2f3",
+                            "on-tertiary-container": "#383c3b",
+                            "surface-variant": "#dce2f3",
+                            "tertiary-fixed-dim": "#c4c7c6",
+                            "surface": "#f9f9ff",
+                            "on-tertiary-fixed": "#181c1c",
+                            "surface-dim": "#d3daea",
+                            "secondary-fixed-dim": "#b7c5f6",
+                            "primary-container": "#ff8400",
+                            "error": "#ba1a1a",
+                            "inverse-surface": "#2a313d",
+                            "primary": "#944a00",
+                            "outline": "#8b7262",
+                            "outline-variant": "#dec1af",
+                            "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                            "DEFAULT": "0.25rem",
+                            "lg": "0.5rem",
+                            "xl": "0.75rem",
+                            "full": "9999px"
+                    },
+                    "spacing": {
+                            "lg": "32px",
+                            "sm": "16px",
+                            "md": "24px",
+                            "margin-mobile": "20px",
+                            "base": "4px",
+                            "xl": "48px",
+                            "gutter": "16px",
+                            "xs": "8px"
+                    },
+                    "fontFamily": {
+                            "body-lg": ["Inter"],
+                            "headline-md": ["Inter"],
+                            "headline-lg-mobile": ["Inter"],
+                            "body-md": ["Inter"],
+                            "headline-sm": ["Inter"],
+                            "headline-lg": ["Inter"],
+                            "label-lg": ["Inter"],
+                            "label-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                            "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                            "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                            "headline-lg-mobile": ["26px", {"lineHeight": "32px", "fontWeight": "700"}],
+                            "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                            "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                            "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                            "label-lg": ["14px", {"lineHeight": "16px", "fontWeight": "600"}],
+                            "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background antialiased font-body-lg min-h-screen flex flex-col md:hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 bg-secondary dark:bg-inverse-surface shadow-md flex justify-between items-center px-margin-mobile h-16" style="background-color: rgb(29, 43, 83);">
+<button class="text-on-secondary hover:opacity-80 transition-opacity active:scale-95 duration-100 flex items-center justify-center text-white">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<h1 class="text-headline-sm font-headline-sm font-bold text-on-secondary truncate mx-4 text-white">Staff Performance</h1>
+<button class="text-on-secondary hover:opacity-80 transition-opacity active:scale-95 duration-100 flex items-center justify-center text-white">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="flex-grow pt-24 pb-28 px-margin-mobile flex flex-col gap-md">
+<!-- Calendar Section -->
+<section class="bg-surface-container-lowest rounded-xl shadow-[0_4px_12px_0_rgba(0,0,0,0.04)] p-sm">
+<div class="flex justify-between items-center mb-sm">
+<button class="text-secondary hover:bg-surface-container-highest p-xs rounded-full transition-colors">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">October 2023</h2>
+<button class="text-secondary hover:bg-surface-container-highest p-xs rounded-full transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+<div class="grid grid-cols-7 gap-xs text-center mb-xs">
+<div class="font-label-sm text-label-sm text-secondary">Su</div>
+<div class="font-label-sm text-label-sm text-secondary">Mo</div>
+<div class="font-label-sm text-label-sm text-secondary">Tu</div>
+<div class="font-label-sm text-label-sm text-secondary">We</div>
+<div class="font-label-sm text-label-sm text-secondary">Th</div>
+<div class="font-label-sm text-label-sm text-secondary">Fr</div>
+<div class="font-label-sm text-label-sm text-secondary">Sa</div>
+</div>
+<div class="grid grid-cols-7 gap-xs text-center">
+<!-- Empty slots for previous month -->
+<div></div>
+<!-- Days -->
+<div class="relative py-2 font-body-md text-body-md text-on-surface">1</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">2</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">3
+                    <div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary-container"></div>
+</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">4</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">5
+                    <div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary-container"></div>
+</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">6</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">7</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">8</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">9
+                    <div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary-container"></div>
+</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface bg-secondary text-on-secondary rounded-full shadow-md">10
+                     <div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary-container"></div>
+</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">11</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">12
+                    <div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary-container"></div>
+</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">13</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">14</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">15</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">16</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">17</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">18</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">19</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">20</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">21</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">22</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">23</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">24</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">25</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">26</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">27</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">28</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">29</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">30</div>
+<div class="relative py-2 font-body-md text-body-md text-on-surface">31</div>
+</div>
+</section>
+<!-- Reports List Section -->
+<section class="flex flex-col gap-sm">
+<h3 class="font-headline-sm text-headline-sm text-secondary">Reports for Oct 10</h3>
+<!-- Report Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-sm flex items-start gap-md shadow-[0_4px_12px_0_rgba(0,0,0,0.04)]">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="description">description</span>
+</div>
+<div class="flex-grow">
+<h4 class="font-label-lg text-label-lg text-on-surface mb-1">Q3 Sales Summary</h4>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">Detailed breakdown of regional performance and key client acquisitions during the third quarter.</p>
+</div>
+</div>
+<!-- Report Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-sm flex items-start gap-md shadow-[0_4px_12px_0_rgba(0,0,0,0.04)]">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-secondary-container" data-icon="inventory_2">inventory_2</span>
+</div>
+<div class="flex-grow">
+<h4 class="font-label-lg text-label-lg text-on-surface mb-1">Inventory Audit</h4>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">Weekly reconciliation of warehouse stock levels and pending shipments.</p>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 rounded-t-lg border-t border-outline-variant dark:border-outline bg-surface-container-lowest shadow-[0_-4px_12px_0_rgba(0,0,0,0.04)] flex justify-around items-center h-20 px-2 pb-safe">
+<button class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim px-4 py-1 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-200">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-sm text-label-sm mt-1">Mandiri</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim px-4 py-1 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-200">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="font-label-sm text-label-sm mt-1">Pimpinan</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim px-4 py-1 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-200">
+<span class="material-symbols-outlined" data-icon="leaderboard">leaderboard</span>
+<span class="font-label-sm text-label-sm mt-1">Board</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-primary-container dark:bg-primary text-on-primary-container dark:text-on-primary rounded-lg px-4 py-1 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-200">
+<span class="material-symbols-outlined" data-icon="assessment">assessment</span>
+<span class="font-label-sm text-label-sm mt-1 font-bold">Laporan</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim px-4 py-1 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-200">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm mt-1">Profile</span>
+</button>
+</nav>
+
+
+</body></html>

@@ -1,0 +1,252 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  admin
+  pimpinan
+  pegawai
+}
+
+enum Jabatan {
+  kepala_kantor
+  kepala_bidang
+  kepala_sub_bidang
+  pelaksana
+}
+
+enum UnitType {
+  kantor
+  bidang
+  sub_bidang
+}
+
+enum TaskStatus {
+  tersedia
+  dikerjakan
+  menunggu_approval
+  disetujui
+  ditolak
+  dibatalkan
+}
+
+enum TaskSource {
+  delegasi
+  mandiri
+}
+
+enum AssignmentMode {
+  ditunjuk
+  kolam
+}
+
+enum TaskPriority {
+  rendah
+  sedang
+  tinggi
+}
+
+enum ReviewDecision {
+  disetujui
+  ditolak
+}
+
+enum PegawaiJenis {
+  asn
+  non_asn
+}
+
+model Instansi {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  units     Unit[]
+}
+
+model Unit {
+  id                  String    @id @default(cuid())
+  name                String
+  instansiId          String
+  parentId            String?
+  type                UnitType  @default(bidang)
+  pimpinanId          String?
+  externalId          String?   @unique
+  eselonId            String?
+  statusUnor          String?
+  perangkatDaerahId   String?
+  perangkatDaerahNama String?
+  syncedAt            DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  instansi            Instansi  @relation(fields: [instansiId], references: [id], onDelete: Cascade)
+  parent              Unit?     @relation("UnitHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children            Unit[]    @relation("UnitHierarchy")
+  pimpinan            User?     @relation("UnitPimpinan", fields: [pimpinanId], references: [id])
+  users               User[]    @relation("UnitMembers")
+  tasks               Task[]
+  pegawai             Pegawai[]
+
+  @@index([instansiId])
+  @@index([parentId])
+  @@index([perangkatDaerahId])
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  nip           String    @unique
+  email         String    @unique
+  passwordHash  String
+  role          Role      @default(pegawai)
+  jabatan       Jabatan?
+  unitId        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  unit          Unit?     @relation("UnitMembers", fields: [unitId], references: [id])
+  ledUnits      Unit[]    @relation("UnitPimpinan")
+  createdTasks  Task[]    @relation("TaskCreator")
+  assignedTasks Task[]    @relation("TaskAssignee")
+  reviews       TaskReview[]
+  ratings       TaskRating[]
+  pegawai       Pegawai?
+  authoredReports MonthlyTaskReport[] @relation("ReportAuthor")
+  knownReports    MonthlyTaskReport[] @relation("ReportAtasan")
+
+  @@index([unitId])
+  @@index([jabatan])
+}
+
+model Task {
+  id             String         @id @default(cuid())
+  unitId         String
+  createdById    String
+  assignedToId   String?
+  source         TaskSource
+  assignmentMode AssignmentMode @default(ditunjuk)
+  status         TaskStatus     @default(tersedia)
+  priority       TaskPriority   @default(sedang)
+  title          String
+  description    String?
+  deadline       DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  unit           Unit           @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  createdBy      User           @relation("TaskCreator", fields: [createdById], references: [id])
+  assignedTo     User?          @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  evidence       TaskEvidence?
+  review         TaskReview?
+  rating         TaskRating?
+
+  @@index([unitId, status])
+  @@index([assignedToId])
+  @@index([assignmentMode, status])
+}
+
+model TaskEvidence {
+  id        String   @id @default(cuid())
+  taskId    String   @unique
+  photoUrls String[]
+  latitude  Float?
+  longitude Float?
+  address   String
+  notes     String
+  createdAt DateTime @default(now())
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+model TaskReview {
+  id           String         @id @default(cuid())
+  taskId       String         @unique
+  reviewedById String
+  score        Int?
+  feedback     String?
+  decision     ReviewDecision
+  reviewedAt   DateTime       @default(now())
+  task         Task           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  reviewedBy   User           @relation(fields: [reviewedById], references: [id])
+
+  @@index([reviewedAt])
+}
+
+model TaskRating {
+  id        String   @id @default(cuid())
+  taskId    String   @unique
+  ratedById String
+  stars     Int
+  ratedAt   DateTime @default(now())
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  ratedBy   User     @relation(fields: [ratedById], references: [id])
+
+  @@index([ratedById])
+}
+
+model MonthlyTaskReport {
+  id        String   @id @default(cuid())
+  userId    String
+  month     Int
+  year      Int
+  atasanId  String?
+  taskIds   String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation("ReportAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  atasan    User?    @relation("ReportAtasan", fields: [atasanId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, month, year])
+  @@index([userId])
+}
+
+model AsnDirectory {
+  id      String @id @default(cuid())
+  nip     String @unique
+  name    String
+  address String
+}
+
+model Pegawai {
+  id                   String       @id @default(cuid())
+  jenis                PegawaiJenis
+  nip                  String?      @unique
+  nik                  String?      @unique
+  name                 String
+  address              String       @default("")
+  gelarDepan           String?
+  gelarBelakang        String?
+  tempatLahir          String?
+  tanggalLahir         DateTime?
+  jenisKelamin         String?
+  email                String?
+  noHp                 String?
+  kedudukanHukumId     String?
+  kedudukanHukum       String?
+  tingkatPendidikan    String?
+  statusOap            String?
+  golonganId           String?
+  golonganNama         String?
+  jenisJabatanId       String?
+  jenisJabatanNama     String?
+  jabatanId            String?
+  jabatanNama          String?
+  unorId               String?
+  unorNama             String?
+  perangkatDaerahId    String?
+  perangkatDaerahNama  String?
+  unitId               String?
+  userId               String?      @unique
+  syncedAt             DateTime?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  unit                 Unit?        @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  user                 User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([jenis])
+  @@index([unitId])
+  @@index([unorId])
+  @@index([perangkatDaerahId])
+}

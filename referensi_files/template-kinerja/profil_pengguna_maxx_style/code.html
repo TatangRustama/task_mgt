@@ -1,0 +1,230 @@
+<!DOCTYPE html><html lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>User Profile</title>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container": "#e7eefe",
+                        "tertiary-container": "#a2a6a5",
+                        "on-surface": "#151c27",
+                        "on-primary": "#ffffff",
+                        "primary-fixed": "#ffdcc6",
+                        "on-tertiary-fixed-variant": "#434847",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#ffb784",
+                        "background": "#f9f9ff",
+                        "on-primary-fixed-variant": "#713700",
+                        "on-secondary-container": "#495681",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#e0e3e2",
+                        "tertiary": "#5b5f5f",
+                        "primary-fixed-dim": "#ffb784",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#c0cdff",
+                        "surface-bright": "#f9f9ff",
+                        "secondary-fixed": "#dbe1ff",
+                        "on-surface-variant": "#574335",
+                        "on-primary-container": "#5f2e00",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-container-high": "#e2e8f8",
+                        "on-background": "#151c27",
+                        "secondary": "#4f5d88",
+                        "on-secondary-fixed-variant": "#38456f",
+                        "on-secondary-fixed": "#091941",
+                        "error-container": "#ffdad6",
+                        "surface-tint": "#944a00",
+                        "inverse-on-surface": "#ebf1ff",
+                        "on-error-container": "#93000a",
+                        "on-primary-fixed": "#301400",
+                        "surface-container-highest": "#dce2f3",
+                        "on-tertiary-container": "#383c3b",
+                        "surface-variant": "#dce2f3",
+                        "tertiary-fixed-dim": "#c4c7c6",
+                        "surface": "#f9f9ff",
+                        "on-tertiary-fixed": "#181c1c",
+                        "surface-dim": "#d3daea",
+                        "secondary-fixed-dim": "#b7c5f6",
+                        "primary-container": "#ff8400",
+                        "error": "#ba1a1a",
+                        "inverse-surface": "#2a313d",
+                        "primary": "#944a00",
+                        "outline": "#8b7262",
+                        "outline-variant": "#dec1af",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "32px",
+                        "sm": "16px",
+                        "md": "24px",
+                        "margin-mobile": "20px",
+                        "base": "4px",
+                        "xl": "48px",
+                        "gutter": "16px",
+                        "xs": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "label-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["26px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-lg": ["14px", { "lineHeight": "16px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .card-shadow {
+            box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.04);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen pb-24 md:pb-8 antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 bg-secondary dark:bg-inverse-surface shadow-md flex justify-between items-center px-margin-mobile h-16" style="background-color: rgb(29, 43, 83);">
+<button class="text-on-secondary dark:text-on-primary-fixed hover:opacity-80 transition-opacity active:scale-95 duration-100 flex items-center justify-center">
+<span class="material-symbols-outlined font-variation-settings:'FILL' 0;">menu</span>
+</button>
+<h1 class="text-headline-sm font-headline-sm font-bold text-on-secondary">Staff Performance</h1>
+<button class="text-on-secondary dark:text-on-primary-fixed hover:opacity-80 transition-opacity active:scale-95 duration-100 flex items-center justify-center">
+<span class="material-symbols-outlined font-variation-settings:'FILL' 0;">notifications</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-16 max-w-[1280px] mx-auto w-full md:grid md:grid-cols-12 md:gap-gutter px-margin-mobile md:px-lg">
+<!-- Profile Header Anchor -->
+<div class="col-span-12 mt-lg flex flex-col items-center">
+<div class="relative w-32 h-32 mb-4 group cursor-pointer">
+<div class="absolute inset-0 bg-primary-container rounded-full opacity-0 group-hover:opacity-20 transition-opacity duration-300 pointer-events-none z-10 scale-110"></div>
+<img class="w-full h-full object-cover rounded-full border-4 border-surface-container-lowest card-shadow relative z-20" data-alt="A professional headshot portrait of a smiling executive in a modern, brightly lit office environment. The lighting is soft and flattering, casting a bright, corporate, high-trust aesthetic. The background is slightly blurred with light cool gray and navy tones reflecting a modern enterprise office. High resolution, clear focus, professional photography style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBzRAHiLCygy71qPXu0dR5akeztmc4DxXLlgn4C-rVSZE7kA_ZtyL1ERRs-0Sv9p-__nZVekoqyJcWvGaHnl2wlNW9Q33BgdUWKkxT25aVVHd5KvO0OBPNftbUOrdHe4MKYA0gAU4fqgOPvIilxh6toomcbUnq1FiGYXak7WCLcmIfYAjbA6PIcc5YVQQe7rB5PM2SCrycPQwNwBLzNlEfr-nt6bZPOhsgC3W9M5R8NDG5LXtuklkrAIA">
+<button class="absolute bottom-0 right-0 bg-secondary text-on-secondary rounded-full p-2 card-shadow hover:bg-on-secondary-fixed transition-colors active:scale-95 z-30 flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1;">edit</span>
+</button>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-background text-center">Sarah Jenkins</h2>
+<p class="font-body-md text-body-md text-secondary mt-1 text-center">Senior Sales Director</p>
+<div class="flex items-center gap-2 mt-4">
+<span class="bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm px-3 py-1 rounded-full border border-outline-variant">ID: SP-8492</span>
+<span class="bg-primary-container text-on-primary-container font-label-sm text-label-sm px-3 py-1 rounded-full">Active</span>
+</div>
+</div>
+<!-- Settings Cards Section -->
+<div class="col-span-12 md:col-start-4 md:col-span-6 mt-lg flex flex-col gap-sm">
+<!-- Settings Block -->
+<div class="bg-surface-container-lowest rounded-[20px] card-shadow overflow-hidden border border-surface-container-highest">
+<h3 class="font-label-lg text-label-lg text-secondary px-sm py-4 border-b border-surface-container-highest bg-surface-bright uppercase tracking-wider">Account Settings</h3>
+<ul class="flex flex-col">
+<li class="border-b border-surface-container-highest last:border-0 hover:bg-surface-container-low transition-colors cursor-pointer">
+<a class="flex items-center justify-between p-sm w-full" href="#">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined">lock</span>
+</div>
+<span class="font-body-lg text-body-lg text-on-surface">Change Password</span>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</a>
+</li>
+<li class="border-b border-surface-container-highest last:border-0 hover:bg-surface-container-low transition-colors cursor-pointer">
+<a class="flex items-center justify-between p-sm w-full" href="#">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined">notifications_active</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg text-on-surface">Notification Settings</span>
+<span class="font-body-md text-body-md text-tertiary">Manage alerts and emails</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</a>
+</li>
+</ul>
+</div>
+<!-- Support Block -->
+<div class="bg-surface-container-lowest rounded-[20px] card-shadow overflow-hidden border border-surface-container-highest">
+<ul class="flex flex-col">
+<li class="border-b border-surface-container-highest last:border-0 hover:bg-surface-container-low transition-colors cursor-pointer">
+<a class="flex items-center justify-between p-sm w-full" href="#">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded-full bg-surface-container-high text-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined">help</span>
+</div>
+<span class="font-body-lg text-body-lg text-on-surface">Help &amp; Support</span>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</a>
+</li>
+<li class="hover:bg-error-container transition-colors cursor-pointer group">
+<a class="flex items-center justify-between p-sm w-full" href="#">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded-full bg-surface-container-high group-hover:bg-on-error-container group-hover:text-on-error text-error flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined">logout</span>
+</div>
+<span class="font-body-lg text-body-lg text-error font-medium">Logout</span>
+</div>
+</a>
+</li>
+</ul>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 rounded-t-lg border-t border-outline-variant dark:border-outline bg-surface-container-lowest shadow-[0_-4px_12px_0_rgba(0,0,0,0.04)] flex justify-around items-center h-20 px-2 pb-safe md:hidden">
+<button class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim px-4 py-1 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-200 rounded-lg">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-sm text-label-sm mt-1">Mandiri</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim px-4 py-1 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-200 rounded-lg">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-label-sm text-label-sm mt-1">Pimpinan</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim px-4 py-1 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-200 rounded-lg">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-sm text-label-sm mt-1">Board</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim px-4 py-1 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-200 rounded-lg">
+<span class="material-symbols-outlined">assessment</span>
+<span class="font-label-sm text-label-sm mt-1">Laporan</span>
+</button>
+<!-- Active Tab: Profile -->
+<button class="flex flex-col items-center justify-center bg-primary-container dark:bg-primary text-on-primary-container dark:text-on-primary rounded-lg px-4 py-1 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-sm text-label-sm mt-1">Profile</span>
+</button>
+</nav>
+
+
+</body></html>

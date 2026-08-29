@@ -1,0 +1,11 @@
+{
+  "name": "Task Managements",
+  "short_name": "Task Managements",
+  "description": "Peningkatan kinerja ASN — delegasi tugas dan arsip bulanan",
+  "start_url": "/mandiri",
+  "display": "standalone",
+  "background_color": "#f9f9ff",
+  "theme_color": "#1D2B53",
+  "orientation": "portrait-primary",
+  "icons": []
+}

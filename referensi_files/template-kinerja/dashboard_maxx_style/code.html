@@ -1,0 +1,267 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Staff Performance Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container": "#e7eefe",
+                        "tertiary-container": "#a2a6a5",
+                        "on-surface": "#151c27",
+                        "on-primary": "#ffffff",
+                        "primary-fixed": "#ffdcc6",
+                        "on-tertiary-fixed-variant": "#434847",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#ffb784",
+                        "background": "#f9f9ff",
+                        "on-primary-fixed-variant": "#713700",
+                        "on-secondary-container": "#495681",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#e0e3e2",
+                        "tertiary": "#5b5f5f",
+                        "primary-fixed-dim": "#ffb784",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#c0cdff",
+                        "surface-bright": "#f9f9ff",
+                        "secondary-fixed": "#dbe1ff",
+                        "on-surface-variant": "#574335",
+                        "on-primary-container": "#5f2e00",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-container-high": "#e2e8f8",
+                        "on-background": "#151c27",
+                        "secondary": "#4f5d88",
+                        "on-secondary-fixed-variant": "#38456f",
+                        "on-secondary-fixed": "#091941",
+                        "error-container": "#ffdad6",
+                        "surface-tint": "#944a00",
+                        "inverse-on-surface": "#ebf1ff",
+                        "on-error-container": "#93000a",
+                        "on-primary-fixed": "#301400",
+                        "surface-container-highest": "#dce2f3",
+                        "on-tertiary-container": "#383c3b",
+                        "surface-variant": "#dce2f3",
+                        "tertiary-fixed-dim": "#c4c7c6",
+                        "surface": "#f9f9ff",
+                        "on-tertiary-fixed": "#181c1c",
+                        "surface-dim": "#d3daea",
+                        "secondary-fixed-dim": "#b7c5f6",
+                        "primary-container": "#ff8400",
+                        "error": "#ba1a1a",
+                        "inverse-surface": "#2a313d",
+                        "primary": "#944a00",
+                        "outline": "#8b7262",
+                        "outline-variant": "#dec1af",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "32px",
+                        "sm": "16px",
+                        "md": "24px",
+                        "margin-mobile": "20px",
+                        "base": "4px",
+                        "xl": "48px",
+                        "gutter": "16px",
+                        "xs": "8px",
+                        "safe": "env(safe-area-inset-bottom, 20px)"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "label-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["26px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-lg": ["14px", {"lineHeight": "16px", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface font-body-lg antialiased pb-24 md:pb-0">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 dark:bg-inverse-surface shadow-md h-16" style="background-color: rgb(29, 43, 83);">
+<div class="flex justify-between items-center px-margin-mobile h-full max-w-7xl mx-auto">
+<button class="text-on-secondary hover:opacity-80 transition-opacity active:scale-95 duration-100 flex items-center justify-center p-2 rounded-full md:hidden">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 0;">menu</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm font-bold text-on-secondary hidden md:block">Staff Performance</h1>
+<h1 class="font-headline-sm text-headline-sm font-bold text-on-secondary md:hidden">Staff Performance</h1>
+<div class="flex items-center gap-4">
+<button class="text-on-secondary hover:opacity-80 transition-opacity active:scale-95 duration-100 flex items-center justify-center p-2 rounded-full">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 0;">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border-2 border-primary-container hidden md:block">
+<img class="w-full h-full object-cover" data-alt="A close up professional headshot of an energetic young female office worker smiling brightly. She is wearing a modern navy blue blazer over a crisp white blouse. The background is a slightly blurred modern corporate office environment with bright, natural lighting reflecting the high-trust, corporate modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuABAMojQFOYgnxdYaQSwTwixpVqultYwsmbkW_fMJfovaKB1V_vH41MRq1nInDzH7TCtA3ZwTZEYJABP0WD60AA5WHUAea2LHu4IlW4CxsqCyJ0hLl0xMd_OK7Nzt9AjI4xcCjduW1-wkzJV1d0VrIIzNnTRGgBizBkNOZ1PJwerJfmU4Sj6qq_eQxM65mmHDWTEsbmGGPJAITwuVuXDlJZ5E6tuU2HOMKz06outhjJWwmCa2E0riFrXw">
+</div>
+</div>
+</div>
+</header>
+<!-- Side Navigation (Web) -->
+<aside class="hidden md:flex flex-col fixed top-16 left-0 h-[calc(100vh-64px)] w-64 bg-surface-container-lowest border-r border-surface-variant z-40 p-4">
+<nav class="space-y-2 mt-4">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary-container text-on-primary-container hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">dashboard</span>
+<span class="font-label-lg text-label-lg">Mandiri</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-secondary hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 0;">groups</span>
+<span class="font-label-lg text-label-lg">Pimpinan</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-secondary hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 0;">leaderboard</span>
+<span class="font-label-lg text-label-lg">Board</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-secondary hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 0;">assessment</span>
+<span class="font-label-lg text-label-lg">Laporan</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-secondary hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 0;">person</span>
+<span class="font-label-lg text-label-lg">Profile</span>
+</a>
+</nav>
+</aside>
+<!-- Main Content Canvas -->
+<main class="pt-24 px-margin-mobile max-w-7xl mx-auto md:ml-64 md:pt-24 md:px-8">
+<!-- Welcome Section -->
+<section class="mb-8">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-on-surface mb-2">Hello, Sarah! 👋</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Here is your performance overview for this week.</p>
+</section>
+<!-- Bento Grid Dashboard -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+<!-- Attendance Card (Kehadiran) -->
+<div class="bg-surface-container-lowest rounded-[20px] p-6 shadow-[0_4px_12px_0_rgba(0,0,0,0.04)] col-span-1 border border-surface-variant flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Kehadiran</h3>
+<span class="material-symbols-outlined text-secondary bg-surface-container p-2 rounded-full" style="font-variation-settings: &quot;FILL&quot; 1;">calendar_month</span>
+</div>
+<div class="flex items-end gap-2 mb-2">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">95%</span>
+<span class="font-label-sm text-label-sm text-tertiary mb-1">On Time</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">19 of 20 working days</p>
+</div>
+<div class="w-full bg-surface-container-high rounded-full h-2">
+<div class="bg-secondary h-2 rounded-full" style="width: 95%"></div>
+</div>
+</div>
+<!-- Task Status Card (Tugas Selesai) - High Impact -->
+<div class="bg-primary-container rounded-[20px] p-6 shadow-md col-span-1 md:col-span-2 relative overflow-hidden flex flex-col justify-between">
+<!-- Decorative background element -->
+<div class="absolute -right-12 -top-12 w-48 h-48 bg-white opacity-10 rounded-full blur-2xl pointer-events-none"></div>
+<div class="relative z-10">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-headline-sm text-headline-sm text-on-primary-container">Tugas Selesai</h3>
+<span class="material-symbols-outlined text-primary-container bg-white p-2 rounded-full" style="font-variation-settings: &quot;FILL&quot; 1;">task_alt</span>
+</div>
+<div class="grid grid-cols-2 gap-4 mt-8">
+<div>
+<p class="font-label-sm text-label-sm text-on-primary-container opacity-80 uppercase tracking-wider mb-1">This Week</p>
+<span class="font-headline-lg text-headline-lg text-on-primary-container">24</span>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-on-primary-container opacity-80 uppercase tracking-wider mb-1">Pending</p>
+<span class="font-headline-lg text-headline-lg text-on-primary-container">3</span>
+</div>
+</div>
+</div>
+<button class="relative z-10 mt-6 w-full md:w-auto self-start bg-white text-primary-container font-label-lg text-label-lg py-2 px-6 rounded-full hover:bg-surface-container-lowest transition-colors active:scale-95">
+                    View Task Details
+                </button>
+</div>
+<!-- Recent Activity List -->
+<div class="bg-surface-container-lowest rounded-[20px] p-6 shadow-[0_4px_12px_0_rgba(0,0,0,0.04)] col-span-1 md:col-span-3 border border-surface-variant">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Recent Activity</h3>
+<a class="font-label-lg text-label-lg text-secondary hover:underline" href="#">View All</a>
+</div>
+<ul class="space-y-4">
+<li class="flex items-start gap-4 pb-4 border-b border-surface-variant last:border-0 last:pb-0">
+<div class="bg-surface-container p-2 rounded-lg shrink-0">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: &quot;FILL&quot; 0;">description</span>
+</div>
+<div class="flex-1">
+<h4 class="font-label-lg text-label-lg text-on-surface">Submitted Q3 Financial Report</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Report was reviewed and approved by management.</p>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary shrink-0">2 hrs ago</span>
+</li>
+<li class="flex items-start gap-4 pb-4 border-b border-surface-variant last:border-0 last:pb-0">
+<div class="bg-surface-container p-2 rounded-lg shrink-0">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: &quot;FILL&quot; 1;">check_circle</span>
+</div>
+<div class="flex-1">
+<h4 class="font-label-lg text-label-lg text-on-surface">Completed Client Onboarding</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Successfully onboarded TechCorp Inc.</p>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary shrink-0">Yesterday</span>
+</li>
+<li class="flex items-start gap-4 pb-4 border-b border-surface-variant last:border-0 last:pb-0">
+<div class="bg-surface-container p-2 rounded-lg shrink-0">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: &quot;FILL&quot; 0;">event</span>
+</div>
+<div class="flex-1">
+<h4 class="font-label-lg text-label-lg text-on-surface">Attended Team Sync</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Weekly product planning meeting.</p>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary shrink-0">Mon, 10 AM</span>
+</li>
+</ul>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 bg-surface-container-lowest border-t border-outline-variant dark:border-outline shadow-[0_-4px_12px_0_rgba(0,0,0,0.04)] rounded-lg">
+<div class="flex justify-around items-center w-full h-20 px-2 pb-safe">
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container px-4 py-1 hover:bg-surface-container-high transition-colors active:scale-90 duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">dashboard</span>
+<span class="font-label-sm text-label-sm mt-1">Mandiri</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary px-4 py-1 hover:bg-surface-container-high transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 0;">groups</span>
+<span class="font-label-sm text-label-sm mt-1">Pimpinan</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary px-4 py-1 hover:bg-surface-container-high transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 0;">leaderboard</span>
+<span class="font-label-sm text-label-sm mt-1">Board</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary px-4 py-1 hover:bg-surface-container-high transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 0;">assessment</span>
+<span class="font-label-sm text-label-sm mt-1">Laporan</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary px-4 py-1 hover:bg-surface-container-high transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 0;">person</span>
+<span class="font-label-sm text-label-sm mt-1">Profile</span>
+</a>
+</div>
+</nav>
+
+
+</body></html>
