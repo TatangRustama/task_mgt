@@ -1,8 +1,7 @@
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { randomUUID } from "crypto";
+import { getSupabaseAdmin } from "@/lib/supabase";
 
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
+const BUCKET = "foto_tugas";
 
 export async function saveUploadedFile(file: File): Promise<string> {
   const bytes = await file.arrayBuffer();
@@ -19,10 +18,17 @@ export async function saveUploadedFile(file: File): Promise<string> {
 
   const ext = file.type.split("/")[1] === "jpeg" ? "jpg" : file.type.split("/")[1];
   const filename = `${randomUUID()}.${ext}`;
-  const filepath = path.join(UPLOAD_DIR, filename);
 
-  await mkdir(UPLOAD_DIR, { recursive: true });
-  await writeFile(filepath, buffer);
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase.storage.from(BUCKET).upload(filename, buffer, {
+    contentType: file.type,
+    upsert: false,
+  });
 
-  return `/uploads/${filename}`;
+  if (error) {
+    throw new Error(`Gagal upload foto: ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(filename);
+  return data.publicUrl;
 }

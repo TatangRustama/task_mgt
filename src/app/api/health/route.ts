@@ -20,11 +20,16 @@ export async function GET() {
     configuredHost && currentHost && configuredHost !== currentHost,
   );
 
+  const supabaseUrl = Boolean(process.env.SUPABASE_URL);
+  const supabaseServiceKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+
   return NextResponse.json({
-    ok: authSecret && databaseUrl && !urlMismatch,
+    ok: authSecret && databaseUrl && supabaseUrl && supabaseServiceKey && !urlMismatch,
     env: {
       AUTH_SECRET: authSecret,
       DATABASE_URL: databaseUrl,
+      SUPABASE_URL: supabaseUrl,
+      SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey,
       NEXTAUTH_URL: nextAuthUrl,
       AUTH_URL: process.env.AUTH_URL ?? null,
       VERCEL_URL: vercelUrl,
