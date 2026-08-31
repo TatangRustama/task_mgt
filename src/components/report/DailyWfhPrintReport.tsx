@@ -1,0 +1,144 @@
+import {
+  groupTasksForWfhPrint,
+  taskWfhHasil,
+  taskWfhUraian,
+  type DailyLaporanPrintContext,
+} from "@/lib/laporan-print";
+import type { ReportTask } from "@/lib/report-types";
+import { formatWfhReportDate, formatWfhSignDate } from "@/lib/utils";
+
+export function DailyWfhPrintReport({
+  date,
+  tasks,
+  print,
+}: {
+  date: string;
+  tasks: ReportTask[];
+  print: DailyLaporanPrintContext;
+}) {
+  const dateLabel = formatWfhReportDate(date);
+  const groups = groupTasksForWfhPrint(tasks);
+
+  return (
+    <div className="print-wfh hidden print:block">
+      <header className="print-kop">
+        <img src="/branding/papua-barat.png" alt="Lambang Papua Barat" className="print-kop-logo" />
+        <div className="print-kop-text">
+          <p className="print-kop-gov">{print.kopGovernment}</p>
+          <p className="print-kop-agency">{print.kopAgency}</p>
+          <p className="print-kop-meta">{print.kopAddress}</p>
+          <p className="print-kop-meta">Laman {print.kopWebsite}</p>
+        </div>
+      </header>
+
+      <h1 className="print-title">LAPORAN KINERJA WFH</h1>
+      <p className="print-wfh-date">{dateLabel}</p>
+
+      <IdentityTable person={print.author} />
+
+      <p className="print-section-label">Atasan langsung / Pemberi Tugas</p>
+      {print.atasan ? (
+        <IdentityTable person={print.atasan} />
+      ) : (
+        <p className="print-empty">Tidak ada atasan langsung.</p>
+      )}
+
+      <table className="print-table print-table-wfh">
+        <thead>
+          <tr>
+            <th className="col-no">NO</th>
+            <th className="col-date">HARI/TANGGAL</th>
+            <th>URAIAN KEGIATAN</th>
+            <th className="col-place">TEMPAT</th>
+            <th className="col-hasil">HASIL/OUTPUT</th>
+            <th className="col-docs">DOKUMENTASI</th>
+          </tr>
+        </thead>
+        <tbody>
+          {groups.length === 0 ? (
+            <tr>
+              <td className="center">1</td>
+              <td className="center">{dateLabel}</td>
+              <td>-</td>
+              <td>Rumah</td>
+              <td>-</td>
+              <td>-</td>
+            </tr>
+          ) : (
+            groups.flatMap((group) => {
+              const rowCount = group.tasks.length;
+              return group.tasks.map((task, index) => (
+                <tr key={task.id}>
+                  {index === 0 ? (
+                    <>
+                      <td className="center" rowSpan={rowCount}>
+                        {group.no}
+                      </td>
+                      <td className="center" rowSpan={rowCount}>
+                        {dateLabel}
+                      </td>
+                    </>
+                  ) : null}
+                  <td>{taskWfhUraian(task)}</td>
+                  {index === 0 ? (
+                    <td rowSpan={rowCount}>{group.tempat}</td>
+                  ) : null}
+                  <td>{taskWfhHasil(task)}</td>
+                  {index === 0 ? (
+                    <td rowSpan={rowCount}>
+                      {group.photoUrls.length ? (
+                        <div className="print-photos">
+                          {group.photoUrls.map((url) => (
+                            <img key={url} src={url} alt={task.title} />
+                          ))}
+                        </div>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                  ) : null}
+                </tr>
+              ));
+            })
+          )}
+        </tbody>
+      </table>
+
+      <div className="print-wfh-sign">
+        <p>Manokwari, {formatWfhSignDate(date)}</p>
+        <div className="print-sign-space print-wfh-sign-space">
+          <span>ttd</span>
+        </div>
+        <p className="print-sign-name">{print.author.name}</p>
+        <p>NIP {print.author.nip.replace(/\s+/g, "")}</p>
+      </div>
+    </div>
+  );
+}
+
+function IdentityTable({
+  person,
+}: {
+  person: { name: string; nip: string; pangkatGolongan: string; jabatan: string };
+}) {
+  return (
+    <table className="print-id">
+      <tbody>
+        <IdRow label="Nama" value={person.name} />
+        <IdRow label="NIP" value={person.nip} />
+        <IdRow label="Pangkat" value={person.pangkatGolongan} />
+        <IdRow label="Jabatan" value={person.jabatan} />
+      </tbody>
+    </table>
+  );
+}
+
+function IdRow({ label, value }: { label: string; value: string }) {
+  return (
+    <tr>
+      <td className="print-id-label">{label}</td>
+      <td className="print-id-colon">:</td>
+      <td>{value}</td>
+    </tr>
+  );
+}

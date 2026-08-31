@@ -1,19 +1,19 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { laporanHref } from "@/lib/laporan-url";
-import type { DayRecap, LaporanBy } from "@/lib/report-types";
+import { reportHref, type ReportBasePath } from "@/lib/laporan-url";
+import type { DayRecap } from "@/lib/report-types";
 import { cn, formatISODate } from "@/lib/utils";
 
 const WEEKDAYS = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 
 export function ActivityCalendar({
-  by = "pegawai",
+  basePath = "/pimpinan",
   month,
   year,
   days,
   compact = false,
 }: {
-  by?: LaporanBy;
+  basePath?: ReportBasePath;
   month: number;
   year: number;
   days: DayRecap[];
@@ -58,16 +58,16 @@ export function ActivityCalendar({
             return (
               <Link
                 key={day.date}
-                href={laporanHref({ by, view: "harian", date: day.date, month, year })}
+                href={reportHref(basePath, { view: "harian", date: day.date, month, year })}
                 className={cn(
-                  "relative flex flex-col items-center justify-center rounded-xl p-1 text-center transition",
+                  "relative flex flex-col items-center justify-center rounded-lg p-1 text-center transition",
                   compact ? "min-h-8 rounded-lg" : "min-h-12",
                   isToday
-                    ? "bg-secondary text-on-secondary shadow-md"
+                    ? "bg-primary text-white shadow-md"
                     : completed > 0
                       ? "bg-emerald-50 text-on-surface hover:bg-emerald-100"
                       : posted > 0
-                        ? "bg-primary-container text-on-primary-container hover:opacity-90"
+                        ? "bg-secondary-container text-on-secondary-container hover:opacity-90"
                         : "text-on-surface hover:bg-surface-container-high"
                 )}
               >

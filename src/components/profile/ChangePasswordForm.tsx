@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-export function ChangePasswordForm() {
-  const [open, setOpen] = useState(false);
+export function ChangePasswordForm({ defaultOpen = true }: { defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -78,7 +78,7 @@ export function ChangePasswordForm() {
               name="newPassword"
               type="password"
               required
-              minLength={8}
+              minLength={6}
               autoComplete="new-password"
             />
           </div>
@@ -89,10 +89,13 @@ export function ChangePasswordForm() {
               name="confirmPassword"
               type="password"
               required
-              minLength={8}
+              minLength={6}
               autoComplete="new-password"
             />
           </div>
+          <p className="text-xs text-on-surface-variant">
+            Password baru minimal 6 karakter. Pegawai baru biasanya masih memakai NIP sebagai password.
+          </p>
           {error ? <p className="text-sm text-error">{error}</p> : null}
           {success ? <p className="text-sm text-emerald-600">{success}</p> : null}
           <Button type="submit" className="w-full" disabled={loading}>

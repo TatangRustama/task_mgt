@@ -89,6 +89,27 @@ export function formatLongDate(date: Date | string) {
   }).format(typeof date === "string" ? parseISODate(date) : date);
 }
 
+export function formatWfhReportDate(date: Date | string) {
+  const value = typeof date === "string" ? parseISODate(date) : date;
+  const weekday = new Intl.DateTimeFormat("id-ID", { weekday: "long" }).format(value);
+  const rest = new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(value);
+  const label = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  return `${label}/${rest}`;
+}
+
+export function formatWfhSignDate(date: Date | string) {
+  const value = typeof date === "string" ? parseISODate(date) : date;
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(value);
+}
+
 export function statusLabel(status: string) {
   const labels: Record<string, string> = {
     tersedia: "Tersedia",
@@ -104,7 +125,7 @@ export function statusLabel(status: string) {
 export const statusCardClass: Record<string, string> = {
   tersedia: "border-l-secondary bg-surface-container-lowest",
   dikerjakan: "border-l-primary-container bg-surface-container-lowest",
-  menunggu_approval: "border-l-secondary-navy bg-surface-container-lowest",
+  menunggu_approval: "border-l-primary bg-surface-container-lowest",
   disetujui: "border-l-emerald-600 bg-surface-container-lowest",
   ditolak: "border-l-error bg-surface-container-lowest",
   dibatalkan: "border-l-tertiary-container bg-surface-container-lowest",
@@ -112,8 +133,8 @@ export const statusCardClass: Record<string, string> = {
 
 export const statusBarClass: Record<string, string> = {
   tersedia: "bg-secondary",
-  dikerjakan: "bg-primary-container",
-  menunggu_approval: "bg-secondary-navy",
+  dikerjakan: "bg-primary",
+  menunggu_approval: "bg-accent",
   disetujui: "bg-emerald-600",
   ditolak: "bg-error",
   dibatalkan: "bg-tertiary-container",

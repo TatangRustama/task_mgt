@@ -121,7 +121,7 @@ export default async function ValidasiLaporanPage({
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   {row.photos.map((url) => (
-                    <div key={url} className="overflow-hidden rounded-xl border border-outline-variant">
+                    <div key={url} className="overflow-hidden rounded-lg border border-outline-variant">
                       <img src={url} alt={row.title} className="h-40 w-full object-cover" />
                     </div>
                   ))}

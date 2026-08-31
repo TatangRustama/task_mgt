@@ -16,10 +16,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { EvidenceFields, useEvidenceCapture } from "@/components/task/EvidenceCapture";
 import { formatISODate } from "@/lib/utils";
 
+type EditableTask = {
+  id: string;
+  title: string;
+  description: string | null;
+  deadline: Date | string | null;
+  priority: string;
+};
+
 type TaskFormDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  mode: "mandiri" | "delegasi";
+  mode: "mandiri" | "delegasi" | "edit";
+  task?: EditableTask | null;
 };
 
 type OrgContext = {
@@ -36,9 +45,9 @@ type OrgContext = {
 };
 
 const selectClassName =
-  "flex h-11 w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface focus-visible:outline-none focus-visible:border-primary-container focus-visible:ring-1 focus-visible:ring-primary-container";
+  "flex h-9 w-full rounded-lg border border-outline bg-surface-container-lowest px-3 text-sm text-on-surface focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary";
 
-export function TaskFormDialog({ open, onOpenChange, mode }: TaskFormDialogProps) {
+export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialogProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -61,6 +70,11 @@ export function TaskFormDialog({ open, onOpenChange, mode }: TaskFormDialogProps
     }
     setPriority("sedang");
     setDeadline(mode === "mandiri" ? formatISODate(new Date()) : "");
+    if (mode === "edit" && task) {
+      setPriority(task.priority || "sedang");
+      setDeadline(task.deadline ? formatISODate(new Date(task.deadline)) : "");
+      return;
+    }
     if (mode === "delegasi") {
       fetch("/api/org/context")
         .then(async (res) => {
@@ -71,19 +85,37 @@ export function TaskFormDialog({ open, onOpenChange, mode }: TaskFormDialogProps
         })
         .catch((err) => setError(err instanceof Error ? err.message : "Gagal memuat daftar bawahan"));
     }
-  }, [open, mode, evidence.reset]);
+  }, [open, mode, task, evidence.reset]);
 
-  async function createTask(form: HTMLFormElement) {
+  async function saveTask(form: HTMLFormElement) {
     const formData = new FormData(form);
     const payload = {
       title: formData.get("title"),
       description: formData.get("description"),
       deadline: formData.get("deadline") || null,
       priority: formData.get("priority") || "sedang",
-      source: mode,
+      source: mode === "edit" ? undefined : mode,
       assignmentMode: mode === "delegasi" ? assignmentMode : "ditunjuk",
       assignedToId: mode === "delegasi" && assignmentMode === "ditunjuk" ? assignedToId : null,
     };
+
+    if (mode === "edit" && task) {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: payload.title,
+          description: payload.description,
+          deadline: payload.deadline,
+          priority: payload.priority,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Gagal memperbarui tugas");
+      }
+      return data as { id: string };
+    }
 
     const res = await fetch("/api/tasks", {
       method: "POST",
@@ -106,11 +138,11 @@ export function TaskFormDialog({ open, onOpenChange, mode }: TaskFormDialogProps
       if (mode === "delegasi" && assignmentMode === "ditunjuk" && !assignedToId) {
         throw new Error("Pilih penerima tugas");
       }
-      await createTask(event.currentTarget);
+      await saveTask(event.currentTarget);
       onOpenChange(false);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal membuat tugas");
+      setError(err instanceof Error ? err.message : "Gagal menyimpan tugas");
     } finally {
       setLoading(false);
     }
@@ -137,8 +169,8 @@ export function TaskFormDialog({ open, onOpenChange, mode }: TaskFormDialogProps
     setError("");
 
     try {
-      const task = await createTask(form);
-      const completeRes = await fetch(`/api/tasks/${task.id}/complete`, {
+      const created = await saveTask(form);
+      const completeRes = await fetch(`/api/tasks/${created.id}/complete`, {
         method: "POST",
         body: evidence.toFormData(),
       });
@@ -160,17 +192,19 @@ export function TaskFormDialog({ open, onOpenChange, mode }: TaskFormDialogProps
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader className="text-left">
           <DialogTitle className="text-2xl font-bold">
-            {mode === "mandiri" ? "Tambah Tugas" : "Delegasi Tugas"}
+            {mode === "edit" ? "Edit Tugas" : mode === "mandiri" ? "Tambah Tugas" : "Delegasi Tugas"}
           </DialogTitle>
           <p className="text-sm text-on-surface-variant">
-            {mode === "mandiri"
+            {mode === "edit"
+              ? "Perbarui detail tugas yang Anda posting. Hanya tugas tersedia yang belum diambil yang dapat diubah."
+              : mode === "mandiri"
               ? "Isi detail tugas baru yang akan dilaporkan."
               : "Tunjuk bawahan langsung, atau lempar ke board staf jika Anda kepala sub bidang."}
           </p>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form key={task?.id ?? mode} onSubmit={handleSubmit} className="space-y-6">
           {mode === "delegasi" ? (
-            <div className="space-y-3 rounded-xl border border-outline-variant bg-surface-container-low p-4">
+            <div className="space-y-3 rounded-lg border border-outline-variant bg-surface-container-low p-4">
               {org?.unit ? (
                 <p className="text-xs text-on-surface-variant">
                   {org.jabatanLabel} · {org.unit.name} ({org.unit.typeLabel})
@@ -231,11 +265,23 @@ export function TaskFormDialog({ open, onOpenChange, mode }: TaskFormDialogProps
           ) : null}
           <div className="space-y-2">
             <Label htmlFor="title">Judul Tugas</Label>
-            <Input id="title" name="title" maxLength={60} required placeholder="Contoh: Verifikasi berkas..." />
+            <Input
+              id="title"
+              name="title"
+              maxLength={60}
+              required
+              placeholder="Contoh: Verifikasi berkas..."
+              defaultValue={mode === "edit" ? task?.title ?? "" : undefined}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">Deskripsi</Label>
-            <Textarea id="description" name="description" placeholder="Detail singkat tugas" />
+            <Textarea
+              id="description"
+              name="description"
+              placeholder="Detail singkat tugas"
+              defaultValue={mode === "edit" ? task?.description ?? "" : undefined}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
@@ -285,8 +331,8 @@ export function TaskFormDialog({ open, onOpenChange, mode }: TaskFormDialogProps
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
           <div className="space-y-2">
-            <Button type="submit" className="h-14 w-full rounded-2xl text-base" disabled={loading}>
-              {loading && !showComplete ? "Menyimpan..." : "Simpan Tugas"}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading && !showComplete ? "Menyimpan..." : mode === "edit" ? "Simpan Perubahan" : "Simpan Tugas"}
             </Button>
             {mode === "mandiri" ? (
               showComplete ? (

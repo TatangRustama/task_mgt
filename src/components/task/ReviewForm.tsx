@@ -51,7 +51,7 @@ export function ReviewForm({ taskId }: { taskId: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-surface-container-highest bg-surface-container-lowest p-4 card-shadow">
+    <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-surface-container-highest bg-surface-container-lowest p-4 card-shadow">
       <div>
         <p className="text-sm font-semibold text-on-surface">Persetujuan & penilaian</p>
         <p className="mt-0.5 text-xs text-on-surface-variant">

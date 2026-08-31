@@ -38,7 +38,7 @@ export function TaskReportList({
               key={task.id}
               type="button"
               onClick={() => setSelected(task)}
-              className="flex w-full items-start gap-4 overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest p-4 text-left card-shadow transition hover:shadow-md"
+              className="flex w-full items-start gap-4 overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest p-4 text-left card-shadow transition hover:shadow-md"
             >
               <div
                 className={cn(

@@ -4,17 +4,16 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigationLoader } from "@/components/layout/NavigationLoader";
-import { laporanHref } from "@/lib/laporan-url";
-import type { LaporanBy } from "@/lib/report-types";
+import { reportHref, type ReportBasePath } from "@/lib/laporan-url";
 import { addDays, formatISODate, parseISODate } from "@/lib/utils";
 
 export function DailyDateNav({
-  by,
+  basePath = "/laporan",
   date,
   month,
   year,
 }: {
-  by: LaporanBy;
+  basePath?: ReportBasePath;
   date: string;
   month?: number;
   year?: number;
@@ -28,7 +27,7 @@ export function DailyDateNav({
 
   function goTo(value: string) {
     start();
-    router.push(laporanHref({ by, view: "harian", date: value, month, year }));
+    router.push(reportHref(basePath, { view: "harian", date: value, month, year }));
   }
 
   return (
@@ -40,7 +39,7 @@ export function DailyDateNav({
         type="date"
         value={date}
         onChange={(event) => goTo(event.target.value)}
-        className="h-11 flex-1 rounded-xl border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface focus-visible:outline-none focus-visible:border-primary-container focus-visible:ring-1 focus-visible:ring-primary-container"
+        className="h-11 flex-1 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary"
       />
       <Button variant="outline" size="icon" onClick={() => goTo(next)} aria-label="Hari berikutnya">
         <ChevronRight className="h-4 w-4" />

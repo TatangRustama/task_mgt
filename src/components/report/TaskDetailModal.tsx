@@ -51,7 +51,7 @@ export function TaskDetailModal({
                 {task.photoUrls.length > 0 ? (
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     {task.photoUrls.map((url) => (
-                      <div key={url} className="relative aspect-square overflow-hidden rounded-xl">
+                      <div key={url} className="relative aspect-square overflow-hidden rounded-lg">
                         <Image src={url} alt="Bukti" fill className="object-cover" />
                       </div>
                     ))}
@@ -60,7 +60,7 @@ export function TaskDetailModal({
               </div>
 
               {completed ? (
-                <div className="rounded-xl border border-surface-container-highest bg-surface-container-low p-4">
+                <div className="rounded-lg border border-surface-container-highest bg-surface-container-low p-4">
                   <p className="text-sm font-semibold text-on-surface">Penilaian atasan</p>
                   <p className="mt-0.5 text-xs text-on-surface-variant">
                     {task.score != null

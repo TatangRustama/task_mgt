@@ -85,6 +85,7 @@ export async function POST(
       where: { id },
       data: {
         status: decision === "disetujui" ? "disetujui" : "ditolak",
+        completedAt: decision === "disetujui" ? task.completedAt : null,
       },
     });
   });

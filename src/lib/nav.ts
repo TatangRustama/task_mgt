@@ -16,9 +16,9 @@ export type AppNavItem = {
 
 export const appNavItems: AppNavItem[] = [
   { href: "/mandiri", label: "Home", icon: Home },
-  { href: "/pimpinan", label: "Pimpinan", icon: Users, roles: ["pimpinan", "admin"] },
   { href: "/board", label: "Board", icon: ClipboardList },
   { href: "/laporan", label: "Laporan", icon: BarChart3 },
+  { href: "/pimpinan", label: "Kinerja", icon: Users, roles: ["pimpinan", "admin"] },
 ];
 
 export function getNavItems(role: Role) {

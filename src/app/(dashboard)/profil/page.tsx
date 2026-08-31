@@ -25,7 +25,7 @@ export default async function ProfilPage() {
   return (
     <PageMain className="md:grid md:grid-cols-12 md:gap-4">
       <div className="col-span-12 mt-2 flex flex-col items-center">
-        <div className="mb-4 flex h-32 w-32 items-center justify-center rounded-full border-4 border-surface-container-lowest bg-secondary-navy text-3xl font-bold text-on-secondary card-shadow">
+        <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-full border-2 border-accent bg-primary text-2xl font-bold text-white">
           {initials}
         </div>
         <h2 className="text-center text-2xl font-bold text-on-background">{user.name}</h2>
@@ -38,7 +38,7 @@ export default async function ProfilPage() {
       </div>
 
       <div className="col-span-12 mt-6 flex flex-col gap-4 md:col-span-6 md:col-start-4">
-        <div className="overflow-hidden rounded-xl border border-surface-container-highest bg-surface-container-lowest card-shadow">
+        <div className="overflow-hidden rounded-lg border border-surface-container-highest bg-surface-container-lowest card-shadow">
           <h3 className="bg-surface px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">
             Pengaturan akun
           </h3>
@@ -52,7 +52,7 @@ export default async function ProfilPage() {
         </div>
 
         {bawahan.length > 0 ? (
-          <div className="overflow-hidden rounded-xl border border-surface-container-highest bg-surface-container-lowest card-shadow">
+          <div className="overflow-hidden rounded-lg border border-surface-container-highest bg-surface-container-lowest card-shadow">
             <h3 className="bg-surface px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">
               Bawahan langsung ({bawahan.length})
             </h3>
@@ -80,7 +80,7 @@ export default async function ProfilPage() {
         {user.role === "admin" ? (
           <Link
             href="/admin"
-            className="flex items-center justify-between rounded-xl border border-surface-container-highest bg-surface-container-lowest p-4 card-shadow transition hover:bg-surface-container-low"
+            className="flex items-center justify-between rounded-lg border border-surface-container-highest bg-surface-container-lowest p-4 card-shadow transition hover:bg-surface-container-low"
           >
             <div className="flex items-center gap-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary-container text-on-secondary-container">
@@ -92,7 +92,7 @@ export default async function ProfilPage() {
           </Link>
         ) : null}
 
-        <div className="overflow-hidden rounded-xl border border-surface-container-highest bg-surface-container-lowest card-shadow">
+        <div className="overflow-hidden rounded-lg border border-surface-container-highest bg-surface-container-lowest card-shadow">
           <form
             action={async () => {
               "use server";

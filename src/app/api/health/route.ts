@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 function hostFromUrl(value: string | undefined) {
   if (!value) return null;
@@ -23,20 +24,35 @@ export async function GET() {
   const supabaseUrl = Boolean(process.env.SUPABASE_URL);
   const supabaseServiceKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+  let databaseOk = false;
+  let databaseError: string | null = null;
+  if (databaseUrl) {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      databaseOk = true;
+    } catch (error) {
+      databaseError = error instanceof Error ? error.message : "Database connection failed";
+    }
+  }
+
   return NextResponse.json({
-    ok: authSecret && databaseUrl && supabaseUrl && supabaseServiceKey && !urlMismatch,
+    ok: authSecret && databaseUrl && databaseOk && supabaseUrl && supabaseServiceKey && !urlMismatch,
     env: {
       AUTH_SECRET: authSecret,
       DATABASE_URL: databaseUrl,
+      DATABASE_OK: databaseOk,
       SUPABASE_URL: supabaseUrl,
       SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey,
       NEXTAUTH_URL: nextAuthUrl,
       AUTH_URL: process.env.AUTH_URL ?? null,
       VERCEL_URL: vercelUrl,
     },
+    databaseError,
     urlMismatch,
-    hint: urlMismatch
-      ? "Remove NEXTAUTH_URL from Vercel env vars (trustHost handles preview URLs), then redeploy."
-      : null,
+    hint: !databaseOk
+      ? "Perbarui DATABASE_URL di .env dengan password database Supabase yang benar, lalu restart dev server."
+      : urlMismatch
+        ? "Remove NEXTAUTH_URL from Vercel env vars (trustHost handles preview URLs), then redeploy."
+        : null,
   });
 }

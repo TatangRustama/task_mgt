@@ -30,7 +30,7 @@ export function PegawaiReport({
   pimpinanName?: string;
 }) {
   if (view === "harian") {
-    return <PegawaiDailyReport by={by} date={date} month={month} year={year} people={people} />;
+    return <PegawaiDailyReport date={date} month={month} year={year} people={people} />;
   }
 
   return (

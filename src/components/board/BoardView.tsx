@@ -10,10 +10,12 @@ import { TaskFormDialog } from "@/components/task/TaskForm";
 
 export function BoardView({
   tasks,
+  currentUserId,
   emptyTersedia = "Belum ada tugas tersedia. Buat tugas mandiri atau tunggu delegasi pimpinan.",
   canDelegate = false,
 }: {
   tasks: TaskCardData[];
+  currentUserId: string;
   emptyTersedia?: string;
   canDelegate?: boolean;
 }) {
@@ -36,16 +38,16 @@ export function BoardView({
   function renderColumn(items: TaskCardData[], emptyText: string) {
     if (items.length === 0) {
       return (
-        <div className="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-8 text-center text-sm text-on-surface-variant">
+        <div className="rounded-lg border border-dashed border-outline bg-surface-container-lowest p-4 text-center text-sm text-on-surface-variant">
           {emptyText}
         </div>
       );
     }
 
     return (
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((task) => (
-          <TaskCard key={task.id} task={task} />
+          <TaskCard key={task.id} task={task} currentUserId={currentUserId} />
         ))}
       </div>
     );

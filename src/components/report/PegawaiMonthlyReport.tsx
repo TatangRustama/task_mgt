@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { ActivityCalendar } from "@/components/report/ActivityCalendar";
-import { PrintReportButton } from "@/components/report/PrintReportButton";
+import { ReportActionButtons } from "@/components/report/ReportActionButtons";
 import { ReportMonthNav } from "@/components/report/ReportMonthNav";
 import { TaskReportList } from "@/components/report/TaskReportList";
 import {
@@ -35,7 +35,7 @@ const CARD_BG: Record<KinerjaLevel | "kolam", string> = {
   perlu_perhatian: "border-outline-variant bg-surface-container-lowest",
   lancar: "border-outline-variant bg-surface-container-lowest",
   tidak_aktif: "border-outline-variant bg-surface-container-lowest",
-  kolam: "border-transparent bg-primary-container text-on-primary-container",
+  kolam: "border-accent bg-primary text-white",
 };
 
 const LEVEL_TRACK: Record<KinerjaLevel | "kolam", string> = {
@@ -86,8 +86,8 @@ export function PegawaiMonthlyReport({
   return (
     <div className="space-y-4">
       <div className="no-print space-y-3">
-        <ReportMonthNav by={by} month={month} year={year} date={date} />
-        <PrintReportButton />
+        <ReportMonthNav basePath="/pimpinan" month={month} year={year} date={date} />
+        <ReportActionButtons by={by} view="bulanan" date={date} month={month} year={year} />
       </div>
 
       <div className="no-print grid grid-cols-3 gap-2">
@@ -98,7 +98,7 @@ export function PegawaiMonthlyReport({
 
       <div className="no-print space-y-2">
         <SectionTitle tone="lancar" label="Kalender unit" count={days.filter((day) => day.posted + day.completed > 0).length} />
-        <ActivityCalendar by={by} month={month} year={year} days={days} />
+        <ActivityCalendar month={month} year={year} days={days} />
       </div>
 
       {grouped.pool && grouped.pool.tasks.length > 0 ? (
@@ -125,7 +125,6 @@ export function PegawaiMonthlyReport({
               person={grouped.pool}
               month={month}
               year={year}
-              by={by}
             />
           ) : null}
         </section>
@@ -149,7 +148,6 @@ export function PegawaiMonthlyReport({
                   onToggle={() => setOpenId(openId === item.person.id ? null : item.person.id)}
                   month={month}
                   year={year}
-                  by={by}
                 />
               ))
             : null}
@@ -174,7 +172,6 @@ export function PegawaiMonthlyReport({
                   onToggle={() => setOpenId(openId === item.person.id ? null : item.person.id)}
                   month={month}
                   year={year}
-                  by={by}
                 />
               ))
             : null}
@@ -199,7 +196,6 @@ export function PegawaiMonthlyReport({
                   onToggle={() => setOpenId(openId === item.person.id ? null : item.person.id)}
                   month={month}
                   year={year}
-                  by={by}
                 />
               ))
             : null}
@@ -207,7 +203,7 @@ export function PegawaiMonthlyReport({
       ) : null}
 
       {staffCount === 0 && !grouped.pool ? (
-        <p className="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-6 text-center text-sm text-on-surface-variant">
+        <p className="rounded-lg border border-dashed border-outline-variant bg-surface-container-lowest p-6 text-center text-sm text-on-surface-variant">
           Tidak ada pegawai pada unit ini.
         </p>
       ) : null}
@@ -295,10 +291,10 @@ function PulseCard({
   return (
     <div
       className={cn(
-        "rounded-xl px-3 py-3",
-        tone === "danger" && "bg-error-container text-error",
-        tone === "good" && "bg-emerald-50 text-emerald-700",
-        tone === "idle" && "bg-surface-container text-tertiary"
+        "rounded-lg border px-3 py-3",
+        tone === "danger" && "border-error/40 bg-error-container text-error",
+        tone === "good" && "border-green-300 bg-emerald-50 text-emerald-700",
+        tone === "idle" && "border-outline bg-surface-container text-tertiary"
       )}
     >
       <p className="text-2xl font-bold leading-none">{count}</p>
@@ -353,14 +349,12 @@ function EvaluatedCard({
   onToggle,
   month,
   year,
-  by,
 }: {
   item: EvaluatedPegawai;
   open: boolean;
   onToggle: () => void;
   month: number;
   year: number;
-  by: LaporanBy;
 }) {
   const roleLabel = item.person.jabatanLabel || "Pegawai";
   return (
@@ -374,7 +368,6 @@ function EvaluatedCard({
       person={item.person}
       month={month}
       year={year}
-      by={by}
       showScore
     />
   );
@@ -390,7 +383,6 @@ function PersonCard({
   person,
   month,
   year,
-  by,
   showScore = false,
 }: {
   name: string;
@@ -402,14 +394,13 @@ function PersonCard({
   person: PegawaiReportRow;
   month: number;
   year: number;
-  by: LaporanBy;
   showScore?: boolean;
 }) {
   const personDays = recapDaysForTasks(person.tasks, month, year);
   const hasMonthActivity = personDays.some((day) => day.posted > 0 || day.completed > 0);
 
   return (
-    <div className={cn("overflow-hidden rounded-xl border card-shadow", CARD_BG[tone])}>
+    <div className={cn("overflow-hidden rounded-lg border card-shadow", CARD_BG[tone])}>
       <button
         type="button"
         onClick={onToggle}
@@ -417,7 +408,7 @@ function PersonCard({
         aria-expanded={open}
       >
         <span className={cn("absolute inset-y-0 left-0 w-1.5", LEVEL_BAR[tone])} />
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary-navy text-xs font-bold text-on-secondary">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary-container text-xs font-bold text-on-secondary-container">
           {initials(name)}
         </div>
         <div className="min-w-0 flex-1">
@@ -482,7 +473,7 @@ function PersonCard({
       {open ? (
         <div className={cn("space-y-3 border-t p-3", tone === "kolam" ? "border-on-primary-container/15" : "border-outline-variant")}>
           {hasMonthActivity ? (
-            <ActivityCalendar by={by} month={month} year={year} days={personDays} compact />
+            <ActivityCalendar month={month} year={year} days={personDays} compact />
           ) : null}
           <TaskReportList tasks={person.tasks} emptyText="Tidak ada tugas pada bulan ini." />
         </div>

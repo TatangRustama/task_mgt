@@ -48,7 +48,7 @@ function UnitTree({ nodes, depth = 0 }: { nodes: UnitNode[]; depth?: number }) {
     <div className={depth === 0 ? "space-y-2" : "mt-2 space-y-2 border-l border-outline-variant pl-3"}>
       {nodes.map((unit) => (
         <div key={unit.id}>
-          <div className="rounded-xl border border-surface-container-highest bg-surface-container-low p-3">
+          <div className="rounded-lg border border-surface-container-highest bg-surface-container-low p-3">
             <div className="flex items-start justify-between gap-2">
               <p className="font-medium text-on-surface">{unit.name}</p>
               <Badge variant="mandiri">{typeLabel[unit.type] || unit.type}</Badge>

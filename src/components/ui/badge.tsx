@@ -3,17 +3,17 @@ import { cn } from "@/lib/utils";
 const variants = {
   default: "bg-surface-container text-on-surface",
   delegasi: "bg-secondary-container text-on-secondary-container",
-  mandiri: "bg-primary-container text-on-primary-container",
+  mandiri: "bg-secondary-container text-on-secondary-container",
   rendah: "bg-surface-container-high text-tertiary",
-  sedang: "bg-primary-container text-on-primary-container",
-  tinggi: "bg-error-container text-error",
-  success: "bg-emerald-50 text-emerald-700",
-  warning: "bg-primary-container text-on-primary-container",
+  sedang: "bg-secondary-container text-on-secondary-container",
+  tinggi: "border-error bg-error-container text-error",
+  success: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  warning: "border-amber-200 bg-amber-50 text-amber-700",
   tersedia: "bg-secondary-container text-on-secondary-container",
-  dikerjakan: "bg-[#F6AB57] text-white",
+  dikerjakan: "border-sky-200 bg-sky-100 text-sky-700",
   menunggu_approval: "bg-secondary-container text-on-secondary-container",
   disetujui: "bg-emerald-50 text-emerald-700",
-  ditolak: "bg-error-container text-error",
+  ditolak: "border-error bg-error-container text-error",
   dibatalkan: "bg-surface-container-high text-tertiary",
   kolam: "bg-secondary-container text-on-secondary-container",
   ditunjuk: "bg-surface-container-high text-secondary",
@@ -31,7 +31,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium",
+        "inline-flex items-center rounded-md border border-outline px-2 py-0.5 text-[11px] font-medium",
         variants[variant as BadgeVariant] ?? variants.default,
         className
       )}

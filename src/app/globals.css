@@ -1,31 +1,33 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f9f9ff;
-  --foreground: #151c27;
-  --primary: #1d2b53;
-  --primary-container: #1d2b53;
-  --on-primary-container: #f4f6fb;
-  --accent: #f6ab57;
+  --background: #f5f7fc;
+  --foreground: #1a1f3c;
+  --primary: #4f6fff;
+  --primary-container: #4f6fff;
+  --on-primary-container: #ffffff;
+  --accent: #3d5bdb;
   --on-accent: #ffffff;
-  --secondary: #4f5d88;
-  --secondary-navy: #1d2b53;
+  --secondary: #6b7394;
+  --secondary-navy: #1b2156;
   --on-secondary: #ffffff;
-  --secondary-container: #c0cdff;
-  --on-secondary-container: #495681;
-  --surface: #f9f9ff;
-  --surface-container: #e7eefe;
-  --surface-container-low: #f0f3ff;
+  --secondary-container: #e8edff;
+  --on-secondary-container: #3d4a9a;
+  --surface: #f5f7fc;
+  --surface-container: #eef1fb;
+  --surface-container-low: #f7f8fd;
   --surface-container-lowest: #ffffff;
-  --surface-container-high: #e2e8f8;
-  --surface-container-highest: #dce2f3;
-  --surface-variant: #dce2f3;
-  --on-surface: #151c27;
-  --on-surface-variant: #574335;
-  --outline: #8b7262;
-  --outline-variant: #dec1af;
-  --error: #ba1a1a;
-  --tertiary: #5b5f5f;
+  --surface-container-high: #e4e9f6;
+  --surface-container-highest: #dce3f2;
+  --surface-variant: #e4e9f6;
+  --on-surface: #1a1f3c;
+  --on-surface-variant: #5a6380;
+  --outline: #c5cddc;
+  --outline-variant: #e4e9f4;
+  --error: #e11d48;
+  --tertiary: #7a8199;
+  --brand-from: #5b8aff;
+  --brand-to: #3d5bdb;
 }
 
 @theme inline {
@@ -51,14 +53,16 @@
   --color-surface-variant: var(--surface-variant);
   --color-on-surface: var(--on-surface);
   --color-on-surface-variant: var(--on-surface-variant);
-  --color-on-background: #151c27;
+  --color-on-background: var(--foreground);
   --color-outline: var(--outline);
   --color-outline-variant: var(--outline-variant);
   --color-error: var(--error);
-  --color-error-container: #ffdad6;
+  --color-error-container: #ffe4e8;
   --color-on-error: #ffffff;
   --color-tertiary: var(--tertiary);
-  --color-tertiary-container: #a2a6a5;
+  --color-tertiary-container: #cfd3e6;
+  --color-brand-from: var(--brand-from);
+  --color-brand-to: var(--brand-to);
   --font-sans: var(--font-inter);
 }
 
@@ -69,7 +73,17 @@ body {
 }
 
 .card-shadow {
-  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.04);
+  box-shadow: none;
+}
+
+.bg-brand-gradient {
+  background-color: var(--primary);
+  background-image: none;
+  border: 1px solid var(--accent);
+}
+
+.shadow-brand {
+  box-shadow: none;
 }
 
 /* Secondary card theme — Card variant="secondary" or class card-theme-secondary */
@@ -103,11 +117,13 @@ body {
   }
 
   .print-report,
-  .print-kinerja {
+  .print-kinerja,
+  .print-wfh {
     display: block !important;
   }
 
-  .print-kinerja {
+  .print-kinerja,
+  .print-wfh {
     font-family: "Times New Roman", Times, serif;
     font-size: 11pt;
     line-height: 1.35;
@@ -297,6 +313,38 @@ body {
     text-decoration: underline;
     margin: 0 0 2px;
   }
+
+  .print-wfh {
+    page: print-wfh;
+  }
+
+  .print-wfh-date {
+    text-align: center;
+    font-size: 12pt;
+    font-weight: 700;
+    margin: 0 0 16px;
+  }
+
+  .print-table-wfh .col-docs {
+    width: 18%;
+  }
+
+  .print-wfh-sign {
+    margin-top: 36px;
+    margin-left: auto;
+    width: 280px;
+    text-align: center;
+    page-break-inside: avoid;
+  }
+
+  .print-wfh-sign-space {
+    min-height: 72px;
+  }
+}
+
+@page print-wfh {
+  size: landscape;
+  margin: 12mm;
 }
 
 @keyframes nav-loader-slide {

@@ -20,7 +20,7 @@ export function LocationMap({
   longitude: number;
 }) {
   return (
-    <div className="relative z-0 isolate overflow-hidden rounded-xl border border-slate-200">
+    <div className="relative z-0 isolate overflow-hidden rounded-lg border border-slate-200">
       <MapContainer
         center={[latitude, longitude]}
         zoom={15}

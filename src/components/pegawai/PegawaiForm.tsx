@@ -157,7 +157,7 @@ export function PegawaiForm() {
         <CardHeader className="p-0">
           <button
             type="button"
-            className="flex w-full items-center justify-between gap-3 rounded-xl p-4 text-left"
+            className="flex w-full items-center justify-between gap-3 rounded-lg p-4 text-left"
             aria-expanded={formOpen}
             onClick={() => setFormOpen((open) => !open)}
           >
@@ -259,7 +259,7 @@ export function PegawaiForm() {
           )}
 
           {message ? (
-            <p className="rounded-xl bg-secondary-container px-4 py-2 text-sm text-on-secondary-container">
+            <p className="rounded-lg bg-secondary-container px-4 py-2 text-sm text-on-secondary-container">
               {message}
             </p>
           ) : null}
@@ -276,7 +276,7 @@ export function PegawaiForm() {
             {loading ? (
               <p className="text-on-surface-variant">Mencari pegawai...</p>
             ) : result ? (
-              <div className="space-y-3 rounded-xl border border-surface-container-highest bg-surface-container-low p-3">
+              <div className="space-y-3 rounded-lg border border-surface-container-highest bg-surface-container-low p-3">
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-medium text-on-surface">{result.name}</p>
                   <Badge variant="delegasi">ASN</Badge>
@@ -332,7 +332,7 @@ export function PegawaiForm() {
                   {bawahan.map((row) => (
                     <div
                       key={row.id || row.nip}
-                      className="space-y-1 rounded-xl border border-surface-container-highest bg-surface-container-low p-3"
+                      className="space-y-1 rounded-lg border border-surface-container-highest bg-surface-container-low p-3"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-medium text-on-surface">{row.name}</p>

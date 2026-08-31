@@ -28,6 +28,15 @@ export type LaporanPrintContext = {
   qrDataUrl: string;
 };
 
+export type DailyLaporanPrintContext = {
+  author: PrintPerson;
+  atasan: PrintPerson | null;
+  kopGovernment: string;
+  kopAgency: string;
+  kopAddress: string;
+  kopWebsite: string;
+};
+
 const KOP_ADDRESS =
   "Jl. Brigjen Marinir Abraham O. Atururi, Komplek Perkantoran Gubernur, Arfai-Manokwari";
 const KOP_WEBSITE = "www.bkd.papuabaratprov.go.id";
@@ -87,6 +96,65 @@ async function personFromUser(userId: string) {
     nip: user?.nip || "-",
     jabatan: user?.jabatan ? jabatanLabel[user.jabatan] : "-",
   });
+}
+
+export async function getDailyLaporanPrintContext(options: {
+  userId: string;
+  instansiName: string;
+  agencyName: string;
+}): Promise<DailyLaporanPrintContext> {
+  const orgUser = await getDbOrgUser(options.userId);
+  const atasanOrg = orgUser ? await getAtasan(orgUser) : null;
+  const [author, atasan] = await Promise.all([
+    personFromUser(options.userId),
+    atasanOrg ? personFromUser(atasanOrg.id) : Promise.resolve(null),
+  ]);
+
+  return {
+    author: author ?? {
+      name: "-",
+      nip: "-",
+      pangkatGolongan: "-",
+      jabatan: "-",
+    },
+    atasan,
+    kopGovernment: (options.instansiName || "Pemerintah Provinsi Papua Barat").toUpperCase(),
+    kopAgency: (options.agencyName || "Badan Kepegawaian Daerah").toUpperCase(),
+    kopAddress: KOP_ADDRESS,
+    kopWebsite: KOP_WEBSITE,
+  };
+}
+
+export function taskWfhUraian(task: Pick<ReportTask, "title" | "description">) {
+  const parts = [task.title.trim()];
+  if (task.description?.trim()) parts.push(task.description.trim());
+  return parts.join(" — ");
+}
+
+export function taskWfhHasil(task: Pick<ReportTask, "notes" | "feedback" | "score">) {
+  const parts = [task.notes, task.feedback, starLabel(task.score)].filter(Boolean) as string[];
+  return parts.join(" — ") || "-";
+}
+
+export function taskWfhTempat(task: Pick<ReportTask, "address">) {
+  return task.address?.trim() || "Rumah";
+}
+
+export function groupTasksForWfhPrint(tasks: ReportTask[]) {
+  const groups = new Map<string, ReportTask[]>();
+  for (const task of tasks) {
+    const tempat = taskWfhTempat(task);
+    const bucket = groups.get(tempat) ?? [];
+    bucket.push(task);
+    groups.set(tempat, bucket);
+  }
+
+  return Array.from(groups.entries()).map(([tempat, items], index) => ({
+    no: index + 1,
+    tempat,
+    tasks: items,
+    photoUrls: items.flatMap((task) => task.photoUrls),
+  }));
 }
 
 export async function getLaporanPrintContext(options: {

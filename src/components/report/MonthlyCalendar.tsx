@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { PrintReportButton } from "@/components/report/PrintReportButton";
+import { ReportActionButtons } from "@/components/report/ReportActionButtons";
 import { MonthlyTaskPrintReport } from "@/components/report/MonthlyTaskPrintReport";
 import { ReportMonthNav } from "@/components/report/ReportMonthNav";
 import { laporanHref } from "@/lib/laporan-url";
@@ -45,8 +45,8 @@ export function MonthlyCalendar({
   return (
     <div className="space-y-4">
       <div className="no-print space-y-3">
-        <ReportMonthNav by={by} month={month} year={year} date={date} />
-        <PrintReportButton />
+        <ReportMonthNav month={month} year={year} date={date} />
+        <ReportActionButtons by={by} view="bulanan" date={date} month={month} year={year} />
 
         <Card>
           <CardContent className="p-3">
@@ -70,7 +70,7 @@ export function MonthlyCalendar({
                 return (
                   <Link
                     key={day.date}
-                    href={laporanHref({ by, view: "harian", date: day.date, month, year })}
+                    href={laporanHref({ view: "harian", date: day.date, month, year })}
                     className={cn(
                       "relative flex min-h-14 flex-col items-center justify-center rounded-full p-1.5 text-center transition",
                       isToday
@@ -110,7 +110,7 @@ export function MonthlyCalendar({
               href={`/tugas/${task.id}`}
               className="flex items-start gap-4 rounded-xl border border-outline-variant bg-surface-container-lowest p-4 card-shadow"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary-container text-on-secondary-container">
                 <span className="text-sm font-bold">{task.title.slice(0, 1)}</span>
               </div>
               <div className="min-w-0 flex-1">

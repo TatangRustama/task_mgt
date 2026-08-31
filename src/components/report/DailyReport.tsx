@@ -1,6 +1,9 @@
 import { DailyDateNav } from "@/components/report/DailyDateNav";
+import { DailyWfhPrintReport } from "@/components/report/DailyWfhPrintReport";
+import { ReportActionButtons } from "@/components/report/ReportActionButtons";
 import { ReportStats } from "@/components/report/ReportStats";
 import { TaskReportList } from "@/components/report/TaskReportList";
+import type { DailyLaporanPrintContext } from "@/lib/laporan-print";
 import type { LaporanBy, ReportSummary, ReportTask } from "@/lib/report-types";
 import { formatLongDate } from "@/lib/utils";
 
@@ -11,6 +14,7 @@ export function DailyReport({
   year,
   summary,
   tasks,
+  print,
 }: {
   by: LaporanBy;
   date: string;
@@ -18,13 +22,20 @@ export function DailyReport({
   year: number;
   summary: ReportSummary;
   tasks: ReportTask[];
+  print: DailyLaporanPrintContext;
 }) {
   return (
     <div className="space-y-4">
-      <DailyDateNav by={by} date={date} month={month} year={year} />
-      <p className="text-sm font-medium text-on-surface-variant">{formatLongDate(date)}</p>
-      <ReportStats summary={summary} />
-      <TaskReportList tasks={tasks} emptyText="Tidak ada tugas pada hari ini." />
+      <div className="no-print space-y-3">
+        <DailyDateNav date={date} month={month} year={year} />
+        <ReportActionButtons by={by} view="harian" date={date} month={month} year={year} />
+      </div>
+      <p className="no-print text-sm font-medium text-on-surface-variant">{formatLongDate(date)}</p>
+      <div className="no-print space-y-4">
+        <ReportStats summary={summary} />
+        <TaskReportList tasks={tasks} emptyText="Tidak ada tugas pada hari ini." />
+      </div>
+      <DailyWfhPrintReport date={date} tasks={tasks} print={print} />
     </div>
   );
 }

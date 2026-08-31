@@ -5,7 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { DailyDateNav } from "@/components/report/DailyDateNav";
 import { TaskReportList } from "@/components/report/TaskReportList";
 import { groupKinerjaHarian, type EvaluatedPegawai, type KinerjaEval, type KinerjaLevel } from "@/lib/kinerja";
-import type { LaporanBy, PegawaiReportRow } from "@/lib/report-types";
+import type { PegawaiReportRow } from "@/lib/report-types";
 import { cn, formatLongDate } from "@/lib/utils";
 
 const LEVEL_BAR: Record<KinerjaLevel | "kolam", string> = {
@@ -26,7 +26,7 @@ const CARD_BG: Record<KinerjaLevel | "kolam", string> = {
   perlu_perhatian: "border-outline-variant bg-surface-container-lowest",
   lancar: "border-outline-variant bg-surface-container-lowest",
   tidak_aktif: "border-outline-variant bg-surface-container-lowest",
-  kolam: "border-transparent bg-primary-container text-on-primary-container",
+  kolam: "border-accent bg-primary text-white",
 };
 
 const LEVEL_TRACK: Record<KinerjaLevel | "kolam", string> = {
@@ -37,13 +37,11 @@ const LEVEL_TRACK: Record<KinerjaLevel | "kolam", string> = {
 };
 
 export function PegawaiDailyReport({
-  by,
   date,
   month,
   year,
   people,
 }: {
-  by: LaporanBy;
   date: string;
   month: number;
   year: number;
@@ -66,7 +64,7 @@ export function PegawaiDailyReport({
 
   return (
     <div className="space-y-4">
-      <DailyDateNav by={by} date={date} month={month} year={year} />
+      <DailyDateNav basePath="/pimpinan" date={date} month={month} year={year} />
       <p className="text-sm font-medium text-on-surface-variant">{formatLongDate(date)}</p>
 
       <div className="grid grid-cols-3 gap-2">
@@ -173,7 +171,7 @@ export function PegawaiDailyReport({
       ) : null}
 
       {staffCount === 0 && !grouped.pool ? (
-        <p className="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-6 text-center text-sm text-on-surface-variant">
+        <p className="rounded-lg border border-dashed border-outline-variant bg-surface-container-lowest p-6 text-center text-sm text-on-surface-variant">
           Tidak ada pegawai pada unit ini.
         </p>
       ) : null}
@@ -193,10 +191,10 @@ function PulseCard({
   return (
     <div
       className={cn(
-        "rounded-xl px-3 py-3",
-        tone === "danger" && "bg-error-container text-error",
-        tone === "good" && "bg-emerald-50 text-emerald-700",
-        tone === "idle" && "bg-surface-container text-tertiary"
+        "rounded-lg border px-3 py-3",
+        tone === "danger" && "border-error/40 bg-error-container text-error",
+        tone === "good" && "border-green-300 bg-emerald-50 text-emerald-700",
+        tone === "idle" && "border-outline bg-surface-container text-tertiary"
       )}
     >
       <p className="text-2xl font-bold leading-none">{count}</p>
@@ -274,7 +272,7 @@ function PersonRow({
   tasks: PegawaiReportRow["tasks"];
 }) {
   return (
-    <div className={cn("overflow-hidden rounded-xl border card-shadow", CARD_BG[tone])}>
+    <div className={cn("overflow-hidden rounded-lg border card-shadow", CARD_BG[tone])}>
       <button
         type="button"
         onClick={onToggle}
@@ -282,7 +280,7 @@ function PersonRow({
         aria-expanded={open}
       >
         <span className={cn("absolute inset-y-0 left-0 w-1.5", LEVEL_BAR[tone])} />
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary-navy text-xs font-bold text-on-secondary">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary-container text-xs font-bold text-on-secondary-container">
           {initials(name)}
         </div>
         <div className="min-w-0 flex-1">

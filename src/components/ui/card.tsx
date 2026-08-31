@@ -2,11 +2,11 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-const cardVariants = cva("rounded-xl card-shadow", {
+const cardVariants = cva("rounded-lg", {
   variants: {
     variant: {
-      default: "border border-surface-container-highest bg-surface-container-lowest",
-      secondary: "card-theme-secondary border border-transparent text-on-secondary",
+      default: "border border-outline bg-surface-container-lowest",
+      secondary: "card-theme-secondary border border-secondary text-on-secondary",
     },
   },
   defaultVariants: {
@@ -24,7 +24,7 @@ Card.displayName = "Card";
 
 const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("flex flex-col gap-1 p-4", className)} {...props} />
+    <div ref={ref} className={cn("flex flex-col gap-0.5 p-3", className)} {...props} />
   )
 );
 CardHeader.displayName = "CardHeader";
@@ -38,7 +38,7 @@ CardTitle.displayName = "CardTitle";
 
 const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("p-4 pt-0", className)} {...props} />
+    <div ref={ref} className={cn("p-3 pt-0", className)} {...props} />
   )
 );
 CardContent.displayName = "CardContent";

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EvidenceFields, useEvidenceCapture } from "@/components/task/EvidenceCapture";
 import { useNavigationLoader } from "@/components/layout/NavigationLoader";
 
-export function CompleteTaskForm({ taskId }: { taskId: string }) {
+export function CompleteTaskForm({ taskId, isRevision = false }: { taskId: string; isRevision?: boolean }) {
   const router = useRouter();
   const { start } = useNavigationLoader();
   const [loading, setLoading] = useState(false);
@@ -63,7 +63,7 @@ export function CompleteTaskForm({ taskId }: { taskId: string }) {
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
       <Button type="submit" variant="success" className="w-full" disabled={loading}>
-        {loading ? "Mengunggah..." : "Telah Selesai"}
+        {loading ? "Mengunggah..." : isRevision ? "Kirim ulang revisi" : "Telah Selesai"}
       </Button>
     </form>
   );

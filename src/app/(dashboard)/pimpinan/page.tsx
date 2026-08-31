@@ -2,30 +2,56 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import {
-  BarChart3,
   CheckCircle2,
-  ChevronRight,
   ClipboardPlus,
-  Crown,
+  ClipboardList,
   FileText,
   User,
 } from "lucide-react";
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { PegawaiReport } from "@/components/report/PegawaiReport";
+import { ReportFilters } from "@/components/report/ReportFilters";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAtasan, getDbOrgUser, getDirectReportIds, jabatanLabel } from "@/lib/org";
 import { formatGolonganPangkat } from "@/lib/golongan";
+import { getDailyReport, getMonthlyCalendar, getPegawaiBreakdown } from "@/lib/reports";
+import type { LaporanView } from "@/lib/report-types";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
-import { formatRelativeTime, statusLabel } from "@/lib/utils";
+import { addDays, cn, formatISODate, formatRelativeTime, isISODate, parseISODate, statusLabel } from "@/lib/utils";
 
-export default async function PimpinanPage() {
+export default async function PimpinanPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    view?: string;
+    date?: string;
+    month?: string;
+    year?: string;
+  }>;
+}) {
   const user = await requireUser(["admin", "pimpinan"]);
+  const params = await searchParams;
+  const view: LaporanView = params.view === "harian" ? "harian" : "bulanan";
+  const today = formatISODate(new Date());
+  const date = isISODate(params.date) ? params.date : today;
+  const selected = parseISODate(date);
+  const month = Number(params.month || selected.getMonth() + 1);
+  const year = Number(params.year || selected.getFullYear());
 
   const orgUser = await getDbOrgUser(user.id);
-  const [reportIds, atasan] = await Promise.all([
+  const scope = {
+    role: user.role,
+    userId: user.id,
+    unitId: user.unitId,
+  };
+
+  const [reportIds, atasan, daily, monthly] = await Promise.all([
     orgUser ? getDirectReportIds(orgUser) : Promise.resolve([] as string[]),
     orgUser ? getAtasan(orgUser) : Promise.resolve(null),
+    view === "harian" ? getDailyReport({ ...scope, date }) : Promise.resolve(null),
+    view === "bulanan" ? getMonthlyCalendar({ ...scope, month, year }) : Promise.resolve(null),
   ]);
 
   const [atasanPegawai, atasanUser, pendingCount, fromAtasan] = await Promise.all([
@@ -67,33 +93,10 @@ export default async function PimpinanPage() {
       : Promise.resolve([]),
   ]);
 
-  const menus = [
-    {
-      href: "/board",
-      title: "Board Unit",
-      desc: "Lihat semua kartu tugas unit",
-      icon: Crown,
-    },
-    {
-      href: "/pimpinan/delegasi",
-      title: "Delegasi Tugas",
-      desc: "Tunjuk bawahan atau lempar ke board subbid",
-      icon: ClipboardPlus,
-    },
-    {
-      href: "/pimpinan/persetujuan",
-      title: "Persetujuan",
-      desc: "Setujui tugas dan beri bintang",
-      icon: CheckCircle2,
-      badge: pendingCount,
-    },
-    {
-      href: "/laporan",
-      title: "Laporan Unit",
-      desc: "Monitoring arsip kinerja bulanan",
-      icon: BarChart3,
-    },
-  ];
+  const report = daily ?? monthly;
+  const start = view === "harian" ? parseISODate(date) : new Date(year, month - 1, 1);
+  const end = view === "harian" ? addDays(start, 1) : new Date(year, month, 1);
+  const people = report ? await getPegawaiBreakdown(report.tasks, scope, start, end) : [];
 
   const atasanJabatan =
     atasanPegawai?.jabatanNama || (atasan?.jabatan ? jabatanLabel[atasan.jabatan] : null);
@@ -101,115 +104,140 @@ export default async function PimpinanPage() {
   const atasanGolongan = atasanPegawai?.golonganNama || null;
 
   return (
-    <PageMain>
-      <PageHeader
-        title="Pimpinan"
-        subtitle="Delegasi bernama ke bawahan, atau kolam board khusus staf sub bidang."
-      />
+    <PageMain className="max-w-3xl space-y-6 print:max-w-none">
+      <div className="no-print">
+        <PageHeader
+          title="Kinerja"
+          subtitle={
+            view === "harian" ? "Pantau kinerja pegawai harian" : "Pantau kinerja pegawai bulanan"
+          }
+        />
 
-      <div className="space-y-4">
-        <div className="relative overflow-hidden rounded-xl bg-primary-container p-6 text-on-primary-container shadow-md">
-          <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white opacity-10 blur-2xl" />
-          <div className="relative z-10 flex items-start justify-between gap-3">
+        <KinerjaOpsBar pendingCount={pendingCount} />
+
+        <div className="mt-3 overflow-hidden rounded-lg border border-accent bg-primary p-3 text-white">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wider opacity-80">
+              <p className="text-[11px] font-semibold uppercase tracking-wider opacity-80">
                 Atasan langsung
               </p>
               {atasan ? (
                 <>
-                  <h3 className="mt-2 text-xl font-semibold leading-snug">{atasan.name}</h3>
-                  <p className="mt-2 text-sm opacity-90">{formatGolonganPangkat(atasanGolongan)}</p>
-                  <p className="mt-1 text-sm opacity-90">NIP {atasanNip || "-"}</p>
+                  <h3 className="mt-1 truncate text-base font-semibold leading-snug">{atasan.name}</h3>
+                  <p className="mt-1 text-xs opacity-90">
+                    {formatGolonganPangkat(atasanGolongan)} · NIP {atasanNip || "-"}
+                  </p>
                   {atasanJabatan ? (
-                    <p className="mt-2 line-clamp-2 text-sm opacity-90" title={atasanJabatan}>
+                    <p className="mt-1 line-clamp-1 text-xs opacity-90" title={atasanJabatan}>
                       {atasanJabatan}
                     </p>
                   ) : null}
                 </>
               ) : (
-                <h3 className="mt-2 text-xl font-semibold">Tidak ada atasan langsung</h3>
+                <h3 className="mt-1 text-base font-semibold">Tidak ada atasan langsung</h3>
               )}
             </div>
-            <span className="rounded-full bg-white p-2 text-primary-container">
-              <User className="h-5 w-5" />
+            <span className="rounded-full bg-white p-2 text-primary">
+              <User className="h-4 w-4" />
             </span>
           </div>
         </div>
 
-        <Card className="border-transparent bg-accent text-on-accent">
-          <CardHeader>
-            <div className="flex items-center justify-between gap-3">
-              <CardTitle className="text-base text-on-accent">Tugas dari atasan langsung</CardTitle>
-              <Link href="/board" className="text-sm font-semibold text-on-accent/90 hover:underline">
-                Lihat semua
-              </Link>
-            </div>
-            {fromAtasan.length === 0 ? (
-              <p className="text-sm text-on-accent/80">
-                {atasan ? "Belum ada tugas dari atasan." : "Tidak ada atasan langsung."}
-              </p>
-            ) : (
-              <ul className="mt-2 space-y-3">
-                {fromAtasan.map((task, index) => (
-                  <li
-                    key={task.id}
-                    className={
-                      index === fromAtasan.length - 1
-                        ? "flex items-center gap-3"
-                        : "flex items-center gap-3 border-b border-white/20 pb-3"
-                    }
-                  >
-                    <div className="shrink-0 rounded-lg bg-white/20 p-2 text-on-accent">
-                      <FileText className="h-5 w-5" />
-                    </div>
+        {fromAtasan.length > 0 ? (
+          <Card className="mt-4 border-transparent bg-secondary-container text-on-secondary-container">
+            <CardHeader className="p-4">
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="text-sm text-on-secondary-container">Tugas dari atasan</CardTitle>
+                <Link href="/board" className="text-xs font-semibold text-on-secondary-container/90 hover:underline">
+                  Lihat semua
+                </Link>
+              </div>
+              <ul className="mt-2 space-y-2">
+                {fromAtasan.map((task) => (
+                  <li key={task.id} className="flex items-center gap-3">
                     <div className="min-w-0 flex-1">
                       <Link
                         href={`/tugas/${task.id}`}
-                        className="block truncate text-sm font-semibold text-on-accent hover:underline"
+                        className="block truncate text-sm font-semibold text-on-secondary-container hover:underline"
                         title={task.title}
                       >
                         {task.title}
                       </Link>
-                      <p className="mt-0.5 text-sm text-on-accent/80">
-                        {statusLabel(task.status)}
+                      <p className="mt-0.5 text-xs text-on-secondary-container/80">
+                        {statusLabel(task.status)} · {formatRelativeTime(task.updatedAt)}
                       </p>
                     </div>
-                    <span className="shrink-0 text-xs font-medium text-on-accent/70">
-                      {formatRelativeTime(task.updatedAt)}
-                    </span>
                   </li>
                 ))}
               </ul>
-            )}
-          </CardHeader>
-        </Card>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {menus.map(({ href, title, desc, icon: Icon, badge }) => (
-            <Link key={href} href={href} className="min-w-0">
-              <Card className="h-full transition hover:shadow-md">
-                <CardHeader className="flex flex-row items-center gap-3">
-                  <div className="rounded-xl bg-surface-container p-3 text-secondary">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <span className="truncate">{title}</span>
-                      {badge ? (
-                        <Badge variant="warning" className="shrink-0">
-                          {badge} pending
-                        </Badge>
-                      ) : null}
-                    </CardTitle>
-                    <p className="text-sm text-on-surface-variant">{desc}</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-outline" />
-                </CardHeader>
-              </Card>
-            </Link>
-          ))}
-        </div>
+            </CardHeader>
+          </Card>
+        ) : null}
       </div>
+
+      <ReportFilters basePath="/pimpinan" view={view} date={date} month={month} year={year} />
+
+      {!report ? (
+        <p className="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-6 text-center text-sm text-on-surface-variant">
+          Unit belum tersedia untuk monitoring kinerja.
+        </p>
+      ) : (
+        <PegawaiReport
+          by="pegawai"
+          view={view}
+          date={date}
+          month={month}
+          year={year}
+          summary={report.summary}
+          people={people}
+          days={monthly?.days ?? []}
+          unitName={report.unitName}
+          instansiName={report.instansiName}
+          pimpinanName={monthly?.pimpinanName}
+        />
+      )}
     </PageMain>
+  );
+}
+
+function KinerjaOpsBar({ pendingCount }: { pendingCount: number }) {
+  const items = [
+    {
+      href: "/pimpinan/persetujuan",
+      label: "Persetujuan",
+      icon: CheckCircle2,
+      badge: pendingCount,
+      tone: "bg-emerald-100 text-emerald-600",
+    },
+    {
+      href: "/pimpinan/delegasi",
+      label: "Delegasi",
+      icon: ClipboardPlus,
+      tone: "bg-sky-100 text-sky-700",
+    },
+    { href: "/board", label: "Board", icon: ClipboardList, tone: "bg-sky-100 text-sky-600" },
+    { href: "/laporan", label: "Laporan", icon: FileText, tone: "bg-amber-100 text-amber-600" },
+  ];
+
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {items.map(({ href, label, icon: Icon, badge, tone }) => (
+        <Link
+          key={href}
+          href={href}
+          className="relative flex flex-col items-center gap-1 rounded-lg border border-outline bg-surface-container-lowest px-1 py-2 text-center transition hover:border-primary"
+        >
+          <span className={cn("flex h-8 w-8 items-center justify-center rounded-md border border-outline", tone)}>
+            <Icon className="h-5 w-5" />
+          </span>
+          <span className="text-[11px] font-semibold leading-tight text-on-surface">{label}</span>
+          {badge ? (
+            <Badge variant="warning" className="absolute -right-1 -top-1 px-1.5 py-0 text-[10px]">
+              {badge}
+            </Badge>
+          ) : null}
+        </Link>
+      ))}
+    </div>
   );
 }

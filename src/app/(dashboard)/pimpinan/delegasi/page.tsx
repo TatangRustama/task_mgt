@@ -20,7 +20,7 @@ export default function DelegasiPage() {
           </Button>
         }
       />
-      <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-8 text-center card-shadow">
+      <div className="rounded-lg border border-outline-variant bg-surface-container-lowest p-8 text-center card-shadow">
         <p className="mb-4 text-sm text-on-surface-variant">
           Kepala kantor dan kepala bidang menunjuk penerima secara bernama. Kepala sub bidang
           dapat menunjuk staf atau melempar kartu ke board sub bidang agar stafnya yang mengambil.

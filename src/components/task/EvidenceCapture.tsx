@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 const LocationMap = dynamic(
   () => import("@/components/map/LocationMap").then((m) => m.LocationMap),
-  { ssr: false, loading: () => <div className="h-40 rounded-xl bg-slate-100" /> }
+  { ssr: false, loading: () => <div className="h-40 rounded-lg bg-slate-100" /> }
 );
 
 async function compressImage(file: File): Promise<File> {
@@ -152,7 +152,7 @@ export function EvidenceFields({
   onPhotoChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
   return (
-    <div className="space-y-4 rounded-xl border border-outline-variant bg-surface-container-low p-4">
+    <div className="space-y-4 rounded-lg border border-outline-variant bg-surface-container-low p-4">
       <p className="text-sm font-semibold text-on-surface">Laporan selesai</p>
       <div className="space-y-2">
         <Label htmlFor="notes">Catatan Hasil</Label>
@@ -166,7 +166,7 @@ export function EvidenceFields({
       </div>
 
       <div className="grid grid-cols-2 gap-4 pt-2">
-        <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-outline-variant bg-surface p-4 transition hover:bg-surface-container-low active:scale-95">
+        <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-outline-variant bg-surface p-4 transition hover:bg-surface-container-low active:scale-95">
           <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-secondary-container text-on-secondary-container">
             <Camera className="h-5 w-5" />
           </div>
@@ -174,7 +174,7 @@ export function EvidenceFields({
           <span className="mt-1 text-center text-[11px] text-on-surface-variant">Wajib (1-3 foto)</span>
           <input id="photos" type="file" accept="image/*" capture="environment" multiple onChange={onPhotoChange} className="hidden" />
         </label>
-        <div className="flex flex-col items-center justify-center rounded-xl border border-outline-variant bg-surface p-4">
+        <div className="flex flex-col items-center justify-center rounded-lg border border-outline-variant bg-surface p-4">
           <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-secondary-container text-on-secondary-container">
             <MapPin className="h-5 w-5" />
           </div>

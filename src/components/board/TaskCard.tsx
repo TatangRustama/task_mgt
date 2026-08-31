@@ -1,6 +1,7 @@
 import { AssignmentMode, TaskPriority, TaskSource, TaskStatus } from "@prisma/client";
 import Link from "next/link";
 import { Calendar, User } from "lucide-react";
+import { ManagePostedTaskActions } from "@/components/task/ManagePostedTaskActions";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatDate, isOverdue, priorityBarClass } from "@/lib/utils";
 
@@ -14,18 +15,26 @@ export type TaskCardData = {
   deadline: Date | string | null;
   assignmentMode?: AssignmentMode;
   assignedTo?: { name: string } | null;
+  createdById?: string;
 };
 
-export function TaskCard({ task }: { task: TaskCardData }) {
+export function TaskCard({
+  task,
+  currentUserId,
+}: {
+  task: TaskCardData;
+  currentUserId?: string;
+}) {
   const overdue = task.status === "tersedia" && isOverdue(task.deadline);
+  const canManage =
+    Boolean(currentUserId) &&
+    task.status === "tersedia" &&
+    task.createdById === currentUserId;
 
   return (
-    <Link
-      href={`/tugas/${task.id}`}
-      className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-surface-container-highest bg-surface-container-lowest card-shadow transition hover:shadow-md"
-    >
+    <div className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-outline bg-surface-container-lowest transition hover:border-primary">
       <div className={cn("absolute inset-y-0 left-0 w-2", priorityBarClass[task.priority] ?? "bg-tertiary")} />
-      <div className="flex flex-1 flex-col gap-1 p-3 pl-5">
+      <Link href={`/tugas/${task.id}`} className="flex flex-1 flex-col gap-1 p-3 pl-5">
         <div className="mb-0.5 flex flex-wrap gap-1">
           <Badge variant={task.source}>{task.source}</Badge>
           {task.assignmentMode === "kolam" ? <Badge variant="kolam">kolam</Badge> : null}
@@ -55,7 +64,10 @@ export function TaskCard({ task }: { task: TaskCardData }) {
             </span>
           ) : null}
         </div>
-      </div>
-    </Link>
+      </Link>
+      {canManage ? (
+        <ManagePostedTaskActions task={task} className="border-t border-outline-variant px-3 py-2 pl-5" />
+      ) : null}
+    </div>
   );
 }

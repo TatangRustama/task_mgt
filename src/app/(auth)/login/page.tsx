@@ -1,94 +1,27 @@
-"use client";
+import { Suspense } from "react";
+import { LoginForm } from "@/components/auth/LoginForm";
 
-import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState, Suspense } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { useNavigationLoader } from "@/components/layout/NavigationLoader";
-
-function LoginForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { start } = useNavigationLoader();
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    const formData = new FormData(e.currentTarget);
-    const result = await signIn("credentials", {
-      email: formData.get("username"),
-      password: formData.get("password"),
-      redirect: false,
-    });
-
-    setLoading(false);
-
-    if (result?.error) {
-      setError("NIP atau password salah");
-      return;
-    }
-
-    start();
-    router.push(searchParams.get("callbackUrl") || "/mandiri");
-    router.refresh();
-  }
-
+function LoginFormFallback() {
   return (
-    <Card className="w-full max-w-md overflow-hidden border-0 card-shadow">
-      <div className="bg-secondary-navy px-6 py-7 text-center">
-        <p className="text-[16px] font-semibold tracking-[0.28em] text-accent">Data dan Informasi</p>
-        <CardTitle className="mt-1 text-3xl tracking-tight text-on-secondary">Task Managements</CardTitle>
-        <p className="mt-2 text-sm text-secondary-container">versi 1.0</p>
+    <div className="w-full max-w-md overflow-hidden rounded-lg border border-outline bg-surface-container-lowest p-4">
+      <div className="mx-auto h-8 w-48 animate-pulse rounded-lg bg-surface-container-high" />
+      <div className="mx-auto mt-4 h-10 w-56 animate-pulse rounded-lg bg-surface-container-high" />
+      <div className="mt-8 space-y-4">
+        <div className="h-11 animate-pulse rounded-lg bg-surface-container-high" />
+        <div className="h-11 animate-pulse rounded-lg bg-surface-container-high" />
+        <div className="h-11 animate-pulse rounded-lg bg-surface-container-high" />
       </div>
-      <CardContent className="pt-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="username">NIP</Label>
-            <Input
-              id="username"
-              name="username"
-              type="text"
-              required
-              placeholder="NIP atau email admin"
-              autoComplete="username"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              required
-              placeholder="Password (default: NIP)"
-              autoComplete="current-password"
-            />
-          </div>
-          {error ? <p className="text-sm text-error">{error}</p> : null}
-          <Button type="submit" className="w-full rounded-2xl py-4" disabled={loading}>
-            {loading ? "Masuk..." : "Masuk"}
-          </Button>
-        </form>
-        <p className="mt-4 text-center text-xs text-tertiary">
-          Pegawai: NIP / password NIP. Admin demo: admin@demo.go.id / password123
-        </p>
-      </CardContent>
-    </Card>
+    </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <main className="relative flex min-h-screen items-center justify-center bg-[#9c9ce3] p-5">
+    <main
+      className="relative flex min-h-screen items-center justify-center bg-background p-3"
+    >
       <div className="relative z-10 w-full max-w-md">
-        <Suspense>
+        <Suspense fallback={<LoginFormFallback />}>
           <LoginForm />
         </Suspense>
       </div>

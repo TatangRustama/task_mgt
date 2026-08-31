@@ -52,11 +52,11 @@ export function SimpegSyncCard({
           dengan NIP sebagai username dan password, plus atasan/bawahan dari hierarki unor.
         </p>
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-xl bg-surface-container-low p-3">
+          <div className="rounded-lg bg-surface-container-low p-3">
             <p className="text-xs text-on-surface-variant">Unit organisasi</p>
             <p className="text-lg font-semibold">{unitCount}</p>
           </div>
-          <div className="rounded-xl bg-surface-container-low p-3">
+          <div className="rounded-lg bg-surface-container-low p-3">
             <p className="text-xs text-on-surface-variant">Pegawai ASN</p>
             <p className="text-lg font-semibold">{pegawaiCount}</p>
           </div>
@@ -76,7 +76,7 @@ export function SimpegSyncCard({
           <p className="text-on-surface-variant">Proses ini dapat memakan beberapa menit.</p>
         ) : null}
         {message ? (
-          <p className="rounded-xl bg-secondary-container px-4 py-2 text-on-secondary-container">
+          <p className="rounded-lg bg-secondary-container px-4 py-2 text-on-secondary-container">
             {message}
           </p>
         ) : null}

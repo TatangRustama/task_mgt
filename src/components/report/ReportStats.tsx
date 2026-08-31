@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 export function ReportStats({ summary }: { summary: ReportSummary }) {
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-2 gap-2">
       <StatCard label="Total diposting" value={summary.posted} />
       <StatCard highlight label="Total selesai" value={summary.completed} />
       <StatCard label="Rata bintang" value={summary.averageScore ? `${summary.averageScore}/3` : "-"} />
@@ -23,12 +23,12 @@ function StatCard({
   highlight?: boolean;
 }) {
   return (
-    <Card className={cn("overflow-hidden", highlight && "border-0 bg-primary-container text-on-primary-container")}>
-      <CardContent className="p-4">
-        <p className={cn("text-xs font-medium uppercase tracking-wide", highlight ? "opacity-80" : "text-tertiary")}>
+    <Card className={cn("overflow-hidden", highlight && "border-accent bg-primary text-white")}>
+      <CardContent className="p-3">
+        <p className={cn("text-xs font-medium uppercase tracking-wide", highlight ? "text-white/80" : "text-tertiary")}>
           {label}
         </p>
-        <p className={cn("mt-1 text-2xl font-bold", highlight ? "text-on-primary-container" : "text-on-surface")}>
+        <p className={cn("mt-1 text-2xl font-bold", highlight ? "text-white" : "text-on-surface")}>
           {value}
         </p>
       </CardContent>

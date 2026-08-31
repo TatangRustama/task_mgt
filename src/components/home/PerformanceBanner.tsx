@@ -42,15 +42,15 @@ function insightText({
 }
 
 function CapaianRing({ percent }: { percent: number }) {
-  const size = 108;
-  const stroke = 9;
+  const size = 80;
+  const stroke = 7;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (percent / 100) * circumference;
 
   return (
     <div
-      className="relative h-[108px] w-[108px] shrink-0 text-white"
+      className="relative h-20 w-20 shrink-0 text-white"
       aria-label={`Capaian ${percent} persen`}
     >
       <svg viewBox={`0 0 ${size} ${size}`} className="-rotate-90" aria-hidden>
@@ -75,8 +75,8 @@ function CapaianRing({ percent }: { percent: number }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span className="text-[22px] font-bold leading-none tracking-tight text-white">{percent}%</span>
-        <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/80">
+        <span className="text-lg font-bold leading-none tracking-tight text-white">{percent}%</span>
+        <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/80">
           Capaian
         </span>
       </div>
@@ -117,26 +117,21 @@ export function PerformanceBanner({
   ].filter(Boolean) as { icon: typeof CalendarClock; label: string }[];
 
   return (
-    <section className="relative mb-4 overflow-hidden rounded-xl bg-gradient-to-br from-[#c17a42] via-[#9a5524] to-[#5c3214] p-5 text-white shadow-md md:p-6">
-      <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/15 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 right-8 h-52 w-52 rounded-full bg-secondary-navy/35 blur-3xl" />
-      <div className="pointer-events-none absolute right-10 top-8 h-28 w-28 rounded-full border border-white/20" />
-      <div className="pointer-events-none absolute right-24 top-20 h-16 w-16 rounded-full border border-white/12" />
-
-      <div className="relative z-10 flex items-start justify-between gap-4">
+    <section className="relative mb-3 overflow-hidden rounded-lg border border-accent bg-primary p-3 text-white md:p-4">
+      <div className="relative z-10 flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/75 md:text-xs">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/75 md:text-[11px]">
             {formatLongDate(today)}
           </p>
-          <h2 className="mt-1 text-[26px] font-bold leading-8 tracking-tight text-white md:text-[32px] md:leading-10">
+          <h2 className="mt-0.5 text-xl font-bold leading-6 tracking-tight text-white md:text-2xl md:leading-7">
             Halo, {firstName}!
           </h2>
-          <p className="mt-1 text-sm text-white/85 md:text-base">
+          <p className="mt-0.5 text-xs text-white/85 md:text-sm">
             {greetingByHour(today)} · Ringkasan kinerja hari ini
           </p>
           {unitName ? (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-semibold text-white ring-1 ring-white/25">
+            <div className="mt-2 flex flex-wrap gap-1">
+              <span className="rounded-md border border-white/40 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white">
                 {unitName}
               </span>
             </div>
@@ -145,41 +140,41 @@ export function PerformanceBanner({
         <CapaianRing percent={percent} />
       </div>
 
-      <div className="relative z-10 mt-5 grid grid-cols-3 gap-2 md:gap-3">
+      <div className="relative z-10 mt-3 grid grid-cols-3 gap-1.5">
         {stats.map(({ label, value, icon: Icon }) => (
           <div
             key={label}
-            className="rounded-lg bg-white/12 px-2.5 py-3 ring-1 ring-white/25 backdrop-blur-[2px] md:px-3"
+            className="rounded-md border border-white/35 bg-white/10 px-2 py-2 md:px-2.5"
           >
-            <div className="mb-1.5 flex items-center gap-1.5 text-white/80">
-              <Icon className="h-3.5 w-3.5 shrink-0" />
-              <p className="truncate text-[10px] font-semibold uppercase tracking-wider md:text-[11px]">
+            <div className="mb-1 flex items-center gap-1 text-white/80">
+              <Icon className="h-3 w-3 shrink-0" />
+              <p className="truncate text-[9px] font-semibold uppercase tracking-wider md:text-[10px]">
                 {label}
               </p>
             </div>
-            <p className="text-[26px] font-bold leading-7 tracking-tight text-white md:text-[30px] md:leading-8">
+            <p className="text-xl font-bold leading-6 tracking-tight text-white md:text-2xl">
               {value}
             </p>
           </div>
         ))}
       </div>
 
-      <div className="relative z-10 mt-3">
-        <div className="flex h-1.5 overflow-hidden rounded-full bg-white/20">
+      <div className="relative z-10 mt-2">
+        <div className="flex h-1 overflow-hidden rounded-full bg-white/20">
           <span className="h-full rounded-full bg-white" style={{ width: `${doneShare}%` }} />
         </div>
-        <p className="mt-2 text-[12px] leading-5 text-white/85">
+        <p className="mt-1.5 text-[11px] leading-4 text-white/85">
           {insightText({ overdue, dueToday, awaitingReview, pending })}
         </p>
       </div>
 
-      <div className="relative z-10 mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="relative z-10 mt-2.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         {chips.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1">
             {chips.map(({ icon: Icon, label }) => (
               <span
                 key={label}
-                className="inline-flex items-center gap-1 rounded-full bg-white/12 px-2.5 py-1 text-[11px] font-semibold text-white ring-1 ring-white/25"
+                className="inline-flex items-center gap-1 rounded-md border border-white/40 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white"
               >
                 <Icon className="h-3 w-3" />
                 {label}
@@ -189,7 +184,7 @@ export function PerformanceBanner({
         ) : null}
         <Link
           href="/board"
-          className="inline-flex shrink-0 items-center justify-center gap-1.5 self-start rounded-full bg-white px-5 py-2 text-sm font-semibold text-[#6b3818] shadow-sm transition hover:bg-white/90 active:scale-95 sm:ml-auto sm:self-auto"
+          className="inline-flex shrink-0 items-center justify-center gap-1 self-start rounded-lg border border-white bg-white px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-white/90 active:scale-95 sm:ml-auto sm:self-auto"
         >
           Lihat detail tugas
           <ArrowRight className="h-4 w-4" />

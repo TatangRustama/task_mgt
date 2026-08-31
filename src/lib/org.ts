@@ -337,6 +337,13 @@ export function canPickupPoolTask(user: SessionUser, task: TaskAccess) {
   );
 }
 
+export function canManagePostedTersediaTask(
+  user: Pick<SessionUser, "id">,
+  task: Pick<TaskAccess, "createdById" | "status">,
+) {
+  return task.createdById === user.id && task.status === "tersedia";
+}
+
 export async function canReviewTask(user: OrgUser, assignedToId: string | null) {
   if (!assignedToId) return false;
   if (user.role === "admin") return true;

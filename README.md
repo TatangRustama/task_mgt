@@ -57,10 +57,25 @@ Buka [http://localhost:3000](http://localhost:3000)
 
 ## Environment
 
-Copy `.env.example` ke `.env` dan sesuaikan:
+### Development (Supabase — default)
+
+Copy `.env.example` ke `.env`. Database dan storage memakai Supabase yang sama dengan production:
 
 ```
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/kinerja?schema=public
-AUTH_SECRET=ganti-dengan-secret-panjang-minimal-32-karakter
+DATABASE_URL=postgresql://postgres.PROJECT_REF:...@...pooler.supabase.com:6543/postgres?sslmode=no-verify
+DIRECT_URL=postgresql://postgres.PROJECT_REF:...@...pooler.supabase.com:5432/postgres?sslmode=no-verify
 NEXTAUTH_URL=http://localhost:3000
 ```
+
+Backup lengkap untuk deploy: **`.env.production`**.
+
+### Local Docker (optional)
+
+Jika ingin database PostgreSQL lokal tanpa Supabase:
+
+```bash
+docker compose up -d
+npm run db:setup
+```
+
+Aktifkan baris `localhost:5432` di `.env` dan comment baris Supabase database.

@@ -1,7 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
+import { authenticateCredentials } from "@/lib/auth-login";
 import { authConfig } from "@/auth.config";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -14,30 +13,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        const identifier = String(credentials?.email || "").trim();
+        const password = credentials?.password as string | undefined;
+        if (!identifier || !password) return null;
+
         try {
-          const identifier = String(credentials?.email || "").trim();
-          const password = credentials?.password as string | undefined;
-
-          if (!identifier || !password) return null;
-
-          const user = identifier.includes("@")
-            ? await prisma.user.findUnique({ where: { email: identifier } })
-            : await prisma.user.findUnique({ where: { nip: identifier } });
-
-          if (!user) return null;
-
-          const valid = await bcrypt.compare(password, user.passwordHash);
-          if (!valid) return null;
-
-          return {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            jabatan: user.jabatan,
-            unitId: user.unitId,
-            nip: user.nip,
-          };
+          return await authenticateCredentials(identifier, password);
         } catch (error) {
           console.error("[auth] authorize failed:", error);
           return null;

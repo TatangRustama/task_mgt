@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const selectClassName =
-  "flex h-11 w-full rounded-xl border border-outline-variant px-3 text-sm focus-visible:outline-none focus-visible:border-primary-container focus-visible:ring-1 focus-visible:ring-primary-container";
+  "flex h-11 w-full rounded-lg border border-outline-variant px-3 text-sm focus-visible:outline-none focus-visible:border-primary-container focus-visible:ring-1 focus-visible:ring-primary-container";
 
 type Unit = {
   id: string;
@@ -120,7 +120,7 @@ export default function AdminPage() {
     <PageMain className="max-w-3xl space-y-4">
       <PageHeader title="Admin Instansi" subtitle="Kelola struktur organisasi, unit, dan pengguna" />
       {message ? (
-        <p className="rounded-xl bg-secondary-container px-4 py-2 text-sm text-on-secondary-container">{message}</p>
+        <p className="rounded-lg bg-secondary-container px-4 py-2 text-sm text-on-secondary-container">{message}</p>
       ) : null}
 
       <Card>
@@ -201,7 +201,7 @@ export default function AdminPage() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           {units.map((unit) => (
-            <div key={unit.id} className="rounded-xl border border-surface-container-highest bg-surface-container-low p-3">
+            <div key={unit.id} className="rounded-lg border border-surface-container-highest bg-surface-container-low p-3">
               <p className="font-medium text-on-surface">{unit.name}</p>
               <p className="text-on-surface-variant">
                 {unitTypeLabel[unit.type]}
@@ -221,7 +221,7 @@ export default function AdminPage() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           {users.map((u) => (
-            <div key={u.id} className="rounded-xl border border-surface-container-highest bg-surface-container-low p-3">
+            <div key={u.id} className="rounded-lg border border-surface-container-highest bg-surface-container-low p-3">
               <p className="font-medium text-on-surface">{u.name}</p>
               <p className="text-on-surface-variant">
                 {u.email} · {u.jabatan ? jabatanLabel[u.jabatan] || u.jabatan : u.role}

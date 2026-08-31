@@ -9,13 +9,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Task Managements — Peningkatan Kinerja ASN",
+  title: "Manajemen Tugas — Peningkatan Kinerja ASN",
   description: "Delegasi tugas, board unit, bukti foto+geo-tag, dan laporan kinerja bulanan",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Task Managements",
+    title: "Manajemen Tugas",
   },
 };
 
@@ -23,7 +23,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#1D2B53",
+    themeColor: "#1B2156",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

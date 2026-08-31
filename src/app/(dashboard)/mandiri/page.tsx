@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { getVisibleUnitIds } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
-import { formatRelativeTime, statusLabel } from "@/lib/utils";
+import { formatRelativeTime, statusLabel, cn } from "@/lib/utils";
 
 export default async function MandiriPage() {
   const user = await requireUser();
@@ -93,40 +93,43 @@ export default async function MandiriPage() {
         awaitingReview={awaitingReview}
       />
 
-      <div className="mb-4 grid grid-cols-3 gap-2 md:gap-6">
+      <div className="mb-3 grid grid-cols-3 gap-2">
         {[
           {
             href: "/pegawai",
             title: "Pegawai",
             icon: Users,
+            tone: "bg-sky-100 text-sky-600",
           },
           {
             href: "/struktur",
             title: "Struktur",
             icon: Network,
+            tone: "bg-sky-100 text-sky-700",
           },
           {
             href: "/setting",
             title: "Setting",
             icon: Settings,
+            tone: "bg-amber-100 text-amber-600",
           },
-        ].map(({ href, title, icon: Icon }) => (
+        ].map(({ href, title, icon: Icon, tone }) => (
           <Link key={href} href={href} className="min-w-0">
-            <Card className="h-full border-transparent bg-primary-container text-on-primary-container transition hover:shadow-md">
-              <CardHeader className="flex flex-col items-center gap-2 p-3 text-center md:flex-row md:items-center md:p-4 md:text-left">
-                <div className="rounded-xl bg-white/20 p-2 text-on-primary-container md:p-3">
+            <Card className="h-full transition hover:shadow-md">
+              <CardHeader className="flex flex-col items-center gap-1.5 p-2 text-center md:flex-row md:items-center md:p-3 md:text-left">
+                <div className={cn("rounded-md border border-outline p-1.5 md:p-2", tone)}>
                   <Icon className="h-5 w-5" />
                 </div>
-                <CardTitle className="text-sm text-on-primary-container md:text-base">{title}</CardTitle>
+                <CardTitle className="text-sm md:text-base">{title}</CardTitle>
               </CardHeader>
             </Card>
           </Link>
         ))}
       </div>
 
-      <div className="rounded-xl border border-surface-variant bg-surface-container-lowest p-6 card-shadow">
-        <div className="mb-6 flex items-center justify-between">
-          <h3 className="text-xl font-semibold text-on-surface">Aktivitas terbaru</h3>
+      <div className="rounded-lg border border-outline bg-surface-container-lowest p-3">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-base font-semibold text-on-surface">Aktivitas terbaru</h3>
           <Link href="/board" className="text-sm font-semibold text-secondary hover:underline">
             Lihat semua
           </Link>
@@ -134,13 +137,13 @@ export default async function MandiriPage() {
         {recent.length === 0 ? (
           <p className="text-sm text-on-surface-variant">Belum ada aktivitas tugas.</p>
         ) : (
-          <ul className="space-y-4">
+          <ul className="space-y-2">
             {recent.map((task, index) => (
               <li
                 key={task.id}
-                className={index === recent.length - 1 ? "flex items-center gap-4" : "flex items-center gap-4 border-b border-surface-variant pb-4"}
+                className={index === recent.length - 1 ? "flex items-center gap-2" : "flex items-center gap-2 border-b border-outline pb-2"}
               >
-                <div className="shrink-0 rounded-lg bg-surface-container p-2 text-secondary">
+                <div className="shrink-0 rounded-md border border-outline bg-sky-100 p-1.5 text-sky-600">
                   <FileText className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">

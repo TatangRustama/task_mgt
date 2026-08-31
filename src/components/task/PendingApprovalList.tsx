@@ -84,7 +84,7 @@ export function PendingApprovalList({ tasks }: { tasks: PendingApprovalTask[] })
                     {task.evidence.photoUrls.length > 0 ? (
                       <div className="grid grid-cols-2 gap-2">
                         {task.evidence.photoUrls.map((url) => (
-                          <div key={url} className="relative aspect-square overflow-hidden rounded-xl">
+                          <div key={url} className="relative aspect-square overflow-hidden rounded-lg">
                             <Image src={url} alt="Bukti" fill className="object-cover" />
                           </div>
                         ))}

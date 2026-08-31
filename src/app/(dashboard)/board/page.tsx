@@ -51,6 +51,7 @@ export default async function BoardPage() {
       {user.unitId ? (
         <BoardView
           tasks={visibleTasks}
+          currentUserId={user.id}
           canDelegate={orgUser ? canDelegate(orgUser) : false}
           emptyTersedia={
             isStaffBoard

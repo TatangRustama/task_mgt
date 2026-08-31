@@ -4,3 +4,24 @@ export type AtasanTaskNotice = {
   createdAt: string;
   createdByName: string;
 };
+
+export type NoticeItem = {
+  id: string;
+  title: string;
+  subtitle: string;
+  href: string;
+  at: string;
+};
+
+export type NoticeSection = {
+  id: string;
+  title: string;
+  count: number;
+  href: string;
+  items: NoticeItem[];
+};
+
+export type UserNotifications = {
+  count: number;
+  sections: NoticeSection[];
+};
