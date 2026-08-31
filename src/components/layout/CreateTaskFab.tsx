@@ -36,7 +36,7 @@ export function MandiriCreateControl({
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Tambah tugas mandiri"
-          className="absolute bottom-full left-1/2 z-10 flex h-12 w-12 -translate-x-1/2 translate-y-1/2 items-center justify-center rounded-full border-2 border-[#7EB6FF] bg-primary text-white ring-[5px] ring-white transition hover:bg-accent active:scale-95"
+          className="absolute bottom-full left-1/2 z-10 flex h-12 w-12 -translate-x-1/2 translate-y-1/2 items-center justify-center rounded-full border-2 border-primary bg-primary text-white ring-[5px] ring-white transition hover:bg-accent active:scale-95"
         >
           <Plus className="h-6 w-6" strokeWidth={2.8} />
         </button>

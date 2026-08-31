@@ -3,16 +3,16 @@
 :root {
   --background: #f5f7fc;
   --foreground: #1a1f3c;
-  --primary: #4f6fff;
-  --primary-container: #4f6fff;
+  --primary: #5468c2;
+  --primary-container: #5468c2;
   --on-primary-container: #ffffff;
-  --accent: #3d5bdb;
+  --accent: #5468c2;
   --on-accent: #ffffff;
   --secondary: #6b7394;
   --secondary-navy: #1b2156;
   --on-secondary: #ffffff;
   --secondary-container: #e8edff;
-  --on-secondary-container: #3d4a9a;
+  --on-secondary-container: #5468c2;
   --surface: #f5f7fc;
   --surface-container: #eef1fb;
   --surface-container-low: #f7f8fd;
@@ -26,8 +26,8 @@
   --outline-variant: #e4e9f4;
   --error: #e11d48;
   --tertiary: #7a8199;
-  --brand-from: #5b8aff;
-  --brand-to: #3d5bdb;
+  --brand-from: #5468c2;
+  --brand-to: #5468c2;
 }
 
 @theme inline {
