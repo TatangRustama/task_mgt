@@ -27,19 +27,7 @@ export function MonthlyTaskPrintReport({
   const lampiranTasks = [...mandiriRows, ...groupedRows];
 
   return (
-    <div className="print-kinerja hidden print:block">
-      {!isLeader ? (
-        <header className="print-kop">
-          <img src="/branding/papua-barat.png" alt="Lambang Papua Barat" className="print-kop-logo" />
-          <div className="print-kop-text">
-            <p className="print-kop-gov">{print.kopGovernment}</p>
-            <p className="print-kop-agency">{print.kopAgency}</p>
-            <p className="print-kop-meta">{print.kopAddress}</p>
-            <p className="print-kop-meta">Laman {print.kopWebsite}</p>
-          </div>
-        </header>
-      ) : null}
-
+    <div className="print-kinerja print-root" aria-hidden="true">
       <h1 className="print-title">
         {isLeader ? "LAPORAN PENILAIAN KINERJA BULANAN" : "LAPORAN PELAKSANAAN KINERJA BULANAN"} {period}
       </h1>
@@ -56,11 +44,11 @@ export function MonthlyTaskPrintReport({
       {isLeader ? (
         <>
           <p className="print-section-label">Rincian Tugas Mandiri</p>
-          <TaskTable
+          <PrintTaskTable
             tasks={mandiriRows}
             authorName={print.author.name}
             empty="Tidak ada tugas mandiri pada periode ini."
-            showAtasanPenilaian
+            mergedHasilParaf
           />
 
           <p className="print-section-label">Review Tugas Unit</p>
@@ -108,7 +96,7 @@ export function MonthlyTaskPrintReport({
       ) : null}
 
       <p className="print-section-label">{isLeader ? "Rincian Tugas Unit" : "Uraian tugas"}</p>
-      <TaskTable
+      <PrintTaskTable
         tasks={groupedRows}
         authorName={print.author.name}
         empty="Tidak ada tugas pada periode ini."
@@ -147,18 +135,17 @@ export function MonthlyTaskPrintReport({
   );
 }
 
-function TaskTable({
+export function PrintTaskTable({
   tasks,
   authorName,
   empty,
-  showAtasanPenilaian = false,
+  mergedHasilParaf = false,
 }: {
   tasks: ReportTask[];
   authorName: string;
   empty: string;
-  showAtasanPenilaian?: boolean;
+  mergedHasilParaf?: boolean;
 }) {
-  const colSpan = showAtasanPenilaian ? 6 : 5;
   return (
     <table className="print-table print-table-tasks">
       <thead>
@@ -167,14 +154,13 @@ function TaskTable({
           <th className="col-date">Hari/Tgl</th>
           <th>Uraian Tugas</th>
           <th>Keterangan</th>
-          <th className="col-hasil">Hasil</th>
-          {showAtasanPenilaian ? <th>Penilaian Atasan</th> : null}
+          <th className="col-hasil">{mergedHasilParaf ? "Hasil/ Paraf" : "Hasil"}</th>
         </tr>
       </thead>
       <tbody>
         {tasks.length === 0 ? (
           <tr>
-            <td colSpan={colSpan} className="print-empty-cell">
+            <td colSpan={5} className="print-empty-cell">
               {empty}
             </td>
           </tr>
@@ -182,7 +168,7 @@ function TaskTable({
           <MonthlyTaskDayRows
             tasks={tasks}
             authorName={authorName}
-            showAtasanPenilaian={showAtasanPenilaian}
+            mergedHasilParaf={mergedHasilParaf}
           />
         )}
       </tbody>

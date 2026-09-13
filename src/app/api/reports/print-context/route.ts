@@ -23,6 +23,7 @@ const taskPrintInclude = {
 function periodWhere(start: Date, end: Date): Prisma.TaskWhereInput {
   return {
     OR: [
+      { assignedAt: { gte: start, lt: end } },
       { completedAt: { gte: start, lt: end } },
       { review: { is: { reviewedAt: { gte: start, lt: end } } } },
       { status: "ditolak", updatedAt: { gte: start, lt: end } },
@@ -63,18 +64,43 @@ export async function GET(request: Request) {
   if (!board) return NextResponse.json({ error: "Unit tidak ditemukan" }, { status: 403 });
   const meta = await getUnitMeta(user.unitId);
 
+  const start =
+    view === "harian" ? parseISODate(date) : new Date(year, month - 1, 1);
+  const end =
+    view === "harian"
+      ? new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1)
+      : new Date(year, month, 1);
+
   if (view === "harian") {
     const print = await getDailyLaporanPrintContext({
       userId: user.id,
       instansiName: meta.instansiName,
       agencyName: meta.agencyName,
     });
-    return NextResponse.json({ view, print, isLeader });
+    const leaderTaskRows = isLeader
+      ? await prisma.task.findMany({
+          where: {
+            source: "mandiri",
+            status: { not: "dibatalkan" },
+            AND: [
+              { OR: [{ assignedToId: user.id }, { createdById: user.id }] },
+              periodWhere(start, end),
+            ],
+          },
+          include: taskPrintInclude,
+          orderBy: [{ assignedAt: "asc" }, { completedAt: "asc" }, { createdAt: "asc" }],
+        })
+      : [];
+    return NextResponse.json({
+      view,
+      print,
+      isLeader,
+      tasks: board.tasks,
+      leaderTasks: printableTasks(leaderTaskRows.map(mapTask)),
+    });
   }
 
   const tasks = printableTasks(board.tasks);
-  const start = new Date(year, month - 1, 1);
-  const end = new Date(year, month, 1);
 
   const [print, leaderTaskRows, identities] = await Promise.all([
     getLaporanPrintContext({
@@ -96,7 +122,7 @@ export async function GET(request: Request) {
             ],
           },
           include: taskPrintInclude,
-          orderBy: [{ completedAt: "asc" }, { createdAt: "asc" }],
+          orderBy: [{ assignedAt: "asc" }, { completedAt: "asc" }, { createdAt: "asc" }],
         })
       : Promise.resolve([]),
     loadIdentities([
@@ -140,7 +166,7 @@ export async function GET(request: Request) {
     .sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name, "id"))
     .map(({ rank: _rank, ...row }) => row);
 
-  const leaderTasks = leaderTaskRows.map(mapTask);
+  const leaderTasks = printableTasks(leaderTaskRows.map(mapTask));
 
   return NextResponse.json({ view, print, tasks, isLeader, rows, leaderTasks });
 }

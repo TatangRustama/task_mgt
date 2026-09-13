@@ -198,6 +198,7 @@ function emptyDays(month: number, year: number): DayRecap[] {
 
 function periodWhere(start: Date, end: Date, view: LaporanView): Prisma.TaskWhereInput {
   const inPeriod: Prisma.TaskWhereInput[] = [
+    { assignedAt: { gte: start, lt: end } },
     { completedAt: { gte: start, lt: end } },
     { review: { is: { reviewedAt: { gte: start, lt: end } } } },
     { status: "ditolak", updatedAt: { gte: start, lt: end } },

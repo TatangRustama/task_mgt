@@ -85,6 +85,7 @@ export function mapTask(task: {
   source: string;
   priority: string;
   createdAt: Date;
+  assignedAt?: Date | null;
   completedAt: Date | null;
   deadline: Date | null;
   assignedTo: { id: string; name: string } | null;
@@ -103,6 +104,7 @@ export function mapTask(task: {
     source: task.source,
     priority: task.priority,
     createdAt: task.createdAt.toISOString(),
+    assignedAt: (task.assignedAt ?? task.createdAt).toISOString(),
     completedAt: task.completedAt?.toISOString() || null,
     deadline: task.deadline?.toISOString() || null,
     reviewedAt: task.review?.reviewedAt.toISOString() || null,
@@ -282,7 +284,11 @@ export async function getDailyReport(
       AND: [
         scopeFilter,
         {
-          OR: [{ createdAt: { gte: start, lt: end } }, { completedAt: { gte: start, lt: end } }],
+          OR: [
+            { assignedAt: { gte: start, lt: end } },
+            { createdAt: { gte: start, lt: end } },
+            { completedAt: { gte: start, lt: end } },
+          ],
         },
       ],
       status: { not: "dibatalkan" },
@@ -316,7 +322,11 @@ export async function getMonthlyCalendar(
       AND: [
         scopeFilter,
         {
-          OR: [{ createdAt: { gte: start, lt: end } }, { completedAt: { gte: start, lt: end } }],
+          OR: [
+            { assignedAt: { gte: start, lt: end } },
+            { createdAt: { gte: start, lt: end } },
+            { completedAt: { gte: start, lt: end } },
+          ],
         },
       ],
       status: { not: "dibatalkan" },
@@ -335,7 +345,7 @@ export async function getMonthlyCalendar(
   );
 
   for (const task of tasks) {
-    const postedKey = formatISODate(task.createdAt);
+    const postedKey = formatISODate(task.assignedAt ?? task.createdAt);
     if (recap.has(postedKey)) {
       recap.get(postedKey)!.posted += 1;
     }

@@ -23,6 +23,7 @@ type EditableTask = {
   title: string;
   description: string | null;
   deadline: Date | string | null;
+  assignedAt?: Date | string | null;
   priority: string;
   jumlahIntervensi?: number | null;
   satuan?: string | null;
@@ -57,6 +58,7 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
   const [error, setError] = useState("");
   const [showComplete, setShowComplete] = useState(false);
   const [deadline, setDeadline] = useState("");
+  const [assignedAt, setAssignedAt] = useState(formatISODate(new Date()));
   const [priority, setPriority] = useState("sedang");
   const [assignmentMode, setAssignmentMode] = useState<"ditunjuk" | "kolam">("ditunjuk");
   const [assignedToId, setAssignedToId] = useState("");
@@ -77,11 +79,13 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
       return;
     }
     setPriority("sedang");
+    setAssignedAt(formatISODate(new Date()));
     setDeadline(mode === "mandiri" ? formatISODate(new Date()) : "");
     setJumlah("");
     setSatuan("");
     if (mode === "edit" && task) {
       setPriority(task.priority || "sedang");
+      setAssignedAt(task.assignedAt ? formatISODate(new Date(task.assignedAt)) : formatISODate(new Date()));
       setDeadline(task.deadline ? formatISODate(new Date(task.deadline)) : "");
       setJumlah(task.jumlahIntervensi != null ? String(task.jumlahIntervensi) : "");
       setSatuan(task.satuan ?? "");
@@ -105,6 +109,7 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
       title: formData.get("title"),
       description: formData.get("description"),
       deadline: formData.get("deadline") || null,
+      assignedAt: formData.get("assignedAt") || formatISODate(new Date()),
       priority: formData.get("priority") || "sedang",
       source: mode === "edit" ? undefined : mode,
       assignmentMode: mode === "delegasi" ? assignmentMode : "ditunjuk",
@@ -121,6 +126,7 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
           title: payload.title,
           description: payload.description,
           deadline: payload.deadline,
+          assignedAt: payload.assignedAt,
           priority: payload.priority,
           jumlahIntervensi: payload.jumlahIntervensi,
           satuan: payload.satuan,
@@ -324,6 +330,18 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="min-w-0 space-y-2">
+              <Label htmlFor="assignedAt">Tanggal ditugaskan</Label>
+              <Input
+                id="assignedAt"
+                name="assignedAt"
+                type="date"
+                required
+                className="min-w-0 max-w-full"
+                value={assignedAt}
+                onChange={(event) => setAssignedAt(event.target.value)}
+              />
+            </div>
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="deadline">Deadline</Label>
               <Input
                 id="deadline"
@@ -334,7 +352,7 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
                 onChange={(event) => setDeadline(event.target.value)}
               />
             </div>
-            <div className="min-w-0 space-y-2">
+            <div className="min-w-0 space-y-2 sm:col-span-2">
               <Label htmlFor="priority">Prioritas</Label>
               <select
                 id="priority"

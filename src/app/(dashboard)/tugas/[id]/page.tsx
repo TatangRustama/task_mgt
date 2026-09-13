@@ -75,6 +75,7 @@ export default async function TaskDetailPage({
             <p>Unit: {task.unit.name}</p>
             <p>Dibuat oleh: {task.createdBy.name}</p>
             {task.assignedTo ? <p>Pegawai: {task.assignedTo.name}</p> : <p>Belum diambil staf</p>}
+            <p>Tanggal ditugaskan: {formatDate(task.assignedAt)}</p>
             {task.deadline ? <p>Deadline: {formatDate(task.deadline)}</p> : null}
             {task.completedAt ? <p>Selesai: {formatDateTime(task.completedAt)}</p> : null}
             {canManagePosted ? (

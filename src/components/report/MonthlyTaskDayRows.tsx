@@ -1,4 +1,4 @@
-import { groupTasksByPrintDate, printAtasanPenilaian, printKeterangan } from "@/lib/laporan-print-view";
+import { groupTasksByPrintDate, printKeterangan } from "@/lib/laporan-print-view";
 import { PrintHasilParafCell, PrintUraianCell } from "@/components/report/PrintTaskCells";
 import type { ReportTask } from "@/lib/report-types";
 
@@ -7,13 +7,13 @@ export function MonthlyTaskDayRows({
   authorName,
   cellClassName = "",
   rowClassName,
-  showAtasanPenilaian = false,
+  mergedHasilParaf = false,
 }: {
   tasks: ReportTask[];
   authorName: string;
   cellClassName?: string;
   rowClassName?: string;
-  showAtasanPenilaian?: boolean;
+  mergedHasilParaf?: boolean;
 }) {
   const groups = groupTasksByPrintDate(tasks);
 
@@ -35,14 +35,11 @@ export function MonthlyTaskDayRows({
           <PrintUraianCell task={task} />
         </td>
         <td className={cellClassName}>
-          {printKeterangan(task, authorName, { includeFeedback: !showAtasanPenilaian }) || "-"}
+          {printKeterangan(task, authorName, { includeFeedback: !mergedHasilParaf }) || "-"}
         </td>
         <td className={`center ${cellClassName}`.trim()}>
-          <PrintHasilParafCell task={task} />
+          <PrintHasilParafCell task={task} includePenilaian={mergedHasilParaf} />
         </td>
-        {showAtasanPenilaian ? (
-          <td className={cellClassName}>{printAtasanPenilaian(task)}</td>
-        ) : null}
       </tr>
     ));
   });

@@ -32,7 +32,13 @@ export function PrintReportButton() {
 
 type PrintAssessmentRow = PrintUnitReviewRow;
 
-type HarianPayload = { view: "harian"; print: DailyLaporanPrintContext; isLeader: boolean };
+type HarianPayload = {
+  view: "harian";
+  print: DailyLaporanPrintContext;
+  isLeader: boolean;
+  tasks?: ReportTask[];
+  leaderTasks?: ReportTask[];
+};
 type BulananPayload = {
   view: "bulanan";
   print: LaporanPrintContext;
@@ -42,13 +48,32 @@ type BulananPayload = {
   leaderTasks?: ReportTask[];
 };
 
+function waitForPrintImages() {
+  const images = [
+    ...document.querySelectorAll<HTMLImageElement>(".print-kinerja img, .print-wfh img"),
+  ];
+  return Promise.all(
+    images.map(
+      (img) =>
+        new Promise<void>((resolve) => {
+          if (img.complete && img.naturalWidth > 0) {
+            resolve();
+            return;
+          }
+          const done = () => resolve();
+          img.addEventListener("load", done, { once: true });
+          img.addEventListener("error", done, { once: true });
+        }),
+    ),
+  );
+}
+
 export function LaporanPrintProvider({
   view,
   date,
   month,
   year,
   unit,
-  dailyTasks = [],
   children,
 }: {
   view: LaporanView;
@@ -60,7 +85,12 @@ export function LaporanPrintProvider({
   children: React.ReactNode;
 }) {
   const [busy, setBusy] = useState(false);
-  const [harian, setHarian] = useState<DailyLaporanPrintContext | null>(null);
+  const [harian, setHarian] = useState<{
+    print: DailyLaporanPrintContext;
+    tasks: ReportTask[];
+    isLeader: boolean;
+    leaderTasks: ReportTask[];
+  } | null>(null);
   const [bulanan, setBulanan] = useState<{
     print: LaporanPrintContext;
     tasks: ReportTask[];
@@ -80,15 +110,24 @@ export function LaporanPrintProvider({
     if (view === "harian" && !harian) return;
     if (view === "bulanan" && !bulanan) return;
     pendingPrint.current = false;
-    window.print();
+    let cancelled = false;
+    (async () => {
+      await waitForPrintImages();
+      if (!cancelled) window.print();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [view, harian, bulanan]);
 
   async function prepareAndPrint() {
     if (view === "harian" && harian) {
+      await waitForPrintImages();
       window.print();
       return;
     }
     if (view === "bulanan" && bulanan) {
+      await waitForPrintImages();
       window.print();
       return;
     }
@@ -109,8 +148,14 @@ export function LaporanPrintProvider({
         return;
       }
       const data = (await res.json()) as HarianPayload | BulananPayload;
-      if (data.view === "harian") setHarian(data.print);
-      else
+      if (data.view === "harian") {
+        setHarian({
+          print: data.print,
+          tasks: data.tasks ?? [],
+          isLeader: data.isLeader,
+          leaderTasks: data.leaderTasks ?? [],
+        });
+      } else {
         setBulanan({
           print: data.print,
           tasks: data.tasks,
@@ -118,6 +163,7 @@ export function LaporanPrintProvider({
           rows: data.rows,
           leaderTasks: data.leaderTasks ?? [],
         });
+      }
     } finally {
       setBusy(false);
     }
@@ -126,7 +172,15 @@ export function LaporanPrintProvider({
   return (
     <PrintPrepareContext.Provider value={{ prepareAndPrint, busy }}>
       {children}
-      {harian ? <DailyWfhPrintReport date={date} tasks={dailyTasks} print={harian} /> : null}
+      {harian ? (
+        <DailyWfhPrintReport
+          date={date}
+          tasks={harian.tasks}
+          print={harian.print}
+          isLeader={harian.isLeader}
+          leaderTasks={harian.leaderTasks}
+        />
+      ) : null}
       {bulanan ? (
         <MonthlyTaskPrintReport
           month={month}

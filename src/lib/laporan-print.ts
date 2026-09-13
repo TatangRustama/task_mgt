@@ -3,8 +3,7 @@ import { headers } from "next/headers";
 import { formatGolonganPangkat } from "@/lib/golongan";
 import { getAtasan, getDbOrgUser, jabatanLabel } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
-import { normalizeStars } from "@/lib/rating";
-import type { ReportTask } from "@/lib/report-types";
+import { mapTask } from "@/lib/reports";
 import { formatNip } from "@/lib/utils";
 import {
   isPrintableTask,
@@ -199,32 +198,11 @@ export async function getValidasiLaporan(id: string) {
   });
 
   const byId = new Map(tasks.map((task) => [task.id, task]));
-  const ordered: ReportTask[] = report.taskIds
+  const ordered = report.taskIds
     .map((taskId) => byId.get(taskId))
     .filter((task): task is (typeof tasks)[number] => Boolean(task))
     .filter((task) => isPrintableTask(task.status))
-    .map((task) => ({
-      id: task.id,
-      title: task.title,
-      description: task.description,
-      status: task.status,
-      source: task.source,
-      priority: task.priority,
-      createdAt: task.createdAt.toISOString(),
-      completedAt: task.completedAt?.toISOString() || null,
-      deadline: task.deadline?.toISOString() || null,
-      reviewedAt: task.review?.reviewedAt.toISOString() || null,
-      score: task.rating?.stars ?? normalizeStars(task.review?.score),
-      address: task.evidence?.address || null,
-      notes: task.evidence?.notes || null,
-      feedback: task.review?.feedback || null,
-      photoUrls: task.evidence?.photoUrls || [],
-      assigneeId: task.assignedTo?.id ?? null,
-      assigneeName: task.assignedTo?.name || "-",
-      createdByName: task.createdBy.name,
-      jumlahIntervensi: task.jumlahIntervensi,
-      satuan: task.satuan,
-    }));
+    .map((task) => mapTask(task));
 
   const [author, atasan] = await Promise.all([
     personFromUser(report.userId),

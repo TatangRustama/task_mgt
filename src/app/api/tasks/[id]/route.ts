@@ -4,6 +4,7 @@ import { canManagePostedTersediaTask, canSeeTask } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { parseJumlahSatuan } from "@/lib/satuan";
 import { getCurrentUser } from "@/lib/session";
+import { parseAssignedAt, parseFormDateInput } from "@/lib/utils";
 
 export async function GET(
   _request: Request,
@@ -63,7 +64,8 @@ export async function PATCH(
   const body = await request.json();
   const title = String(body.title || "").trim();
   const description = body.description ? String(body.description) : null;
-  const deadline = body.deadline ? new Date(body.deadline) : null;
+  const deadline = parseFormDateInput(body.deadline);
+  const assignedAt = parseAssignedAt(body.assignedAt);
   const priority = (body.priority || loaded.task.priority) as TaskPriority;
   const parsedJumlah = parseJumlahSatuan(body.jumlahIntervensi, body.satuan, false);
 
@@ -83,6 +85,7 @@ export async function PATCH(
       title,
       description,
       deadline,
+      assignedAt,
       priority,
       jumlahIntervensi: parsedJumlah.jumlahIntervensi,
       satuan: parsedJumlah.satuan,

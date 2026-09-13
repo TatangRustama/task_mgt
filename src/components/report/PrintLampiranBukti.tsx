@@ -1,4 +1,4 @@
-import { evidenceRows } from "@/lib/laporan-print-view";
+import { evidenceRows, printPhotoSrc } from "@/lib/laporan-print-view";
 import type { ReportTask } from "@/lib/report-types";
 
 export function PrintLampiranBukti({ tasks }: { tasks: ReportTask[] }) {
@@ -26,7 +26,12 @@ export function PrintLampiranBukti({ tasks }: { tasks: ReportTask[] }) {
                 <p className="print-bukti-title">{row.title}</p>
                 <div className="print-photos print-photos-lampiran">
                   {row.photos.map((url) => (
-                    <img key={url} src={url} alt={row.title} />
+                    <img
+                      key={url}
+                      src={printPhotoSrc(url)}
+                      alt={row.title}
+                      className="print-bukti-img"
+                    />
                   ))}
                 </div>
               </td>

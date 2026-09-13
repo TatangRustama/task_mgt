@@ -6,6 +6,7 @@ import {
   type DailyLaporanPrintContext,
 } from "@/lib/laporan-print-view";
 import { PrintLampiranBukti } from "@/components/report/PrintLampiranBukti";
+import { PrintTaskTable } from "@/components/report/MonthlyTaskPrintReport";
 import { PrintHasilParafCell } from "@/components/report/PrintTaskCells";
 import type { ReportTask } from "@/lib/report-types";
 import { formatPrintedOnDate, formatWfhReportDate, formatWfhSignDate } from "@/lib/utils";
@@ -14,26 +15,21 @@ export function DailyWfhPrintReport({
   date,
   tasks,
   print,
+  isLeader = false,
+  leaderTasks = [],
 }: {
   date: string;
   tasks: ReportTask[];
   print: DailyLaporanPrintContext;
+  isLeader?: boolean;
+  leaderTasks?: ReportTask[];
 }) {
   const dateLabel = formatWfhReportDate(date);
   const groups = groupTasksForWfhPrint(tasks);
+  const lampiranTasks = [...leaderTasks, ...tasks];
 
   return (
-    <div className="print-wfh hidden print:block">
-      <header className="print-kop">
-        <img src="/branding/papua-barat.png" alt="Lambang Papua Barat" className="print-kop-logo" />
-        <div className="print-kop-text">
-          <p className="print-kop-gov">{print.kopGovernment}</p>
-          <p className="print-kop-agency">{print.kopAgency}</p>
-          <p className="print-kop-meta">{print.kopAddress}</p>
-          <p className="print-kop-meta">Laman {print.kopWebsite}</p>
-        </div>
-      </header>
-
+    <div className="print-wfh print-root" aria-hidden="true">
       <h1 className="print-title">LAPORAN KINERJA WFH</h1>
       <p className="print-wfh-date">{dateLabel}</p>
 
@@ -46,13 +42,26 @@ export function DailyWfhPrintReport({
         <p className="print-empty">Tidak ada atasan langsung.</p>
       )}
 
+      {isLeader ? (
+        <>
+          <p className="print-section-label">Rincian Tugas Mandiri</p>
+          <PrintTaskTable
+            tasks={leaderTasks}
+            authorName={print.author.name}
+            empty="Tidak ada tugas mandiri pada tanggal ini."
+            mergedHasilParaf
+          />
+        </>
+      ) : null}
+
+      {isLeader ? <p className="print-section-label">Rincian Tugas Unit</p> : null}
       <table className="print-table print-table-wfh">
         <thead>
           <tr>
             <th className="col-no">NO</th>
             <th className="col-date">HARI/TANGGAL</th>
             <th>URAIAN KEGIATAN</th>
-            <th className="col-hasil">HASIL/OUTPUT</th>
+            <th className="col-hasil">HASIL/ PARAF</th>
           </tr>
         </thead>
         <tbody>
@@ -91,7 +100,7 @@ export function DailyWfhPrintReport({
                     {taskWfhHasil(task) !== "-" ? (
                       <div className="print-wfh-output">{taskWfhHasil(task)}</div>
                     ) : null}
-                    <PrintHasilParafCell task={task} />
+                    <PrintHasilParafCell task={task} includePenilaian={isLeader} />
                   </td>
                 </tr>
               ));
@@ -110,7 +119,7 @@ export function DailyWfhPrintReport({
         <p>NIP {print.author.nip.replace(/\s+/g, "")}</p>
       </div>
 
-      <PrintLampiranBukti tasks={tasks} />
+      <PrintLampiranBukti tasks={lampiranTasks} />
     </div>
   );
 }

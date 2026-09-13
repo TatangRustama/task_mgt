@@ -138,14 +138,18 @@ export function printAtasanPenilaian(task: Pick<ReportTask, "score" | "feedback"
   return parts.join(" — ") || "-";
 }
 
-export function printTaskDate(task: Pick<ReportTask, "completedAt" | "createdAt">) {
-  return formatPrintDate(task.completedAt || task.createdAt);
+export function printPhotoSrc(url: string) {
+  return `/api/reports/evidence-image?url=${encodeURIComponent(url)}`;
+}
+
+export function printTaskDate(task: Pick<ReportTask, "assignedAt" | "completedAt" | "createdAt">) {
+  return formatPrintDate(task.assignedAt || task.completedAt || task.createdAt);
 }
 
 export function groupTasksByPrintDate(tasks: ReportTask[]) {
   const sorted = [...tasks].sort((a, b) => {
-    const aTime = new Date(a.completedAt || a.createdAt).getTime();
-    const bTime = new Date(b.completedAt || b.createdAt).getTime();
+    const aTime = new Date(a.assignedAt || a.completedAt || a.createdAt).getTime();
+    const bTime = new Date(b.assignedAt || b.completedAt || b.createdAt).getTime();
     return aTime - bTime;
   });
 

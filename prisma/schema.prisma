@@ -134,6 +134,7 @@ model Task {
   description      String?
   jumlahIntervensi Int?
   satuan           String?
+  assignedAt       DateTime       @default(now())
   deadline         DateTime?
   completedAt    DateTime?
   createdAt      DateTime       @default(now())
@@ -147,6 +148,7 @@ model Task {
 
   @@index([unitId, status])
   @@index([unitId, createdAt])
+  @@index([unitId, assignedAt])
   @@index([unitId, completedAt])
   @@index([assignedToId])
   @@index([assignedToId, status])

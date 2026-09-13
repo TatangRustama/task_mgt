@@ -12,6 +12,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { parseJumlahSatuan } from "@/lib/satuan";
 import { getCurrentUser } from "@/lib/session";
+import { parseAssignedAt, parseFormDateInput } from "@/lib/utils";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -59,7 +60,8 @@ export async function POST(request: Request) {
   const body = await request.json();
   const title = String(body.title || "").trim();
   const description = body.description ? String(body.description) : null;
-  const deadline = body.deadline ? new Date(body.deadline) : null;
+  const deadline = parseFormDateInput(body.deadline);
+  const assignedAt = parseAssignedAt(body.assignedAt);
   const priority = (body.priority || "sedang") as TaskPriority;
   const source = (body.source || "mandiri") as TaskSource;
   const assignmentMode = (body.assignmentMode || "ditunjuk") as AssignmentMode;
@@ -84,6 +86,7 @@ export async function POST(request: Request) {
         title,
         description,
         deadline,
+        assignedAt,
         priority,
         source,
         assignmentMode: "ditunjuk",
@@ -114,6 +117,7 @@ export async function POST(request: Request) {
         title,
         description,
         deadline,
+        assignedAt,
         priority,
         source,
         assignmentMode: "kolam",
@@ -152,6 +156,7 @@ export async function POST(request: Request) {
       title,
       description,
       deadline,
+      assignedAt,
       priority,
       source,
       assignmentMode: "ditunjuk",

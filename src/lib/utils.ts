@@ -61,6 +61,18 @@ export function isISODate(value: string | undefined): value is string {
   return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
 }
 
+export function parseFormDateInput(value: unknown): Date | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  if (isISODate(raw)) return parseISODate(raw);
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+export function parseAssignedAt(value: unknown): Date {
+  return parseFormDateInput(value) ?? parseISODate(formatISODate(new Date()));
+}
+
 export function addDays(date: Date, amount: number) {
   const next = new Date(date);
   next.setDate(next.getDate() + amount);

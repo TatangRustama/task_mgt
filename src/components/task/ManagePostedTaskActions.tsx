@@ -13,6 +13,7 @@ export type PostedTaskFields = {
   title: string;
   description: string | null;
   deadline: Date | string | null;
+  assignedAt?: Date | string | null;
   priority: string;
   jumlahIntervensi?: number | null;
   satuan?: string | null;

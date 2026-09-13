@@ -111,6 +111,16 @@ select {
   margin: 12mm 14mm;
 }
 
+@media screen {
+  .print-root {
+    position: absolute;
+    left: -10000px;
+    top: 0;
+    width: 210mm;
+    pointer-events: none;
+  }
+}
+
 @media print {
   @page {
     size: A4 portrait;
@@ -131,8 +141,13 @@ select {
 
   .print-report,
   .print-kinerja,
-  .print-wfh {
+  .print-wfh,
+  .print-root {
     display: block !important;
+    position: static !important;
+    left: auto !important;
+    width: auto;
+    pointer-events: auto;
   }
 
   .print-kinerja,
@@ -314,7 +329,7 @@ select {
   .print-table-bukti th:last-child,
   .print-table-bukti td:last-child {
     width: auto;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .print-lampiran {
@@ -340,13 +355,13 @@ select {
     gap: 10px;
     width: 100%;
     max-width: 100%;
-    overflow: hidden;
   }
 
-  .print-photos-lampiran img {
+  .print-photos-lampiran img,
+  .print-bukti-img {
     display: block;
     box-sizing: border-box;
-    width: auto;
+    width: 100%;
     max-width: 100%;
     max-height: 140mm;
     height: auto;
@@ -356,6 +371,8 @@ select {
     border: 1px solid #ccc;
     page-break-inside: avoid;
     break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .print-printed-on {

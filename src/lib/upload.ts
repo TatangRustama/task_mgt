@@ -1,7 +1,22 @@
 import { randomUUID } from "crypto";
 import { getSupabaseAdmin } from "@/lib/supabase";
 
-const BUCKET = "foto_tugas";
+export const FOTO_TUGAS_BUCKET = "foto_tugas";
+const BUCKET = FOTO_TUGAS_BUCKET;
+const PUBLIC_MARKER = `/storage/v1/object/public/${BUCKET}/`;
+
+export function fotoTugasObjectPath(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const index = parsed.pathname.indexOf(PUBLIC_MARKER);
+    if (index === -1) return null;
+    const name = decodeURIComponent(parsed.pathname.slice(index + PUBLIC_MARKER.length));
+    if (!name || name.includes("/") || name.includes("..")) return null;
+    return name;
+  } catch {
+    return null;
+  }
+}
 
 export async function saveUploadedFile(file: File): Promise<string> {
   const bytes = await file.arrayBuffer();

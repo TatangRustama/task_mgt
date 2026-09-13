@@ -8,6 +8,7 @@ export type ReportTask = {
   source: string;
   priority: string;
   createdAt: string;
+  assignedAt: string;
   completedAt: string | null;
   deadline: string | null;
   reviewedAt: string | null;
