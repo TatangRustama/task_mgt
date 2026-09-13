@@ -97,7 +97,7 @@ export function DailyWfhPrintReport({
                     ) : null}
                   </td>
                   <td className="center">
-                    {taskWfhHasil(task) !== "-" ? (
+                    {task.status !== "dikerjakan" && taskWfhHasil(task) !== "-" ? (
                       <div className="print-wfh-output">{taskWfhHasil(task)}</div>
                     ) : null}
                     <PrintHasilParafCell task={task} includePenilaian={isLeader} />

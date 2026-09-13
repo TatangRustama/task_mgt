@@ -1,9 +1,9 @@
 import { starLabel } from "@/lib/rating";
 import type { ReportTask } from "@/lib/report-types";
-import { formatNip, statusLabel } from "@/lib/utils";
+import { isMultiDayDeadline, statusLabel } from "@/lib/utils";
 import { formatJumlahSatuan } from "@/lib/satuan";
 
-export const PRINT_TASK_STATUSES = ["menunggu_approval", "disetujui"] as const;
+export const PRINT_TASK_STATUSES = ["dikerjakan", "menunggu_approval", "disetujui"] as const;
 
 export type PrintPerson = {
   name: string;
@@ -45,17 +45,51 @@ export type DailyLaporanPrintContext = {
   kopWebsite: string;
 };
 
-export function isPrintableTask(status: string) {
-  return PRINT_TASK_STATUSES.includes(status as (typeof PRINT_TASK_STATUSES)[number]);
+export function isMultiDayTask(
+  task: Pick<ReportTask, "assignedAt" | "createdAt" | "deadline"> | {
+    assignedAt?: string | Date | null;
+    createdAt?: string | Date | null;
+    deadline?: string | Date | null;
+  },
+) {
+  return isMultiDayDeadline(task.assignedAt, task.createdAt, task.deadline);
 }
 
-export function printableTasks<T extends { status: string }>(tasks: T[]): T[] {
-  return tasks.filter((task) => isPrintableTask(task.status));
+export function printTargetLine(
+  task: Pick<ReportTask, "assignedAt" | "createdAt" | "deadline"> | {
+    assignedAt?: string | Date | null;
+    createdAt?: string | Date | null;
+    deadline?: string | Date | null;
+  },
+) {
+  if (!isMultiDayTask(task)) return null;
+  return `Target penyelesaian: ${formatPrintDate(task.deadline)}`;
 }
 
-export function taskWfhUraian(task: Pick<ReportTask, "title" | "description">) {
+export function isPrintableTask(task: {
+  status: string;
+  assignedAt?: string | Date | null;
+  createdAt?: string | Date | null;
+  deadline?: string | Date | null;
+}) {
+  if (task.status === "disetujui" || task.status === "menunggu_approval") return true;
+  return task.status === "dikerjakan" && isMultiDayTask(task);
+}
+
+export function printableTasks<T extends {
+  status: string;
+  assignedAt?: string | Date | null;
+  createdAt?: string | Date | null;
+  deadline?: string | Date | null;
+}>(tasks: T[]): T[] {
+  return tasks.filter((task) => isPrintableTask(task));
+}
+
+export function taskWfhUraian(task: Pick<ReportTask, "title" | "description" | "assignedAt" | "createdAt" | "deadline">) {
   const parts = [task.title.trim()];
   if (task.description?.trim()) parts.push(task.description.trim());
+  const target = printTargetLine(task);
+  if (target) parts.push(target);
   return parts.join(" — ");
 }
 
@@ -106,6 +140,7 @@ export function printHasil(task: Pick<ReportTask, "score" | "jumlahIntervensi" |
 }
 
 export function printParaf(task: Pick<ReportTask, "status">) {
+  if (task.status === "dikerjakan") return "dikerjakan";
   if (task.status === "disetujui") return "Approved";
   if (task.status === "menunggu_approval") return "Menunggu approved";
   return statusLabel(task.status);

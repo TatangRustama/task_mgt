@@ -8,7 +8,7 @@ import { TaskDetailModal } from "@/components/report/TaskDetailModal";
 import { StarRating } from "@/components/task/StarRating";
 import type { ReportTask } from "@/lib/report-types";
 import { formatJumlahSatuan } from "@/lib/satuan";
-import { cn, formatDateTime, statusBarClass, statusLabel } from "@/lib/utils";
+import { cn, formatDate, formatDateTime, isMultiDayDeadline, statusBarClass, statusLabel } from "@/lib/utils";
 
 export function TaskReportList({
   tasks,
@@ -51,6 +51,11 @@ export function TaskReportList({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold text-on-surface">{task.title}</p>
+                {isMultiDayDeadline(task.assignedAt, task.createdAt, task.deadline) ? (
+                  <p className="mt-0.5 text-xs text-on-surface-variant">
+                    Target penyelesaian: {formatDate(task.deadline)}
+                  </p>
+                ) : null}
                 <div className="mt-1 flex flex-wrap items-center gap-1">
                   <Badge variant={task.source}>{task.source}</Badge>
                   <Badge variant={task.status}>{statusLabel(task.status)}</Badge>

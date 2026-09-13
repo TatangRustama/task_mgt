@@ -1,6 +1,7 @@
 import type { ReportSummary, ReportTask } from "@/lib/report-types";
 import { formatDate, getMonthYearLabel, statusLabel } from "@/lib/utils";
 import { formatJumlahSatuan } from "@/lib/satuan";
+import { printTargetLine } from "@/lib/laporan-print-view";
 
 function csvCell(value: string | number | null | undefined) {
   const text = String(value ?? "");
@@ -48,14 +49,15 @@ export function buildTaskReportCsv(options: {
   ];
 
   options.tasks.forEach((task, index) => {
+    const title = [task.title, printTargetLine(task)].filter(Boolean).join(" — ");
     lines.push(
       csvRow([
         index + 1,
-        task.title,
+        title,
         task.assigneeName,
-        statusLabel(task.status),
+        task.status === "dikerjakan" ? "dikerjakan" : statusLabel(task.status),
         task.source,
-        formatDate(task.createdAt),
+        formatDate(task.assignedAt || task.createdAt),
         formatDate(task.completedAt),
         formatDate(task.deadline),
         task.score ?? "-",
@@ -87,15 +89,17 @@ export function buildDailyWfhCsv(options: {
     lines.push(csvRow([1, "-", "Rumah", "-", "-"]));
   } else {
     options.tasks.forEach((task, index) => {
-      const uraian = [task.title, task.description].filter(Boolean).join(" — ");
+      const uraian = [task.title, task.description, printTargetLine(task)].filter(Boolean).join(" — ");
       const hasil =
-        [
-          formatJumlahSatuan(task.jumlahIntervensi, task.satuan),
-          task.notes,
-          task.feedback,
-        ]
-          .filter(Boolean)
-          .join(" — ") || "-";
+        task.status === "dikerjakan"
+          ? "dikerjakan"
+          : [
+              formatJumlahSatuan(task.jumlahIntervensi, task.satuan),
+              task.notes,
+              task.feedback,
+            ]
+              .filter(Boolean)
+              .join(" — ") || "-";
       lines.push(
         csvRow([
           index + 1,

@@ -1,4 +1,4 @@
-import { printHasilLine, printParaf, printTempatLine } from "@/lib/laporan-print-view";
+import { printHasilLine, printParaf, printTargetLine, printTempatLine } from "@/lib/laporan-print-view";
 import { formatJumlahSatuan } from "@/lib/satuan";
 import type { ReportTask } from "@/lib/report-types";
 
@@ -6,10 +6,11 @@ export function PrintUraianCell({
   task,
   extra,
 }: {
-  task: Pick<ReportTask, "title" | "address">;
+  task: Pick<ReportTask, "title" | "address" | "assignedAt" | "createdAt" | "deadline">;
   extra?: string | null;
 }) {
   const place = printTempatLine(task);
+  const target = printTargetLine(task);
   return (
     <>
       {task.title.trim() || "-"}
@@ -17,6 +18,12 @@ export function PrintUraianCell({
         <>
           <br />
           <span className="print-uraian-extra">{extra}</span>
+        </>
+      ) : null}
+      {target ? (
+        <>
+          <br />
+          <span className="print-place-line">{target}</span>
         </>
       ) : null}
       {place ? (
@@ -36,6 +43,14 @@ export function PrintHasilParafCell({
   task: Pick<ReportTask, "score" | "status" | "feedback" | "jumlahIntervensi" | "satuan">;
   includePenilaian?: boolean;
 }) {
+  if (task.status === "dikerjakan") {
+    return (
+      <div className="print-hasil-paraf">
+        <div className="print-paraf-line">dikerjakan</div>
+      </div>
+    );
+  }
+
   const jumlah = formatJumlahSatuan(task.jumlahIntervensi, task.satuan);
   const hasil = printHasilLine(task);
   return (

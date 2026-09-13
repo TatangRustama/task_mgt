@@ -52,6 +52,23 @@ export function formatISODate(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+export function calendarDay(value: string | Date | null | undefined) {
+  if (!value) return null;
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return null;
+  return formatISODate(date);
+}
+
+export function isMultiDayDeadline(
+  assignedAt: string | Date | null | undefined,
+  createdAt: string | Date | null | undefined,
+  deadline: string | Date | null | undefined,
+) {
+  const start = calendarDay(assignedAt || createdAt);
+  const target = calendarDay(deadline);
+  return Boolean(start && target && target > start);
+}
+
 export function parseISODate(value: string) {
   const [year, month, day] = value.split("-").map(Number);
   return new Date(year, month - 1, day);

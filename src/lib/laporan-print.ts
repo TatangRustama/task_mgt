@@ -201,7 +201,7 @@ export async function getValidasiLaporan(id: string) {
   const ordered = report.taskIds
     .map((taskId) => byId.get(taskId))
     .filter((task): task is (typeof tasks)[number] => Boolean(task))
-    .filter((task) => isPrintableTask(task.status))
+    .filter((task) => isPrintableTask(task))
     .map((task) => mapTask(task));
 
   const [author, atasan] = await Promise.all([

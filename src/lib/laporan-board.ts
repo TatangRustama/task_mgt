@@ -12,7 +12,7 @@ import { MONITOR_OVERLOAD_MIN, MONITOR_REVIEW_SLA_HOURS } from "@/lib/monitor-ty
 import { prisma } from "@/lib/prisma";
 import { mapTask } from "@/lib/reports";
 import type { DayRecap, LaporanView, ReportTask } from "@/lib/report-types";
-import { formatISODate, parseISODate } from "@/lib/utils";
+import { formatISODate, isMultiDayDeadline, parseISODate } from "@/lib/utils";
 
 type ScopedTask = ReportTask & { unitId: string };
 
@@ -138,11 +138,13 @@ function personTone(input: {
 function personInsight(
   person: Pick<
     LaporanPerson,
-    "completed" | "rejected" | "waiting" | "averageScore" | "onTimePercent" | "stars1"
+    "completed" | "rejected" | "waiting" | "averageScore" | "onTimePercent" | "stars1" | "tasks"
   >,
   view: LaporanView,
 ) {
   if (person.completed === 0 && person.rejected === 0 && person.waiting === 0) {
+    const inProgress = person.tasks.filter((task) => task.status === "dikerjakan").length;
+    if (inProgress) return `${inProgress} dikerjakan`;
     return view === "harian" ? "Tidak ada kerja dinilai hari ini" : "Tidak ada kerja dinilai bulan ini";
   }
   return [
@@ -234,6 +236,9 @@ function toPerson(
     (task) => task.status === "ditolak" && inRange(assessedAt(task) || task.createdAt, start, end),
   );
   const waiting = tasks.filter((task) => task.status === "menunggu_approval");
+  const inProgress = tasks.filter(
+    (task) => task.status === "dikerjakan" && isMultiDayDeadline(task.assignedAt, task.createdAt, task.deadline),
+  );
   const scores = scoreStats(approved);
   const person: LaporanPerson = {
     ...base,
@@ -247,7 +252,7 @@ function toPerson(
     stars3: scores.stars3,
     insight: "",
     tone: "good",
-    tasks: [...approved, ...rejected, ...waiting],
+    tasks: [...approved, ...rejected, ...waiting, ...inProgress],
   };
   person.tone = personTone({ ...person, includeIdle });
   person.insight = personInsight(person, view);
@@ -543,7 +548,7 @@ export async function getLaporanBoard(options: {
 
   const people = allPeople.filter((person) => {
     if (childLeaderIds.has(person.id)) return false;
-    if (options.view === "harian" && person.completed === 0 && person.rejected === 0 && person.waiting === 0) {
+    if (options.view === "harian" && person.tasks.length === 0) {
       return false;
     }
     if (drilledIn) return person.unitId === focusUnitId || person.leadsUnitId === focusUnitId;

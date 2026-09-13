@@ -6,6 +6,7 @@ import { DailyWfhPrintReport } from "@/components/report/DailyWfhPrintReport";
 import { MonthlyTaskPrintReport } from "@/components/report/MonthlyTaskPrintReport";
 import { Button } from "@/components/ui/button";
 import type { DailyLaporanPrintContext, LaporanPrintContext, PrintUnitReviewRow } from "@/lib/laporan-print-view";
+import { isPrintableTask } from "@/lib/laporan-print-view";
 import type { LaporanView, ReportTask } from "@/lib/report-types";
 
 type PrintPrepare = {
@@ -185,7 +186,7 @@ export function LaporanPrintProvider({
         <MonthlyTaskPrintReport
           month={month}
           year={year}
-          tasks={bulanan.tasks.filter((task) => task.status === "menunggu_approval" || task.status === "disetujui")}
+          tasks={bulanan.tasks.filter((task) => isPrintableTask(task))}
           print={bulanan.print}
           isLeader={bulanan.isLeader}
           rows={bulanan.rows}
