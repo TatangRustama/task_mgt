@@ -76,7 +76,7 @@ export function NavigationLoader({ children }: { children: React.ReactNode }) {
       <Suspense fallback={null}>
         <RouteChangeListener onChange={stop} />
       </Suspense>
-      {visible ? <LoaderOverlay /> : null}
+      {visible ? <NavigationProgress /> : null}
     </NavigationLoaderContext.Provider>
   );
 }
@@ -97,36 +97,15 @@ function RouteChangeListener({ onChange }: { onChange: () => void }) {
   return null;
 }
 
-function LoaderOverlay() {
+function NavigationProgress() {
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-background/80 backdrop-blur-[2px] no-print"
+      className="pointer-events-none fixed top-0 left-0 right-0 z-[90] h-0.5 overflow-hidden no-print"
       role="status"
       aria-live="polite"
       aria-label="Memuat halaman"
     >
-      <div className="absolute top-0 left-0 right-0 h-1 overflow-hidden bg-surface-container">
-        <div className="nav-loader-bar h-full w-1/3 rounded-full bg-primary" />
-      </div>
-      <div className="flex flex-col items-center gap-2 rounded-lg border border-outline bg-surface-container-lowest px-6 py-5">
-        <svg
-          className="h-12 w-12 animate-spin text-primary"
-          viewBox="0 0 48 48"
-          fill="none"
-          aria-hidden="true"
-        >
-          <circle cx="24" cy="24" r="18" stroke="currentColor" strokeOpacity="0.2" strokeWidth="5" />
-          <path
-            d="M42 24a18 18 0 0 0-18-18"
-            stroke="currentColor"
-            strokeWidth="5"
-            strokeLinecap="round"
-          />
-        </svg>
-        <p className="text-sm font-semibold text-secondary-navy">
-          Memuat...
-        </p>
-      </div>
+      <div className="nav-loader-bar h-full w-1/3 rounded-full bg-white" />
     </div>
   );
 }

@@ -3,57 +3,51 @@ import { headers } from "next/headers";
 import { formatGolonganPangkat } from "@/lib/golongan";
 import { getAtasan, getDbOrgUser, jabatanLabel } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
-import { normalizeStars, starLabel } from "@/lib/rating";
+import { normalizeStars } from "@/lib/rating";
 import type { ReportTask } from "@/lib/report-types";
-import { formatNip, statusLabel } from "@/lib/utils";
+import { formatNip } from "@/lib/utils";
+import {
+  isPrintableTask,
+  type DailyLaporanPrintContext,
+  type LaporanPrintContext,
+  type PrintPerson,
+} from "@/lib/laporan-print-view";
 
-export const PRINT_TASK_STATUSES = ["menunggu_approval", "disetujui"] as const;
-
-export type PrintPerson = {
-  name: string;
-  nip: string;
-  pangkatGolongan: string;
-  jabatan: string;
-};
-
-export type LaporanPrintContext = {
-  author: PrintPerson;
-  atasan: PrintPerson | null;
-  kopGovernment: string;
-  kopAgency: string;
-  kopAddress: string;
-  kopWebsite: string;
-  reportId: string;
-  validationUrl: string;
-  qrDataUrl: string;
-};
-
-export type DailyLaporanPrintContext = {
-  author: PrintPerson;
-  atasan: PrintPerson | null;
-  kopGovernment: string;
-  kopAgency: string;
-  kopAddress: string;
-  kopWebsite: string;
-};
+export {
+  PRINT_TASK_STATUSES,
+  evidenceRows,
+  formatPrintDate,
+  groupTasksByPrintDate,
+  groupTasksForWfhPrint,
+  isPrintableTask,
+  printHasil,
+  printHasilLine,
+  printKeterangan,
+  printParaf,
+  printTaskDate,
+  printTempatLine,
+  printableTasks,
+  taskWfhHasil,
+  taskWfhTempat,
+  taskWfhUraian,
+} from "@/lib/laporan-print-view";
+export type { DailyLaporanPrintContext, LaporanPrintContext, PrintPerson };
 
 const KOP_ADDRESS =
   "Jl. Brigjen Marinir Abraham O. Atururi, Komplek Perkantoran Gubernur, Arfai-Manokwari";
 const KOP_WEBSITE = "www.bkd.papuabaratprov.go.id";
 
-export function isPrintableTask(status: string) {
-  return PRINT_TASK_STATUSES.includes(status as (typeof PRINT_TASK_STATUSES)[number]);
-}
-
-export function printableTasks<T extends { status: string }>(tasks: T[]): T[] {
-  return tasks.filter((task) => isPrintableTask(task.status));
-}
-
 export async function getRequestOrigin() {
   const headerList = await headers();
-  const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
-  const proto = headerList.get("x-forwarded-proto") ?? "http";
-  if (host) return `${proto}://${host}`;
+  const forwardedHost = headerList.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const host = forwardedHost || headerList.get("host")?.split(",")[0]?.trim();
+  const forwardedProto = headerList.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  if (host) {
+    const proto =
+      forwardedProto ||
+      (host.includes("trycloudflare.com") || host.includes("loca.lt") ? "https" : "http");
+    return `${proto}://${host}`;
+  }
   return (process.env.NEXTAUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
 }
 
@@ -123,38 +117,6 @@ export async function getDailyLaporanPrintContext(options: {
     kopAddress: KOP_ADDRESS,
     kopWebsite: KOP_WEBSITE,
   };
-}
-
-export function taskWfhUraian(task: Pick<ReportTask, "title" | "description">) {
-  const parts = [task.title.trim()];
-  if (task.description?.trim()) parts.push(task.description.trim());
-  return parts.join(" — ");
-}
-
-export function taskWfhHasil(task: Pick<ReportTask, "notes" | "feedback" | "score">) {
-  const parts = [task.notes, task.feedback, starLabel(task.score)].filter(Boolean) as string[];
-  return parts.join(" — ") || "-";
-}
-
-export function taskWfhTempat(task: Pick<ReportTask, "address">) {
-  return task.address?.trim() || "Rumah";
-}
-
-export function groupTasksForWfhPrint(tasks: ReportTask[]) {
-  const groups = new Map<string, ReportTask[]>();
-  for (const task of tasks) {
-    const tempat = taskWfhTempat(task);
-    const bucket = groups.get(tempat) ?? [];
-    bucket.push(task);
-    groups.set(tempat, bucket);
-  }
-
-  return Array.from(groups.entries()).map(([tempat, items], index) => ({
-    no: index + 1,
-    tempat,
-    tasks: items,
-    photoUrls: items.flatMap((task) => task.photoUrls),
-  }));
 }
 
 export async function getLaporanPrintContext(options: {
@@ -260,6 +222,8 @@ export async function getValidasiLaporan(id: string) {
       assigneeId: task.assignedTo?.id ?? null,
       assigneeName: task.assignedTo?.name || "-",
       createdByName: task.createdBy.name,
+      jumlahIntervensi: task.jumlahIntervensi,
+      satuan: task.satuan,
     }));
 
   const [author, atasan] = await Promise.all([
@@ -278,48 +242,4 @@ export async function getValidasiLaporan(id: string) {
     atasan,
     tasks: ordered,
   };
-}
-
-export function formatPrintDate(value: string | Date | null | undefined) {
-  if (!value) return "-";
-  const date = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(date.getTime())) return "-";
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  return `${day}/${month}/${date.getFullYear()}`;
-}
-
-export function printHasil(task: Pick<ReportTask, "score">) {
-  return starLabel(task.score) ?? "";
-}
-
-export function printParaf(task: Pick<ReportTask, "status">) {
-  if (task.status === "disetujui") return "Approved";
-  if (task.status === "menunggu_approval") return "Menunggu approval";
-  return statusLabel(task.status);
-}
-
-export function printKeterangan(
-  task: Pick<ReportTask, "notes" | "feedback" | "assigneeName">,
-  authorName?: string,
-) {
-  const parts = [task.notes, task.feedback].filter(Boolean) as string[];
-  if (authorName && task.assigneeName && task.assigneeName !== authorName && task.assigneeName !== "-") {
-    parts.push(`Pegawai: ${task.assigneeName}`);
-  }
-  return parts.join(" — ");
-}
-
-export function printTaskDate(task: Pick<ReportTask, "completedAt" | "createdAt">) {
-  return formatPrintDate(task.completedAt || task.createdAt);
-}
-
-export function evidenceRows(tasks: ReportTask[]) {
-  return tasks
-    .filter((task) => task.photoUrls.length > 0)
-    .map((task) => ({
-      date: printTaskDate(task),
-      photos: task.photoUrls,
-      title: task.title,
-    }));
 }

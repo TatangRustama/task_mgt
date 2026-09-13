@@ -13,7 +13,7 @@ const buttonVariants = cva(
         outline: "border border-outline bg-surface-container-lowest text-secondary-navy hover:bg-surface-container-low",
         ghost: "text-secondary hover:bg-surface-container-high",
         destructive: "bg-error text-on-error border border-[#be123c] hover:opacity-90",
-        success: "bg-primary text-white border border-accent hover:bg-accent",
+        success: "bg-emerald-600 text-white border border-emerald-700 hover:bg-emerald-700",
       },
       size: {
         default: "h-9 px-3 py-1.5",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, RefreshCw } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -13,15 +13,23 @@ export function BoardView({
   currentUserId,
   emptyTersedia = "Belum ada tugas tersedia. Buat tugas mandiri atau tunggu delegasi pimpinan.",
   canDelegate = false,
+  openDelegasi = false,
 }: {
   tasks: TaskCardData[];
   currentUserId: string;
   emptyTersedia?: string;
   canDelegate?: boolean;
+  openDelegasi?: boolean;
 }) {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
-  const [delegasiOpen, setDelegasiOpen] = useState(false);
+  const [delegasiOpen, setDelegasiOpen] = useState(openDelegasi);
+
+  useEffect(() => {
+    if (!openDelegasi) return;
+    setDelegasiOpen(true);
+    router.replace("/board", { scroll: false });
+  }, [openDelegasi, router]);
 
   const tersedia = tasks.filter((t) => t.status === "tersedia");
   const dikerjakan = tasks.filter((t) => t.status === "dikerjakan" || t.status === "ditolak");

@@ -1,160 +1,115 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { Jabatan, Role, UnitType } from "@prisma/client";
-import {
-  expectedParentType,
-  expectedUnitTypeForJabatan,
-  jabatanLabel,
-  roleFromJabatan,
-  unitTypeLabel,
-} from "@/lib/org";
+import { Prisma, Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { credentialsForRole, MANAGED_ROLES } from "@/lib/admin-users";
+import {
+  parseUserPageSize,
+  roleLabel,
+  USER_MAX_PAGE_SIZE,
+  USER_PAGE_SIZES,
+} from "@/lib/roles";
 import { requireUser } from "@/lib/session";
 
-export async function GET() {
-  await requireUser(["admin"]);
+function parseRoleFilter(raw: string | null): Role | undefined {
+  if (!raw || raw === "all") return undefined;
+  return MANAGED_ROLES.includes(raw as Role) ? (raw as Role) : undefined;
+}
 
-  const units = await prisma.unit.findMany({
-    include: {
-      instansi: true,
-      parent: { select: { id: true, name: true, type: true } },
-      pimpinan: { select: { id: true, name: true } },
-      _count: { select: { users: true, children: true } },
-    },
-    orderBy: [{ type: "asc" }, { name: "asc" }],
-  });
+export async function GET(request: Request) {
+  await requireUser(["super_admin"]);
+
+  const url = new URL(request.url);
+  const q = url.searchParams.get("q")?.trim() || "";
+  const role = parseRoleFilter(url.searchParams.get("role"));
+  const pageSize = parseUserPageSize(url.searchParams.get("pageSize"));
+  const requestedPage = Math.max(1, Number(url.searchParams.get("page") || 1) || 1);
+
+  const where: Prisma.UserWhereInput = {};
+  if (role) where.role = role;
+  if (q) {
+    where.OR = [
+      { nip: { contains: q, mode: "insensitive" } },
+      { email: { contains: q, mode: "insensitive" } },
+      { pegawai: { is: { nik: { contains: q, mode: "insensitive" } } } },
+    ];
+  }
+
+  const total = await prisma.user.count({ where });
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(requestedPage, totalPages);
 
   const users = await prisma.user.findMany({
-    include: {
-      unit: { select: { name: true, type: true } },
+    where,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      nip: true,
+      role: true,
+      createdAt: true,
+      pegawai: { select: { nik: true, nip: true } },
     },
-    orderBy: { name: "asc" },
+    orderBy: [{ role: "asc" }, { name: "asc" }],
+    skip: (page - 1) * pageSize,
+    take: pageSize,
   });
 
   return NextResponse.json({
-    units,
     users,
-    unitTypeLabel,
-    jabatanLabel,
+    total,
+    page,
+    pageSize,
+    totalPages,
+    roleLabel,
+    pageSizes: USER_PAGE_SIZES,
+    maxPageSize: USER_MAX_PAGE_SIZE,
   });
 }
 
 export async function POST(request: Request) {
-  await requireUser(["admin"]);
+  await requireUser(["super_admin"]);
 
   const body = await request.json();
-  const action = body.action as string;
+  const name = String(body.name || "").trim();
+  const password = String(body.password || "").trim();
+  const role = String(body.role || "") as Role;
+  const loginId = String(body.username || body.nip || "").trim();
 
-  if (action === "create_unit") {
-    const instansi = await prisma.instansi.findFirst();
-    if (!instansi) {
-      return NextResponse.json({ error: "Instansi belum ada" }, { status: 400 });
-    }
-
-    const name = String(body.name || "").trim();
-    const type = (body.type || "bidang") as UnitType;
-    const parentId = body.parentId ? String(body.parentId) : null;
-
-    if (!name) {
-      return NextResponse.json({ error: "Nama unit wajib diisi" }, { status: 400 });
-    }
-
-    if (!["kantor", "bidang", "sub_bidang"].includes(type)) {
-      return NextResponse.json({ error: "Jenis unit tidak valid" }, { status: 400 });
-    }
-
-    const requiredParent = expectedParentType(type);
-    if (requiredParent) {
-      if (!parentId) {
-        return NextResponse.json(
-          { error: `Unit ${unitTypeLabel[type]} wajib memiliki unit induk` },
-          { status: 400 }
-        );
-      }
-      const parent = await prisma.unit.findUnique({ where: { id: parentId } });
-      if (!parent || parent.type !== requiredParent) {
-        return NextResponse.json(
-          { error: `Induk ${unitTypeLabel[type]} harus bertipe ${unitTypeLabel[requiredParent]}` },
-          { status: 400 }
-        );
-      }
-    } else if (parentId) {
-      return NextResponse.json({ error: "Kantor tidak boleh memiliki unit induk" }, { status: 400 });
-    }
-
-    const unit = await prisma.unit.create({
-      data: {
-        name,
-        type,
-        parentId,
-        instansiId: instansi.id,
-        pimpinanId: body.pimpinanId || null,
-      },
-    });
-
-    if (body.pimpinanId) {
-      await prisma.user.update({
-        where: { id: body.pimpinanId },
-        data: { role: "pimpinan", unitId: unit.id },
-      });
-    }
-
-    return NextResponse.json(unit, { status: 201 });
+  if (!name) {
+    return NextResponse.json({ error: "Nama wajib diisi" }, { status: 400 });
+  }
+  if (!password) {
+    return NextResponse.json({ error: "Password wajib diisi" }, { status: 400 });
   }
 
-  if (action === "create_user") {
-    const jabatanRaw = body.jabatan ? String(body.jabatan) : "";
-    const jabatan = (["kepala_kantor", "kepala_bidang", "kepala_sub_bidang", "pelaksana"].includes(
-      jabatanRaw
-    )
-      ? jabatanRaw
-      : null) as Jabatan | null;
-    const role = (body.role || roleFromJabatan(jabatan)) as Role;
-    const unitId = body.unitId ? String(body.unitId) : null;
+  const credentials = credentialsForRole(role, loginId);
+  if (!credentials.ok) {
+    return NextResponse.json({ error: credentials.error }, { status: 400 });
+  }
 
-    if (role !== "admin") {
-      if (!jabatan) {
-        return NextResponse.json({ error: "Jabatan wajib diisi" }, { status: 400 });
-      }
-      if (!unitId) {
-        return NextResponse.json({ error: "Unit wajib diisi" }, { status: 400 });
-      }
-      const unit = await prisma.unit.findUnique({ where: { id: unitId } });
-      const expectedType = expectedUnitTypeForJabatan(jabatan);
-      if (!unit || (expectedType && unit.type !== expectedType)) {
-        return NextResponse.json(
-          {
-            error: expectedType
-              ? `${jabatanLabel[jabatan]} harus ditempatkan di unit ${unitTypeLabel[expectedType]}`
-              : "Unit tidak valid",
-          },
-          { status: 400 }
-        );
-      }
-    }
+  const { nip, email } = credentials;
+  const passwordHash = await bcrypt.hash(password, 10);
 
-    const passwordHash = await bcrypt.hash(String(body.password || "password123"), 10);
+  try {
     const user = await prisma.user.create({
       data: {
-        name: String(body.name),
-        nip: String(body.nip),
-        email: String(body.email),
+        name,
+        nip,
+        email,
         passwordHash,
-        role: role === "admin" ? "admin" : roleFromJabatan(jabatan),
-        jabatan: role === "admin" ? null : jabatan,
-        unitId: role === "admin" ? null : unitId,
+        role,
+        jabatan: role === "personal" ? "pelaksana" : null,
       },
     });
-
-    if (jabatan && jabatan !== "pelaksana" && unitId) {
-      await prisma.unit.update({
-        where: { id: unitId },
-        data: { pimpinanId: user.id },
-      });
+    return NextResponse.json(
+      { id: user.id, name: user.name, username: user.nip, role: user.role },
+      { status: 201 },
+    );
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json({ error: "Username atau NIP sudah terdaftar" }, { status: 409 });
     }
-
-    return NextResponse.json({ id: user.id, name: user.name, email: user.email }, { status: 201 });
+    throw error;
   }
-
-  return NextResponse.json({ error: "Aksi tidak dikenali" }, { status: 400 });
 }

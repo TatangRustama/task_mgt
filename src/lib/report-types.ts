@@ -1,3 +1,5 @@
+import { Role } from "@prisma/client";
+
 export type ReportTask = {
   id: string;
   title: string;
@@ -17,6 +19,8 @@ export type ReportTask = {
   assigneeId: string | null;
   assigneeName: string;
   createdByName: string;
+  jumlahIntervensi: number | null;
+  satuan: string | null;
 };
 
 export const UNASSIGNED_PEGAWAI_ID = "__unassigned__";
@@ -28,8 +32,16 @@ export type ReportSummary = {
   onTimePercent: number;
 };
 
+export const emptySummary = (): ReportSummary => ({
+  posted: 0,
+  completed: 0,
+  averageScore: 0,
+  onTimePercent: 0,
+});
+
 export type LaporanBy = "tugas" | "pegawai";
 export type LaporanView = "harian" | "bulanan";
+export type KinerjaView = "pantau" | LaporanView;
 
 export type ReportPegawai = {
   id: string;
@@ -72,8 +84,10 @@ export type MonthlyCalendarData = {
 };
 
 export type ReportScope = {
-  role: "admin" | "pimpinan" | "pegawai";
+  role: Role;
   userId: string;
   unitId: string | null;
   assigneeId?: string;
+  isLeader?: boolean;
+  visibleUnitIds?: string[];
 };

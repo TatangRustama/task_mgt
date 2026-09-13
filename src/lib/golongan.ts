@@ -26,3 +26,29 @@ export function formatGolonganPangkat(golonganNama: string | null | undefined) {
   if (!pangkat) return golongan;
   return `${pangkat} (${golongan})`;
 }
+
+const GOLONGAN_ORDER = [
+  "IV/e",
+  "IV/d",
+  "IV/c",
+  "IV/b",
+  "IV/a",
+  "III/d",
+  "III/c",
+  "III/b",
+  "III/a",
+  "II/d",
+  "II/c",
+  "II/b",
+  "II/a",
+  "I/d",
+  "I/c",
+  "I/b",
+  "I/a",
+] as const;
+
+export function golonganSortKey(golonganNama: string | null | undefined) {
+  const text = (golonganNama || "").replace(/\s+/g, "");
+  const index = GOLONGAN_ORDER.findIndex((code) => text.includes(code));
+  return index === -1 ? GOLONGAN_ORDER.length : index;
+}

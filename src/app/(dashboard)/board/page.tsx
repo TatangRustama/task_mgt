@@ -2,14 +2,18 @@ export const dynamic = "force-dynamic";
 
 import { BoardView } from "@/components/board/BoardView";
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
-import { canDelegate, canSeeTask, getDbOrgUser, getVisibleUnitIds } from "@/lib/org";
+import { canDelegate, canSeeTaskWithScope, getOrgScope } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 
-export default async function BoardPage() {
-  const user = await requireUser();
-  const orgUser = await getDbOrgUser(user.id);
-  const visibleUnitIds = await getVisibleUnitIds(user);
+export default async function BoardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ delegasi?: string }>;
+}) {
+  const user = await requireUser(["personal"]);
+  const params = await searchParams;
+  const { orgUser, visibleUnitIds, isLeader } = await getOrgScope(user);
 
   const tasks = visibleUnitIds.length
     ? await prisma.task.findMany({
@@ -25,25 +29,23 @@ export default async function BoardPage() {
       })
     : [];
 
-  const visibleTasks = [];
-  for (const task of tasks) {
-    if (await canSeeTask(user, task)) visibleTasks.push(task);
-  }
+  const visibleTasks = tasks.filter((task) =>
+    canSeeTaskWithScope(user, task, {
+      visibleUnitIds,
+      isLeader,
+    }),
+  );
 
-  const unit = user.unitId
-    ? await prisma.unit.findUnique({ where: { id: user.unitId } })
-    : null;
-
-  const isStaffBoard = user.role === "pegawai";
+  const isStaffBoard = !isLeader;
 
   return (
     <PageMain>
       <PageHeader
         title="Active Tasks"
         subtitle={
-          unit
+          orgUser?.unit
             ? isStaffBoard
-              ? `Kolam ${unit.name}: ambil kartu yang tersedia, atau kerjakan tugas yang ditunjuk ke Anda.`
+              ? `Kolam ${orgUser.unit.name}: ambil kartu yang tersedia, atau kerjakan tugas yang ditunjuk ke Anda.`
               : "Pantau, delegasikan, atau selesaikan tugas bersama Tim Kerja"
             : "Belum terdaftar di unit"
         }
@@ -53,6 +55,7 @@ export default async function BoardPage() {
           tasks={visibleTasks}
           currentUserId={user.id}
           canDelegate={orgUser ? canDelegate(orgUser) : false}
+          openDelegasi={params.delegasi === "1"}
           emptyTersedia={
             isStaffBoard
               ? "Belum ada kartu kolam di sub bidang Anda."

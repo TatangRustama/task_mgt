@@ -4,6 +4,7 @@ import { Calendar, User } from "lucide-react";
 import { ManagePostedTaskActions } from "@/components/task/ManagePostedTaskActions";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatDate, isOverdue, priorityBarClass } from "@/lib/utils";
+import { formatJumlahSatuan } from "@/lib/satuan";
 
 export type TaskCardData = {
   id: string;
@@ -16,6 +17,8 @@ export type TaskCardData = {
   assignmentMode?: AssignmentMode;
   assignedTo?: { name: string } | null;
   createdById?: string;
+  jumlahIntervensi?: number | null;
+  satuan?: string | null;
 };
 
 export function TaskCard({
@@ -50,6 +53,11 @@ export function TaskCard({
         {task.description ? (
           <p className="truncate text-sm leading-tight text-on-surface-variant" title={task.description}>
             {task.description}
+          </p>
+        ) : null}
+        {formatJumlahSatuan(task.jumlahIntervensi, task.satuan) ? (
+          <p className="text-xs text-secondary">
+            {formatJumlahSatuan(task.jumlahIntervensi, task.satuan)}
           </p>
         ) : null}
         <div className="mt-1 flex items-center justify-between text-xs">

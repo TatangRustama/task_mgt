@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { TaskDetailModal } from "@/components/report/TaskDetailModal";
 import { StarRating } from "@/components/task/StarRating";
 import type { ReportTask } from "@/lib/report-types";
+import { formatJumlahSatuan } from "@/lib/satuan";
 import { cn, formatDateTime, statusBarClass, statusLabel } from "@/lib/utils";
 
 export function TaskReportList({
@@ -57,6 +58,9 @@ export function TaskReportList({
                 <p className="mt-1 text-xs text-on-surface-variant">
                   {task.assigneeName}
                   {task.completedAt ? ` · selesai ${formatDateTime(task.completedAt)}` : ""}
+                  {formatJumlahSatuan(task.jumlahIntervensi, task.satuan)
+                    ? ` · ${formatJumlahSatuan(task.jumlahIntervensi, task.satuan)}`
+                    : ""}
                 </p>
                 {task.score != null ? (
                   <div className="mt-1">

@@ -37,13 +37,15 @@ npm run dev
 
 Buka [http://localhost:3000](http://localhost:3000)
 
+Perangkat lain di Wi-Fi yang sama: `http://<IP-LAN-PC>:3000` (IP tampil di log `Network` saat `npm run dev`).
+
 ## Akun Demo
 
-| Role | Email | Password |
+| Role | Login | Password |
 |------|-------|----------|
-| Admin | admin@demo.go.id | password123 |
-| Pimpinan | pimpinan@demo.go.id | password123 |
-| Pegawai | pegawai@demo.go.id | password123 |
+| Super Admin | superadmin | password123 |
+| Admin | hr@demo.go.id | password123 |
+| Personal | NIP pegawai | NIP |
 
 ## Fitur MVP
 

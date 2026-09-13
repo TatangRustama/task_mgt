@@ -8,17 +8,19 @@ export function ReportActionButtons({
   date,
   month,
   year,
+  unit,
 }: {
   by: LaporanBy;
   view: LaporanView;
   date: string;
   month: number;
   year: number;
+  unit?: string | null;
 }) {
   return (
     <div className="grid grid-cols-2 gap-2">
       <PrintReportButton />
-      <ExportReportButton by={by} view={view} date={date} month={month} year={year} />
+      <ExportReportButton by={by} view={view} date={date} month={month} year={year} unit={unit} />
     </div>
   );
 }

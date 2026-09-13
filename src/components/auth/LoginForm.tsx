@@ -1,7 +1,7 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,6 @@ import { useNavigationLoader } from "@/components/layout/NavigationLoader";
 
 export function LoginForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { start } = useNavigationLoader();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,7 +38,7 @@ export function LoginForm() {
       setError(
         (code && LOGIN_ERROR_MESSAGES[code]) ||
           checkData.error ||
-          "NIP atau password salah",
+          "NIP/NIK atau password salah",
       );
       return;
     }
@@ -58,7 +57,7 @@ export function LoginForm() {
     }
 
     start();
-    router.push(searchParams.get("callbackUrl") || "/mandiri");
+    router.push(checkData.home || "/mandiri");
     router.refresh();
   }
 
@@ -72,13 +71,13 @@ export function LoginForm() {
       <CardContent className="pt-4">
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-2">
-            <Label htmlFor="username">NIP</Label>
+            <Label htmlFor="username">NIP / NIK / Username</Label>
             <Input
               id="username"
               name="username"
               type="text"
               required
-              placeholder="NIP atau email admin"
+              placeholder="NIP, NIK, atau username superadmin"
               autoComplete="username"
             />
           </div>
@@ -99,7 +98,7 @@ export function LoginForm() {
           </Button>
         </form>
         <p className="mt-4 text-center text-xs text-tertiary">
-          Pegawai: NIP / password NIP. Admin demo: admin@demo.go.id / password123
+          Pegawai: NIP atau NIK. Super Admin: superadmin / password123
         </p>
       </CardContent>
     </Card>

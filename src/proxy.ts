@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import NextAuth from "next-auth";
 import { authConfig } from "@/auth.config";
+import { redirectToPath } from "@/lib/request-origin";
+import { canManageOrg, canUseEmployeeApp, coerceRole, defaultHomePath, isAppAdmin, isSuperAdmin } from "@/lib/roles";
 
 const { auth } = NextAuth(authConfig);
 
 const publicPaths = ["/login", "/api/auth", "/api/health", "/manifest.json", "/validasi"];
+const employeePrefixes = ["/mandiri", "/board", "/pimpinan", "/laporan", "/tugas"];
 
 export const proxy = auth((request) => {
   const { pathname } = request.nextUrl;
@@ -15,24 +18,40 @@ export const proxy = auth((request) => {
   }
 
   if (!request.auth?.user) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(loginUrl);
+    const login = new URL("/login", "http://local.invalid");
+    login.searchParams.set("callbackUrl", pathname);
+    return redirectToPath(request, `${login.pathname}${login.search}`);
   }
+
+  const role = coerceRole(request.auth.user.role);
+  const home = defaultHomePath(role);
 
   if (pathname === "/") {
-    return NextResponse.redirect(new URL("/mandiri", request.url));
+    return redirectToPath(request, home);
   }
 
-  if (pathname.startsWith("/admin") && request.auth.user.role !== "admin") {
-    return NextResponse.redirect(new URL("/board", request.url));
+  if (pathname.startsWith("/dashboard") && !isSuperAdmin(role)) {
+    return redirectToPath(request, home);
   }
 
-  if (
-    pathname.startsWith("/pimpinan") &&
-    !["admin", "pimpinan"].includes(request.auth.user.role)
-  ) {
-    return NextResponse.redirect(new URL("/board", request.url));
+  if (pathname.startsWith("/admin") && !canManageOrg(role)) {
+    return redirectToPath(request, home);
+  }
+
+  if (isSuperAdmin(role) && (pathname === "/pegawai" || pathname.startsWith("/pegawai/"))) {
+    return redirectToPath(request, "/admin/pegawai");
+  }
+
+  if (isSuperAdmin(role) && employeePrefixes.some((path) => pathname.startsWith(path))) {
+    return redirectToPath(request, home);
+  }
+
+  if (pathname.startsWith("/pimpinan") && !canUseEmployeeApp(role)) {
+    return redirectToPath(request, home);
+  }
+
+  if (isAppAdmin(role) && employeePrefixes.some((path) => pathname.startsWith(path))) {
+    return redirectToPath(request, home);
   }
 
   return NextResponse.next();

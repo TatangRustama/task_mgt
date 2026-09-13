@@ -2,10 +2,11 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
-import { Camera, MapPin } from "lucide-react";
+import { Camera, Loader2, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 const LocationMap = dynamic(
   () => import("@/components/map/LocationMap").then((m) => m.LocationMap),
@@ -47,6 +48,41 @@ async function compressImage(file: File): Promise<File> {
   });
 }
 
+function geoErrorMessage(error: unknown) {
+  if (error && typeof error === "object" && "code" in error) {
+    const code = Number((error as GeolocationPositionError).code);
+    if (code === 1) return "Izin lokasi ditolak — izinkan akses lokasi, lalu ketuk Tag Lokasi lagi";
+    if (code === 2) return "Lokasi GPS tidak tersedia — coba lagi atau isi alamat manual";
+    if (code === 3) return "Waktu pencarian lokasi habis — ketuk Tag Lokasi untuk coba lagi";
+  }
+  return "Gagal membaca lokasi GPS";
+}
+
+async function reverseGeocode(latitude: number, longitude: number) {
+  try {
+    const res = await fetch(`/api/geo/reverse?lat=${latitude}&lon=${longitude}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { address?: string | null };
+    return data.address?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+function readCurrentPosition() {
+  return new Promise<GeolocationPosition>((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Geolocation tidak didukung browser"));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0,
+    });
+  });
+}
+
 export function useEvidenceCapture(enabled: boolean) {
   const [notes, setNotes] = useState("");
   const [address, setAddress] = useState("");
@@ -54,22 +90,38 @@ export function useEvidenceCapture(enabled: boolean) {
   const [longitude, setLongitude] = useState<number | null>(null);
   const [photos, setPhotos] = useState<File[]>([]);
   const [geoError, setGeoError] = useState("");
+  const [geoLoading, setGeoLoading] = useState(false);
+
+  const requestLocation = useCallback(async () => {
+    setGeoLoading(true);
+    setGeoError("");
+    try {
+      const pos = await readCurrentPosition();
+      const nextLat = pos.coords.latitude;
+      const nextLng = pos.coords.longitude;
+      setLatitude(nextLat);
+      setLongitude(nextLng);
+      const resolved = await reverseGeocode(nextLat, nextLng);
+      if (resolved) {
+        setAddress(resolved);
+      } else {
+        setAddress((prev) => prev.trim() || `${nextLat.toFixed(6)}, ${nextLng.toFixed(6)}`);
+      }
+    } catch (error) {
+      setGeoError(
+        error instanceof Error && error.message === "Geolocation tidak didukung browser"
+          ? error.message
+          : geoErrorMessage(error),
+      );
+    } finally {
+      setGeoLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!enabled) return;
-    if (!navigator.geolocation) {
-      setGeoError("Geolocation tidak didukung browser");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLatitude(pos.coords.latitude);
-        setLongitude(pos.coords.longitude);
-      },
-      () => setGeoError("Izin lokasi ditolak — isi alamat manual")
-    );
-  }, [enabled]);
+    void requestLocation();
+  }, [enabled, requestLocation]);
 
   const handlePhotoChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -112,6 +164,7 @@ export function useEvidenceCapture(enabled: boolean) {
     setLongitude(null);
     setPhotos([]);
     setGeoError("");
+    setGeoLoading(false);
   }, []);
 
   return {
@@ -123,6 +176,8 @@ export function useEvidenceCapture(enabled: boolean) {
     longitude,
     photos,
     geoError,
+    geoLoading,
+    requestLocation,
     handlePhotoChange,
     validate,
     toFormData,
@@ -139,6 +194,8 @@ export function EvidenceFields({
   longitude,
   photos,
   geoError,
+  geoLoading,
+  onTagLocation,
   onPhotoChange,
 }: {
   notes: string;
@@ -149,8 +206,12 @@ export function EvidenceFields({
   longitude: number | null;
   photos: File[];
   geoError: string;
+  geoLoading: boolean;
+  onTagLocation: () => void;
   onPhotoChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
+  const tagged = latitude !== null && longitude !== null;
+
   return (
     <div className="space-y-4 rounded-lg border border-outline-variant bg-surface-container-low p-4">
       <p className="text-sm font-semibold text-on-surface">Laporan selesai</p>
@@ -174,19 +235,40 @@ export function EvidenceFields({
           <span className="mt-1 text-center text-[11px] text-on-surface-variant">Wajib (1-3 foto)</span>
           <input id="photos" type="file" accept="image/*" capture="environment" multiple onChange={onPhotoChange} className="hidden" />
         </label>
-        <div className="flex flex-col items-center justify-center rounded-lg border border-outline-variant bg-surface p-4">
-          <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-secondary-container text-on-secondary-container">
-            <MapPin className="h-5 w-5" />
+        <button
+          type="button"
+          onClick={onTagLocation}
+          disabled={geoLoading}
+          className={cn(
+            "flex flex-col items-center justify-center rounded-lg border bg-surface p-4 transition hover:bg-surface-container-low active:scale-95 disabled:pointer-events-none disabled:opacity-70",
+            tagged && !geoError ? "border-emerald-300" : "border-outline-variant",
+          )}
+        >
+          <div
+            className={cn(
+              "mb-2 flex h-12 w-12 items-center justify-center rounded-full",
+              tagged && !geoError
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-secondary-container text-on-secondary-container",
+            )}
+          >
+            {geoLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <MapPin className="h-5 w-5" />}
           </div>
           <span className="text-sm font-semibold text-on-surface">Tag Lokasi</span>
-          <span className="mt-1 text-center text-[11px] text-on-surface-variant">Sesuai GPS saat ini</span>
-        </div>
+          <span className="mt-1 text-center text-[11px] text-on-surface-variant">
+            {geoLoading
+              ? "Mencari GPS..."
+              : tagged
+                ? "Ketuk untuk perbarui GPS"
+                : "Ketuk untuk ambil GPS saat ini"}
+          </span>
+        </button>
       </div>
       {photos.length > 0 ? (
         <p className="text-xs text-on-surface-variant">{photos.length} foto siap diunggah</p>
       ) : null}
-      {geoError ? <p className="text-xs text-on-surface-variant">{geoError}</p> : null}
-      {latitude !== null && longitude !== null ? (
+      {geoError ? <p className="text-xs text-error">{geoError}</p> : null}
+      {tagged ? (
         <LocationMap latitude={latitude} longitude={longitude} />
       ) : null}
       <div className="space-y-2">

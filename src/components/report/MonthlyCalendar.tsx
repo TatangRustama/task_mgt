@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { ReportActionButtons } from "@/components/report/ReportActionButtons";
-import { MonthlyTaskPrintReport } from "@/components/report/MonthlyTaskPrintReport";
 import { ReportMonthNav } from "@/components/report/ReportMonthNav";
 import { laporanHref } from "@/lib/laporan-url";
-import type { LaporanPrintContext } from "@/lib/laporan-print";
 import type { DayRecap, LaporanBy, ReportTask } from "@/lib/report-types";
 import { cn, formatISODate, statusLabel } from "@/lib/utils";
 
@@ -17,8 +15,6 @@ export function MonthlyCalendar({
   date,
   days,
   tasks,
-  printTasks,
-  print,
 }: {
   by: LaporanBy;
   month: number;
@@ -26,8 +22,6 @@ export function MonthlyCalendar({
   date: string;
   days: DayRecap[];
   tasks: ReportTask[];
-  printTasks: ReportTask[];
-  print: LaporanPrintContext;
 }) {
   const firstDay = new Date(year, month - 1, 1);
   const mondayOffset = (firstDay.getDay() + 6) % 7;
@@ -124,8 +118,6 @@ export function MonthlyCalendar({
           ))
         )}
       </section>
-
-      <MonthlyTaskPrintReport month={month} year={year} tasks={printTasks} print={print} />
     </div>
   );
 }

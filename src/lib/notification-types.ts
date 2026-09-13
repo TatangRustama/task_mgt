@@ -25,3 +25,8 @@ export type UserNotifications = {
   count: number;
   sections: NoticeSection[];
 };
+
+export const EMPTY_NOTIFICATIONS: UserNotifications = {
+  count: 0,
+  sections: [],
+};

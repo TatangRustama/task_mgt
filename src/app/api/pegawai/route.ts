@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { PegawaiJenis, Prisma } from "@prisma/client";
 import { getDescendantUnitIds } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
+import { pegawaiUnorAssignment } from "@/lib/admin-pegawai";
+import { canManageNonAsn, isSuperAdmin } from "@/lib/roles";
 import { getCurrentUser } from "@/lib/session";
+import { ensureUserFromPegawai } from "@/lib/simpeg-accounts";
 import { lookupOrSyncPegawaiByNip } from "@/lib/simpeg-sync";
 
 const emptyPage = (page: number, pageSize: number) =>
@@ -48,7 +51,7 @@ export async function GET(request: Request) {
 
   if (scope === "bawahan") {
     where.jenis = "asn";
-    if (user.role !== "admin") {
+    if (!isSuperAdmin(user.role)) {
       if (!user.unitId) {
         return emptyPage(page, pageSize);
       }
@@ -92,9 +95,15 @@ export async function POST(request: Request) {
   const jenis = body.jenis as PegawaiJenis;
   const name = String(body.name || "").trim();
   const address = String(body.address || "").trim();
+  const unorId = typeof body.unorId === "string" ? body.unorId.trim() : "";
 
   if (!["asn", "non_asn"].includes(jenis)) {
     return NextResponse.json({ error: "Jenis pegawai tidak valid" }, { status: 400 });
+  }
+
+  const assignment = unorId ? await pegawaiUnorAssignment(unorId) : null;
+  if (unorId && !assignment) {
+    return NextResponse.json({ error: "Unit organisasi tidak ditemukan" }, { status: 404 });
   }
 
   if (jenis === "asn") {
@@ -104,14 +113,22 @@ export async function POST(request: Request) {
     }
     const existing = await prisma.pegawai.findUnique({ where: { nip } });
     if (existing) {
-      return NextResponse.json(existing);
+      const saved = assignment
+        ? await prisma.pegawai.update({ where: { id: existing.id }, data: assignment })
+        : existing;
+      await ensureUserFromPegawai(saved);
+      return NextResponse.json(saved);
     }
     const found = await lookupOrSyncPegawaiByNip(nip);
     if (!found) {
       return NextResponse.json({ error: "Pegawai tidak terdaftar di Simpeg" }, { status: 404 });
     }
     if ("id" in found.pegawai) {
-      return NextResponse.json(found.pegawai, { status: 201 });
+      const saved = assignment
+        ? await prisma.pegawai.update({ where: { id: found.pegawai.id }, data: assignment })
+        : found.pegawai;
+      await ensureUserFromPegawai(saved);
+      return NextResponse.json(saved, { status: 201 });
     }
     const created = await prisma.pegawai.create({
       data: {
@@ -119,9 +136,18 @@ export async function POST(request: Request) {
         nip,
         name: found.pegawai.name,
         address: found.pegawai.address,
+        ...assignment,
       },
     });
+    await ensureUserFromPegawai(created);
     return NextResponse.json(created, { status: 201 });
+  }
+
+  if (jenis === "non_asn" && !canManageNonAsn(user.role)) {
+    return NextResponse.json(
+      { error: "Hanya admin yang dapat menambahkan pegawai Non-ASN" },
+      { status: 403 },
+    );
   }
 
   if (!name) {
@@ -140,13 +166,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "NIK sudah terdaftar" }, { status: 409 });
   }
 
+  if (!assignment) {
+    return NextResponse.json({ error: "Unit organisasi wajib dipilih" }, { status: 400 });
+  }
+
   const created = await prisma.pegawai.create({
     data: {
       jenis: "non_asn",
       nik,
       name,
       address,
+      ...assignment,
     },
   });
+  await ensureUserFromPegawai(created);
   return NextResponse.json(created, { status: 201 });
 }

@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
-import { getDescendantUnitIds, jabatanLabel } from "@/lib/org";
+import { getDbOrgUser, getDescendantUnitIds, isUnitLeader, jabatanLabel } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
+import { isSuperAdmin } from "@/lib/roles";
 import {
   UNASSIGNED_PEGAWAI_ID,
   type DailyReportData,
@@ -11,25 +12,40 @@ import {
   type ReportScope,
   type ReportSummary,
   type ReportTask,
+  emptySummary,
 } from "@/lib/report-types";
 import { formatISODate, parseISODate } from "@/lib/utils";
 import { normalizeStars } from "@/lib/rating";
 
+type ReportKind = "all" | "unit_tree" | "self";
+
+async function resolveReportKind(options: ReportScope): Promise<ReportKind> {
+  if (isSuperAdmin(options.role)) return "all";
+  if (options.isLeader === true) return "unit_tree";
+  if (options.isLeader === false) return "self";
+  const orgUser = await getDbOrgUser(options.userId);
+  if (orgUser && isUnitLeader(orgUser)) return "unit_tree";
+  return "self";
+}
+
 async function buildScopeFilter(options: ReportScope): Promise<Prisma.TaskWhereInput | null> {
-  if (options.role !== "admin" && !options.unitId) {
+  const kind = await resolveReportKind(options);
+  if (kind !== "all" && !options.unitId && kind === "unit_tree") {
     return null;
   }
 
   const scopeFilter: Prisma.TaskWhereInput = {};
-  if (options.role === "admin") {
+  if (kind === "all") {
     if (options.unitId) scopeFilter.unitId = options.unitId;
-  } else if (options.role === "pimpinan" && options.unitId) {
-    scopeFilter.unitId = { in: await getDescendantUnitIds(options.unitId) };
+  } else if (kind === "unit_tree" && options.unitId) {
+    scopeFilter.unitId = {
+      in: options.visibleUnitIds ?? (await getDescendantUnitIds(options.unitId)),
+    };
   } else if (options.unitId) {
     scopeFilter.unitId = options.unitId;
   }
 
-  if (options.role === "pegawai") {
+  if (kind === "self") {
     scopeFilter.OR = [{ assignedToId: options.userId }, { createdById: options.userId }];
   } else if (options.assigneeId) {
     scopeFilter.assignedToId = options.assigneeId;
@@ -38,7 +54,7 @@ async function buildScopeFilter(options: ReportScope): Promise<Prisma.TaskWhereI
   return scopeFilter;
 }
 
-async function getUnitMeta(unitId: string | null) {
+export async function getUnitMeta(unitId: string | null) {
   if (unitId) {
     const unit = await prisma.unit.findUnique({
       where: { id: unitId },
@@ -61,7 +77,7 @@ async function getUnitMeta(unitId: string | null) {
   };
 }
 
-function mapTask(task: {
+export function mapTask(task: {
   id: string;
   title: string;
   description: string | null;
@@ -73,9 +89,11 @@ function mapTask(task: {
   deadline: Date | null;
   assignedTo: { id: string; name: string } | null;
   createdBy: { name: string };
-  evidence: { address: string; notes: string; photoUrls: string[] } | null;
+  evidence: { address: string; notes: string; photoUrls?: string[] } | null;
   review: { score: number | null; reviewedAt: Date; feedback: string | null } | null;
   rating: { stars: number } | null;
+  jumlahIntervensi: number | null;
+  satuan: string | null;
 }): ReportTask {
   return {
     id: task.id,
@@ -96,6 +114,8 @@ function mapTask(task: {
     assigneeId: task.assignedTo?.id ?? null,
     assigneeName: task.assignedTo?.name || "-",
     createdByName: task.createdBy.name,
+    jumlahIntervensi: task.jumlahIntervensi,
+    satuan: task.satuan,
   };
 }
 
@@ -127,20 +147,21 @@ function summarize(tasks: ReportTask[], start: Date, end: Date): ReportSummary {
   };
 }
 
-const taskInclude = {
+const taskUiInclude = {
+  assignedTo: { select: { id: true, name: true } },
+  createdBy: { select: { name: true } },
+  evidence: { select: { address: true, notes: true } },
+  review: { select: { score: true, reviewedAt: true, feedback: true } },
+  rating: { select: { stars: true } },
+} as const;
+
+const taskPrintInclude = {
   assignedTo: { select: { id: true, name: true } },
   createdBy: { select: { name: true } },
   evidence: { select: { address: true, notes: true, photoUrls: true } },
   review: { select: { score: true, reviewedAt: true, feedback: true } },
   rating: { select: { stars: true } },
 } as const;
-
-const emptySummary = (): ReportSummary => ({
-  posted: 0,
-  completed: 0,
-  averageScore: 0,
-  onTimePercent: 0,
-});
 
 function toReportPegawai(user: {
   id: string;
@@ -157,7 +178,8 @@ function toReportPegawai(user: {
 }
 
 export async function getReportPeople(options: ReportScope): Promise<ReportPegawai[]> {
-  if (options.role === "pegawai") {
+  const kind = await resolveReportKind(options);
+  if (kind === "self") {
     const self = await prisma.user.findUnique({
       where: { id: options.userId },
       select: {
@@ -171,10 +193,10 @@ export async function getReportPeople(options: ReportScope): Promise<ReportPegaw
     return [toReportPegawai(self)];
   }
 
-  const where: Prisma.UserWhereInput = { role: { not: "admin" } };
-  if (options.role === "pimpinan") {
+  const where: Prisma.UserWhereInput = { role: "personal" };
+  if (kind === "unit_tree") {
     if (!options.unitId) return [];
-    where.unitId = { in: await getDescendantUnitIds(options.unitId) };
+    where.unitId = { in: options.visibleUnitIds ?? (await getDescendantUnitIds(options.unitId)) };
   }
 
   const users = await prisma.user.findMany({
@@ -243,8 +265,10 @@ export async function getPegawaiBreakdown(
   return groupTasksByPegawai(tasks, people, start, end);
 }
 
+type ReportDetail = "ui" | "print";
+
 export async function getDailyReport(
-  options: ReportScope & { date: string }
+  options: ReportScope & { date: string; detail?: ReportDetail }
 ): Promise<DailyReportData | null> {
   const scopeFilter = await buildScopeFilter(options);
   if (!scopeFilter) return null;
@@ -263,7 +287,7 @@ export async function getDailyReport(
       ],
       status: { not: "dibatalkan" },
     },
-    include: taskInclude,
+    include: options.detail === "print" || options.detail === undefined ? taskPrintInclude : taskUiInclude,
     orderBy: { createdAt: "desc" },
   });
 
@@ -279,7 +303,7 @@ export async function getDailyReport(
 }
 
 export async function getMonthlyCalendar(
-  options: ReportScope & { month: number; year: number }
+  options: ReportScope & { month: number; year: number; detail?: ReportDetail }
 ): Promise<MonthlyCalendarData | null> {
   const scopeFilter = await buildScopeFilter(options);
   if (!scopeFilter) return null;
@@ -297,7 +321,7 @@ export async function getMonthlyCalendar(
       ],
       status: { not: "dibatalkan" },
     },
-    include: taskInclude,
+    include: options.detail === "print" ? taskPrintInclude : taskUiInclude,
     orderBy: { createdAt: "asc" },
   });
 

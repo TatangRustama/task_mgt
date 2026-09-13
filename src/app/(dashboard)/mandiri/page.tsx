@@ -1,147 +1,73 @@
-export const dynamic = "force-dynamic";
-
+import { Suspense } from "react";
 import Link from "next/link";
-import { FileText, Users, Network, Settings } from "lucide-react";
+import { FileText } from "lucide-react";
+import { AtasanCard } from "@/components/home/AtasanCard";
 import { PerformanceBanner } from "@/components/home/PerformanceBanner";
 import { PageMain } from "@/components/layout/PageMain";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { getVisibleUnitIds } from "@/lib/org";
-import { prisma } from "@/lib/prisma";
+import { getHomeDashboard } from "@/lib/home";
 import { requireUser } from "@/lib/session";
-import { formatRelativeTime, statusLabel, cn } from "@/lib/utils";
+import { formatRelativeTime, statusLabel } from "@/lib/utils";
 
-export default async function MandiriPage() {
-  const user = await requireUser();
-  const firstName = user.name.split(" ")[0];
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
+export const dynamic = "force-dynamic";
 
-  const scope =
-    user.role === "admin"
-      ? {}
-      : user.role === "pimpinan" && user.unitId
-        ? { unitId: { in: await getVisibleUnitIds(user) } }
-        : {
-            OR: [{ assignedToId: user.id }, { createdById: user.id }],
-          };
+function HomeDashboardFallback() {
+  return (
+    <div className="space-y-3" aria-hidden="true">
+      <div className="h-36 animate-pulse rounded-xl bg-surface-container-high" />
+      <div className="h-24 animate-pulse rounded-xl bg-primary/80" />
+      <div className="h-40 animate-pulse rounded-xl border border-outline bg-surface-container-lowest" />
+    </div>
+  );
+}
 
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  const endOfToday = new Date();
-  endOfToday.setHours(23, 59, 59, 999);
-  const openStatuses = ["dikerjakan", "ditolak", "tersedia"] as const;
-
-  const [completedWeek, pending, completedTotal, overdue, dueToday, awaitingReview, unit, recent] =
-    await Promise.all([
-      prisma.task.count({
-        where: {
-          ...scope,
-          status: { in: ["menunggu_approval", "disetujui"] },
-          completedAt: { gte: weekAgo },
-        },
-      }),
-      prisma.task.count({
-        where: {
-          ...scope,
-          status: { in: [...openStatuses] },
-        },
-      }),
-      prisma.task.count({
-        where: {
-          ...scope,
-          status: { in: ["menunggu_approval", "disetujui"] },
-        },
-      }),
-      prisma.task.count({
-        where: {
-          ...scope,
-          status: { in: [...openStatuses] },
-          deadline: { lt: startOfToday },
-        },
-      }),
-      prisma.task.count({
-        where: {
-          ...scope,
-          status: { in: [...openStatuses] },
-          deadline: { gte: startOfToday, lte: endOfToday },
-        },
-      }),
-      prisma.task.count({
-        where: { ...scope, status: "menunggu_approval" },
-      }),
-      user.unitId
-        ? prisma.unit.findUnique({ where: { id: user.unitId }, select: { name: true } })
-        : Promise.resolve(null),
-      prisma.task.findMany({
-        where: scope,
-        orderBy: { updatedAt: "desc" },
-        take: 6,
-        include: { assignedTo: { select: { name: true } } },
-      }),
-    ]);
+async function HomeDashboard() {
+  const user = await requireUser(["personal"]);
+  const data = await getHomeDashboard(user);
 
   return (
-    <PageMain>
+    <div className="space-y-3">
       <PerformanceBanner
-        firstName={firstName}
-        unitName={unit?.name ?? null}
-        completedWeek={completedWeek}
-        pending={pending}
-        completedTotal={completedTotal}
-        overdue={overdue}
-        dueToday={dueToday}
-        awaitingReview={awaitingReview}
+        firstName={data.firstName}
+        unitName={data.unitName}
+        isLeader={data.isLeader}
+        completedWeek={data.completedWeek}
+        pending={data.pending}
+        completedTotal={data.completedTotal}
+        overdue={data.overdue}
+        dueToday={data.dueToday}
+        awaitingReview={data.awaitingReview}
+        awaitingMyReview={data.awaitingMyReview}
+        staleReview={data.staleReview}
+        unpickedPool={data.unpickedPool}
+        reportOverdue={data.reportOverdue}
       />
-
-      <div className="mb-3 grid grid-cols-3 gap-2">
-        {[
-          {
-            href: "/pegawai",
-            title: "Pegawai",
-            icon: Users,
-            tone: "bg-sky-100 text-sky-600",
-          },
-          {
-            href: "/struktur",
-            title: "Struktur",
-            icon: Network,
-            tone: "bg-sky-100 text-sky-700",
-          },
-          {
-            href: "/setting",
-            title: "Setting",
-            icon: Settings,
-            tone: "bg-amber-100 text-amber-600",
-          },
-        ].map(({ href, title, icon: Icon, tone }) => (
-          <Link key={href} href={href} className="min-w-0">
-            <Card className="h-full transition hover:shadow-md">
-              <CardHeader className="flex flex-col items-center gap-1.5 p-2 text-center md:flex-row md:items-center md:p-3 md:text-left">
-                <div className={cn("rounded-md border border-outline p-1.5 md:p-2", tone)}>
-                  <Icon className="h-5 w-5" />
-                </div>
-                <CardTitle className="text-sm md:text-base">{title}</CardTitle>
-              </CardHeader>
-            </Card>
-          </Link>
-        ))}
-      </div>
-
+      <AtasanCard atasan={data.atasan} fromAtasan={data.fromAtasan} />
       <div className="rounded-lg border border-outline bg-surface-container-lowest p-3">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-on-surface">Aktivitas terbaru</h3>
-          <Link href="/board" className="text-sm font-semibold text-secondary hover:underline">
+          <h3 className="text-base font-semibold text-on-surface">
+            {data.isLeader ? "Menunggu persetujuan Anda" : "Aktivitas terbaru"}
+          </h3>
+          <Link
+            href={data.isLeader ? "/pimpinan/persetujuan" : "/board"}
+            className="text-sm font-semibold text-secondary hover:underline"
+          >
             Lihat semua
           </Link>
         </div>
-        {recent.length === 0 ? (
-          <p className="text-sm text-on-surface-variant">Belum ada aktivitas tugas.</p>
+        {data.recent.length === 0 ? (
+          <p className="text-sm text-on-surface-variant">
+            {data.isLeader ? "Tidak ada tugas menunggu persetujuan." : "Belum ada aktivitas tugas."}
+          </p>
         ) : (
           <ul className="space-y-2">
-            {recent.map((task, index) => (
+            {data.recent.map((task, index) => (
               <li
                 key={task.id}
-                className={index === recent.length - 1 ? "flex items-center gap-2" : "flex items-center gap-2 border-b border-outline pb-2"}
+                className={
+                  index === data.recent.length - 1
+                    ? "flex items-center gap-2"
+                    : "flex items-center gap-2 border-b border-outline pb-2"
+                }
               >
                 <div className="shrink-0 rounded-md border border-outline bg-sky-100 p-1.5 text-sky-600">
                   <FileText className="h-5 w-5" />
@@ -156,7 +82,7 @@ export default async function MandiriPage() {
                   </Link>
                   <p className="mt-1 text-sm text-on-surface-variant">
                     {statusLabel(task.status)}
-                    {task.assignedTo ? ` · ${task.assignedTo.name}` : ""}
+                    {task.assignedToName ? ` · ${task.assignedToName}` : ""}
                   </p>
                 </div>
                 <span className="shrink-0 text-xs font-medium text-tertiary">
@@ -167,6 +93,16 @@ export default async function MandiriPage() {
           </ul>
         )}
       </div>
+    </div>
+  );
+}
+
+export default function MandiriPage() {
+  return (
+    <PageMain>
+      <Suspense fallback={<HomeDashboardFallback />}>
+        <HomeDashboard />
+      </Suspense>
     </PageMain>
   );
 }

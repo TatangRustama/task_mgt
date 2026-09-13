@@ -1,5 +1,6 @@
 import type { ReportSummary, ReportTask } from "@/lib/report-types";
 import { formatDate, getMonthYearLabel, statusLabel } from "@/lib/utils";
+import { formatJumlahSatuan } from "@/lib/satuan";
 
 function csvCell(value: string | number | null | undefined) {
   const text = String(value ?? "");
@@ -40,6 +41,8 @@ export function buildTaskReportCsv(options: {
       "Selesai",
       "Deadline",
       "Bintang",
+      "Jumlah",
+      "Satuan",
       "Lokasi",
     ]),
   ];
@@ -56,6 +59,8 @@ export function buildTaskReportCsv(options: {
         formatDate(task.completedAt),
         formatDate(task.deadline),
         task.score ?? "-",
+        task.jumlahIntervensi ?? "-",
+        task.satuan || "-",
         task.address || "-",
       ]),
     );
@@ -83,7 +88,14 @@ export function buildDailyWfhCsv(options: {
   } else {
     options.tasks.forEach((task, index) => {
       const uraian = [task.title, task.description].filter(Boolean).join(" — ");
-      const hasil = [task.notes, task.feedback].filter(Boolean).join(" — ") || "-";
+      const hasil =
+        [
+          formatJumlahSatuan(task.jumlahIntervensi, task.satuan),
+          task.notes,
+          task.feedback,
+        ]
+          .filter(Boolean)
+          .join(" — ") || "-";
       lines.push(
         csvRow([
           index + 1,
@@ -94,6 +106,51 @@ export function buildDailyWfhCsv(options: {
         ]),
       );
     });
+  }
+
+  return `\uFEFF${lines.join("")}`;
+}
+
+export function buildLaporanAssessmentCsv(options: {
+  title: string;
+  unitName: string;
+  insight: string;
+  summary: { completed: number; rejected: number; averageScore: number; onTimePercent: number };
+  rows: Array<{
+    name: string;
+    role: string;
+    insight: string;
+    completed: number;
+    rejected: number;
+    averageScore: number;
+    onTimePercent: number;
+  }>;
+}) {
+  const lines = [
+    csvRow(["Laporan", options.title]),
+    csvRow(["Unit", options.unitName]),
+    csvRow(["Ringkasan", options.insight]),
+    csvRow([]),
+    csvRow(["Disetujui", options.summary.completed]),
+    csvRow(["Ditolak", options.summary.rejected]),
+    csvRow(["Rata bintang", options.summary.averageScore || "-"]),
+    csvRow(["Tepat waktu %", options.summary.onTimePercent]),
+    csvRow([]),
+    csvRow(["Nama", "Peran / unit", "Predikat", "Disetujui", "Ditolak", "Rata bintang", "Tepat waktu %"]),
+  ];
+
+  for (const row of options.rows) {
+    lines.push(
+      csvRow([
+        row.name,
+        row.role,
+        row.insight,
+        row.completed,
+        row.rejected,
+        row.averageScore || "-",
+        row.onTimePercent,
+      ]),
+    );
   }
 
   return `\uFEFF${lines.join("")}`;

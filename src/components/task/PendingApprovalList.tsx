@@ -9,12 +9,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { LocationMapView } from "@/components/map/LocationMapView";
 import { ReviewForm } from "@/components/task/ReviewForm";
 import { cn, formatDateTime } from "@/lib/utils";
+import { formatJumlahSatuan } from "@/lib/satuan";
 
 export type PendingApprovalTask = {
   id: string;
   title: string;
   assignedToName: string | null;
   completedAt: string | null;
+  jumlahIntervensi: number | null;
+  satuan: string | null;
   evidence: {
     notes: string;
     address: string;
@@ -57,6 +60,11 @@ export function PendingApprovalList({ tasks }: { tasks: PendingApprovalTask[] })
                   </Badge>
                 </div>
                 <p className="text-sm text-on-surface-variant">{task.assignedToName}</p>
+                {formatJumlahSatuan(task.jumlahIntervensi, task.satuan) ? (
+                  <p className="text-xs text-secondary">
+                    {formatJumlahSatuan(task.jumlahIntervensi, task.satuan)}
+                  </p>
+                ) : null}
                 <p className="text-xs text-tertiary">Selesai: {formatDateTime(task.completedAt)}</p>
               </div>
               <ChevronDown

@@ -35,8 +35,8 @@ export async function POST() {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (user.role !== "admin") {
-    return NextResponse.json({ error: "Hanya admin yang dapat sinkronisasi" }, { status: 403 });
+  if (user.role !== "super_admin") {
+    return NextResponse.json({ error: "Hanya super admin yang dapat sinkronisasi" }, { status: 403 });
   }
   if (!isSimpegConfigured()) {
     return NextResponse.json({ error: "SIMPEG_API_TOKEN belum diatur" }, { status: 500 });

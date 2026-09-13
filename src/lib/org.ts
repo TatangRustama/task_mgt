@@ -10,6 +10,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import type { SessionUser } from "@/lib/session";
 import type { AtasanTaskNotice } from "@/lib/notification-types";
+import { isPrivilegedRole, isSuperAdmin } from "@/lib/roles";
 
 export const jabatanLabel: Record<Jabatan, string> = {
   kepala_kantor: "Kepala Kantor",
@@ -69,7 +70,7 @@ export function mapPegawaiJabatan(
 }
 
 export function isUnitLeader(user: OrgUser) {
-  if (user.role === "admin") return true;
+  if (isSuperAdmin(user.role)) return true;
   if (user.unit?.pimpinanId && user.unit.pimpinanId === user.id) return true;
   const jabatan = effectiveJabatan(user);
   return (
@@ -80,20 +81,15 @@ export function isUnitLeader(user: OrgUser) {
 }
 
 export function effectiveJabatan(user: Pick<OrgUser, "role" | "jabatan">): Jabatan | null {
-  if (user.jabatan) return user.jabatan;
-  if (user.role === "pimpinan") return "kepala_bidang";
-  if (user.role === "pegawai") return "pelaksana";
-  return null;
+  return user.jabatan ?? null;
 }
 
-export function roleFromJabatan(jabatan: Jabatan | null): Role {
-  if (!jabatan) return "admin";
-  if (jabatan === "pelaksana") return "pegawai";
-  return "pimpinan";
+export function roleFromJabatan(_jabatan: Jabatan | null): Role {
+  return "personal";
 }
 
 export function canDelegate(user: OrgUser) {
-  return user.role === "admin" || isUnitLeader(user);
+  return isSuperAdmin(user.role) || isUnitLeader(user);
 }
 
 export function canUsePoolAssignment(user: OrgUser) {
@@ -117,34 +113,54 @@ export async function getDbOrgUser(userId: string) {
 }
 
 export async function getDescendantUnitIds(rootId: string): Promise<string[]> {
-  const ids = [rootId];
-  let frontier = [rootId];
-
-  while (frontier.length > 0) {
-    const children = await prisma.unit.findMany({
-      where: { parentId: { in: frontier } },
-      select: { id: true },
-    });
-    frontier = children.map((child) => child.id).filter((id) => !ids.includes(id));
-    ids.push(...frontier);
+  const units = await prisma.unit.findMany({ select: { id: true, parentId: true } });
+  const children = new Map<string, string[]>();
+  for (const unit of units) {
+    if (!unit.parentId) continue;
+    const list = children.get(unit.parentId);
+    if (list) list.push(unit.id);
+    else children.set(unit.parentId, [unit.id]);
   }
 
+  const ids = [rootId];
+  const stack = [rootId];
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    for (const child of children.get(current) ?? []) {
+      if (ids.includes(child)) continue;
+      ids.push(child);
+      stack.push(child);
+    }
+  }
   return ids;
 }
 
-export async function getVisibleUnitIds(user: Pick<SessionUser, "id" | "role" | "unitId">) {
-  if (user.role === "admin") {
+export async function getOrgScope(user: Pick<SessionUser, "id" | "role" | "unitId" | "jabatan">) {
+  const orgUser = await getDbOrgUser(user.id);
+  const isLeader = Boolean(orgUser && (isSuperAdmin(user.role) || isUnitLeader(orgUser)));
+
+  if (isSuperAdmin(user.role)) {
     const units = await prisma.unit.findMany({ select: { id: true } });
-    return units.map((unit) => unit.id);
+    return {
+      orgUser,
+      isLeader: true,
+      visibleUnitIds: units.map((unit) => unit.id),
+    };
   }
 
-  if (!user.unitId) return [];
-
-  if (user.role === "pimpinan") {
-    return getDescendantUnitIds(user.unitId);
+  if (!user.unitId) {
+    return { orgUser, isLeader, visibleUnitIds: [] as string[] };
   }
 
-  return [user.unitId];
+  return {
+    orgUser,
+    isLeader,
+    visibleUnitIds: isLeader ? await getDescendantUnitIds(user.unitId) : [user.unitId],
+  };
+}
+
+export async function getVisibleUnitIds(user: Pick<SessionUser, "id" | "role" | "unitId" | "jabatan">) {
+  return (await getOrgScope(user)).visibleUnitIds;
 }
 
 function toDirectReport(person: {
@@ -164,7 +180,7 @@ function toDirectReport(person: {
 }
 
 export async function getDirectReports(user: OrgUser): Promise<DirectReport[]> {
-  if (user.role === "admin") return [];
+  if (isPrivilegedRole(user.role)) return [];
   if (!user.unitId || !isUnitLeader(user)) return [];
 
   const [sameUnit, childUnits] = await Promise.all([
@@ -172,7 +188,7 @@ export async function getDirectReports(user: OrgUser): Promise<DirectReport[]> {
       where: {
         unitId: user.unitId,
         id: { not: user.id },
-        role: { not: "admin" },
+        role: "personal",
       },
       select: {
         id: true,
@@ -198,7 +214,7 @@ export async function getDirectReports(user: OrgUser): Promise<DirectReport[]> {
           },
         },
         users: {
-          where: { role: { not: "admin" } },
+          where: { role: "personal" },
           select: {
             id: true,
             name: true,
@@ -311,20 +327,30 @@ type TaskAccess = Pick<
   "unitId" | "assignedToId" | "createdById" | "assignmentMode" | "status" | "source"
 >;
 
-export async function canSeeTask(user: SessionUser, task: TaskAccess) {
-  if (user.role === "admin") return true;
+export function canSeeTaskWithScope(
+  user: Pick<SessionUser, "id" | "role" | "unitId">,
+  task: TaskAccess,
+  scope: { visibleUnitIds: string[]; isLeader: boolean },
+) {
+  if (isSuperAdmin(user.role)) return true;
   if (task.assignedToId === user.id || task.createdById === user.id) return true;
-
-  const visibleUnitIds = await getVisibleUnitIds(user);
-  if (!visibleUnitIds.includes(task.unitId)) return false;
-
-  if (user.role === "pimpinan") return true;
+  if (!scope.visibleUnitIds.includes(task.unitId)) return false;
+  if (scope.isLeader) return true;
 
   return (
     task.assignmentMode === "kolam" &&
     task.status === "tersedia" &&
     task.unitId === user.unitId
   );
+}
+
+export async function canSeeTask(user: SessionUser, task: TaskAccess) {
+  if (isSuperAdmin(user.role) || task.assignedToId === user.id || task.createdById === user.id) {
+    return true;
+  }
+
+  const { visibleUnitIds, isLeader } = await getOrgScope(user);
+  return canSeeTaskWithScope(user, task, { visibleUnitIds, isLeader });
 }
 
 export function canPickupPoolTask(user: SessionUser, task: TaskAccess) {
@@ -346,7 +372,7 @@ export function canManagePostedTersediaTask(
 
 export async function canReviewTask(user: OrgUser, assignedToId: string | null) {
   if (!assignedToId) return false;
-  if (user.role === "admin") return true;
+  if (isSuperAdmin(user.role)) return true;
   const reportIds = await getDirectReportIds(user);
   return reportIds.includes(assignedToId);
 }

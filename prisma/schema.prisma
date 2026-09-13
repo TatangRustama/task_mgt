@@ -7,9 +7,9 @@ datasource db {
 }
 
 enum Role {
+  super_admin
   admin
-  pimpinan
-  pegawai
+  personal
 }
 
 enum Jabatan {
@@ -102,7 +102,7 @@ model User {
   nip           String    @unique
   email         String    @unique
   passwordHash  String
-  role          Role      @default(pegawai)
+  role          Role      @default(personal)
   jabatan       Jabatan?
   unitId        String?
   createdAt     DateTime  @default(now())
@@ -130,9 +130,11 @@ model Task {
   assignmentMode AssignmentMode @default(ditunjuk)
   status         TaskStatus     @default(tersedia)
   priority       TaskPriority   @default(sedang)
-  title          String
-  description    String?
-  deadline       DateTime?
+  title            String
+  description      String?
+  jumlahIntervensi Int?
+  satuan           String?
+  deadline         DateTime?
   completedAt    DateTime?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
@@ -144,7 +146,11 @@ model Task {
   rating         TaskRating?
 
   @@index([unitId, status])
+  @@index([unitId, createdAt])
+  @@index([unitId, completedAt])
   @@index([assignedToId])
+  @@index([assignedToId, status])
+  @@index([createdById])
   @@index([assignmentMode, status])
 }
 

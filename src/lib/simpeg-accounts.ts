@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { Jabatan, Role, UnitType } from "@prisma/client";
-import { mapPegawaiJabatan, roleFromJabatan } from "@/lib/org";
+import { mapPegawaiJabatan } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 
 const PASSWORD_ROUNDS = 8;
@@ -9,6 +9,7 @@ const DEMO_EMAIL_SUFFIX = "@demo.go.id";
 type PegawaiAccountSource = {
   id: string;
   nip: string | null;
+  nik?: string | null;
   name: string;
   email: string | null;
   jabatanNama: string | null;
@@ -24,7 +25,7 @@ function chunk<T>(items: T[], size: number) {
 }
 
 function isProtectedUser(user: { role: Role; email: string }) {
-  return user.role === "admin" || user.email.endsWith(DEMO_EMAIL_SUFFIX);
+  return user.role === "super_admin" || user.role === "admin" || user.email.endsWith(DEMO_EMAIL_SUFFIX);
 }
 
 function emailForPegawai(nip: string, preferred: string | null, taken: Set<string>) {
@@ -49,7 +50,7 @@ export async function ensureUserFromPegawai(
   pegawai: PegawaiAccountSource,
   unitTypes: Map<string, UnitType> = new Map(),
 ) {
-  const nip = pegawai.nip?.trim();
+  const nip = pegawai.nip?.trim() || pegawai.nik?.trim();
   if (!nip) return null;
 
   const existing = await prisma.user.findUnique({ where: { nip } });
@@ -59,7 +60,7 @@ export async function ensureUserFromPegawai(
 
   const type = await unitTypeById(pegawai.unitId, unitTypes);
   const jabatan = mapPegawaiJabatan(pegawai.jabatanNama, type);
-  const role = roleFromJabatan(jabatan);
+  const role = "personal";
   const existingByEmail = pegawai.email
     ? await prisma.user.findUnique({ where: { email: pegawai.email.trim().toLowerCase() } })
     : null;
@@ -142,7 +143,7 @@ export async function syncPegawaiAccounts(onProgress?: (message: string, current
         }
 
         const jabatan = mapPegawaiJabatan(row.jabatanNama, row.unitId ? unitTypes.get(row.unitId) : null);
-        const role = roleFromJabatan(jabatan);
+        const role = "personal";
 
         if (existing) {
           await prisma.user.update({
@@ -204,7 +205,7 @@ export async function assignUnitLeaders() {
   const members = await prisma.user.findMany({
     where: {
       unitId: { in: units.map((unit) => unit.id) },
-      role: { not: "admin" },
+      role: { notIn: ["super_admin", "admin"] },
     },
     select: { id: true, unitId: true, jabatan: true },
   });

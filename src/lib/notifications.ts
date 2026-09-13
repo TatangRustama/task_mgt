@@ -1,56 +1,57 @@
 import { Role } from "@prisma/client";
-import { groupKinerja, monthAsOfDate } from "@/lib/kinerja";
 import { kinerjaHref } from "@/lib/laporan-url";
-import { getDbOrgUser, getDirectReportIds, getNewTasksFromAtasan, type OrgUser } from "@/lib/org";
+import { getMonitorBoard } from "@/lib/monitor";
+import { personMatchesFocus, unitMatchesFocus } from "@/lib/monitor-types";
+import { getDbOrgUser, getDescendantUnitIds, getDirectReportIds, getNewTasksFromAtasan, isUnitLeader, type OrgUser } from "@/lib/org";
 import type { NoticeSection, UserNotifications } from "@/lib/notification-types";
-import { getMonthlyCalendar, getPegawaiBreakdown } from "@/lib/reports";
 import { prisma } from "@/lib/prisma";
 import { formatISODate } from "@/lib/utils";
+import { isAppAdmin, isSuperAdmin } from "@/lib/roles";
 
 function sectionTotal(sections: NoticeSection[]) {
   return sections.reduce((sum, section) => sum + section.count, 0);
 }
 
-async function getPendingApprovalSection(user: OrgUser, role: Role): Promise<NoticeSection> {
-  const reportIds = role === "admin" ? null : await getDirectReportIds(user);
+async function getPendingApprovalSection(reportIds: string[] | null): Promise<NoticeSection> {
+  const empty: NoticeSection = {
+    id: "pending-approval",
+    title: "Menunggu persetujuan",
+    count: 0,
+    href: "/pimpinan/persetujuan",
+    items: [],
+  };
+
   const where =
-    role === "admin"
+    reportIds === null
       ? { status: "menunggu_approval" as const }
-      : reportIds && reportIds.length > 0
+      : reportIds.length > 0
         ? { status: "menunggu_approval" as const, assignedToId: { in: reportIds } }
         : null;
 
-  if (!where) {
-    return {
-      id: "pending-approval",
-      title: "Menunggu persetujuan",
-      count: 0,
-      href: "/pimpinan/persetujuan",
-      items: [],
-    };
-  }
+  if (!where) return empty;
 
-  const [count, tasks] = await Promise.all([
-    prisma.task.count({ where }),
-    prisma.task.findMany({
-      where,
-      orderBy: { completedAt: "desc" },
-      take: 6,
-      select: {
-        id: true,
-        title: true,
-        completedAt: true,
-        assignedTo: { select: { name: true } },
-      },
-    }),
-  ]);
+  const tasks = await prisma.task.findMany({
+    where,
+    orderBy: { completedAt: "desc" },
+    take: 7,
+    select: {
+      id: true,
+      title: true,
+      completedAt: true,
+      assignedTo: { select: { name: true } },
+    },
+  });
+
+  const extra = tasks.length > 6;
+  const items = extra ? tasks.slice(0, 6) : tasks;
+  const count = extra
+    ? await prisma.task.count({ where })
+    : tasks.length;
 
   return {
-    id: "pending-approval",
-    title: "Menunggu persetujuan",
+    ...empty,
     count,
-    href: "/pimpinan/persetujuan",
-    items: tasks.map((task) => ({
+    items: items.map((task) => ({
       id: task.id,
       title: task.title,
       subtitle: task.assignedTo?.name || "Pegawai",
@@ -60,79 +61,100 @@ async function getPendingApprovalSection(user: OrgUser, role: Role): Promise<Not
   };
 }
 
-async function getPerhatianSection(user: OrgUser, role: Role): Promise<NoticeSection> {
+async function getPerhatianSection(user: OrgUser): Promise<NoticeSection> {
   const now = new Date();
-  const month = now.getMonth() + 1;
-  const year = now.getFullYear();
-  const start = new Date(year, month - 1, 1);
-  const end = new Date(year, month, 1);
-  const date = formatISODate(now);
-  const href = kinerjaHref({ view: "bulanan", month, year, date });
-
-  const monthly = await getMonthlyCalendar({
-    role,
-    userId: user.id,
-    unitId: user.unitId,
-    month,
-    year,
+  const href = kinerjaHref({
+    view: "pantau",
+    month: now.getMonth() + 1,
+    year: now.getFullYear(),
+    date: formatISODate(now),
   });
-
-  if (!monthly) {
-    return {
-      id: "perhatian",
-      title: "Pegawai perlu perhatian",
-      count: 0,
-      href,
-      items: [],
-    };
-  }
-
-  const people = await getPegawaiBreakdown(
-    monthly.tasks,
-    { role, userId: user.id, unitId: user.unitId },
-    start,
-    end,
-  );
-  const grouped = groupKinerja(people, monthAsOfDate(month, year), "bulanan");
-
-  return {
+  const empty: NoticeSection = {
     id: "perhatian",
     title: "Pegawai perlu perhatian",
-    count: grouped.perhatian.length,
+    count: 0,
     href,
-    items: grouped.perhatian.slice(0, 6).map((item) => ({
-      id: item.person.id,
-      title: item.person.name,
-      subtitle: item.eval.insight,
+    items: [],
+  };
+
+  if (!user.unitId) return empty;
+
+  const [visibleUnitIds, directReportIds] = await Promise.all([
+    getDescendantUnitIds(user.unitId),
+    getDirectReportIds(user),
+  ]);
+  const board = await getMonitorBoard({
+    viewerId: user.id,
+    rootUnitId: user.unitId,
+    visibleUnitIds,
+    directReportIds,
+  });
+  if (!board) return empty;
+
+  const perhatianPeople = board.people.filter((person) => personMatchesFocus(person, "all"));
+  const perhatianUnits = board.childUnits.filter((unit) => unitMatchesFocus(unit, "all"));
+  const items = [
+    ...perhatianUnits.map((unit) => ({
+      id: `unit-${unit.id}`,
+      title: unit.leaderName || unit.name,
+      subtitle: unit.insight,
+      href: kinerjaHref({
+        view: "pantau",
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+        date: formatISODate(now),
+        unit: unit.id,
+      }),
+      at: now.toISOString(),
+    })),
+    ...perhatianPeople.map((person) => ({
+      id: person.id,
+      title: person.name,
+      subtitle: person.kinds.includes("overdue")
+        ? `${person.overdueCount} terlambat`
+        : person.kinds.includes("rejected")
+          ? `${person.rejectedCount} ditolak`
+          : person.isIdle
+            ? "Idle"
+            : person.kinds.includes("review")
+              ? `${person.reviewStaleCount} menunggu review`
+              : person.unitName || "Perlu perhatian",
       href,
       at: now.toISOString(),
     })),
+  ];
+
+  return {
+    ...empty,
+    title: "Perlu perhatian",
+    count: items.length,
+    items: items.slice(0, 6),
   };
 }
 
 async function getRejectedSection(userId: string): Promise<NoticeSection> {
   const where = { assignedToId: userId, status: "ditolak" as const };
-  const [count, tasks] = await Promise.all([
-    prisma.task.count({ where }),
-    prisma.task.findMany({
-      where,
-      orderBy: { updatedAt: "desc" },
-      take: 6,
-      select: {
-        id: true,
-        title: true,
-        updatedAt: true,
-        review: { select: { feedback: true } },
-      },
-    }),
-  ]);
+  const tasks = await prisma.task.findMany({
+    where,
+    orderBy: { updatedAt: "desc" },
+    take: 7,
+    select: {
+      id: true,
+      title: true,
+      updatedAt: true,
+      review: { select: { feedback: true } },
+    },
+  });
+  const extra = tasks.length > 6;
+  const items = extra ? tasks.slice(0, 6) : tasks;
+  const count = extra ? await prisma.task.count({ where }) : tasks.length;
 
   return {
     id: "rejected",
     title: "Perlu revisi",
     count,
     href: "/board",
-    items: tasks.map((task) => ({
+    items: items.map((task) => ({
       id: task.id,
       title: task.title,
       subtitle: task.review?.feedback ? `Revisi: ${task.review.feedback}` : "Tugas ditolak pimpinan",
@@ -162,13 +184,17 @@ function mapAtasanSection(
 }
 
 export async function getUserNotifications(userId: string, role: Role): Promise<UserNotifications> {
+  if (isSuperAdmin(role) || isAppAdmin(role)) {
+    return { count: 0, sections: [] };
+  }
   const orgUser = await getDbOrgUser(userId);
-  const isLeader = role === "admin" || role === "pimpinan";
+  const isLeader = orgUser ? isUnitLeader(orgUser) : false;
 
   if (isLeader && orgUser) {
+    const reportIds = await getDirectReportIds(orgUser);
     const [pending, perhatian] = await Promise.all([
-      getPendingApprovalSection(orgUser, role),
-      getPerhatianSection(orgUser, role),
+      getPendingApprovalSection(reportIds),
+      getPerhatianSection(orgUser),
     ]);
     const sections = [pending, perhatian];
     return { count: sectionTotal(sections), sections };

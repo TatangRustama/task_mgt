@@ -2,14 +2,15 @@ import { NextResponse } from "next/server";
 import { AssignmentMode, TaskPriority, TaskSource } from "@prisma/client";
 import {
   canDelegate,
-  canSeeTask,
+  canSeeTaskWithScope,
   canUsePoolAssignment,
   getDbOrgUser,
   getDirectReports,
-  getVisibleUnitIds,
+  getOrgScope,
   mustAssignNamed,
 } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
+import { parseJumlahSatuan } from "@/lib/satuan";
 import { getCurrentUser } from "@/lib/session";
 
 export async function GET() {
@@ -18,7 +19,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const visibleUnitIds = await getVisibleUnitIds(user);
+  const { visibleUnitIds, isLeader } = await getOrgScope(user);
   const tasks = await prisma.task.findMany({
     where: {
       OR: [
@@ -34,10 +35,12 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  const visible = [];
-  for (const task of tasks) {
-    if (await canSeeTask(user, task)) visible.push(task);
-  }
+  const visible = tasks.filter((task) =>
+    canSeeTaskWithScope(user, task, {
+      visibleUnitIds,
+      isLeader,
+    }),
+  );
 
   return NextResponse.json(visible);
 }
@@ -61,10 +64,19 @@ export async function POST(request: Request) {
   const source = (body.source || "mandiri") as TaskSource;
   const assignmentMode = (body.assignmentMode || "ditunjuk") as AssignmentMode;
   const assignedToId = body.assignedToId ? String(body.assignedToId) : null;
+  const parsedJumlah = parseJumlahSatuan(body.jumlahIntervensi, body.satuan, false);
 
   if (!title || title.length > 60) {
     return NextResponse.json({ error: "Judul wajib diisi (max 60 karakter)" }, { status: 400 });
   }
+  if (!parsedJumlah.ok) {
+    return NextResponse.json({ error: parsedJumlah.error }, { status: 400 });
+  }
+
+  const jumlahSatuan = {
+    jumlahIntervensi: parsedJumlah.jumlahIntervensi,
+    satuan: parsedJumlah.satuan,
+  };
 
   if (source === "mandiri") {
     const task = await prisma.task.create({
@@ -79,6 +91,7 @@ export async function POST(request: Request) {
         createdById: user.id,
         status: "dikerjakan",
         assignedToId: user.id,
+        ...jumlahSatuan,
       },
     });
     return NextResponse.json(task, { status: 201 });
@@ -108,6 +121,7 @@ export async function POST(request: Request) {
         createdById: user.id,
         status: "tersedia",
         assignedToId: null,
+        ...jumlahSatuan,
       },
     });
     return NextResponse.json(task, { status: 201 });
@@ -145,6 +159,7 @@ export async function POST(request: Request) {
       createdById: user.id,
       status: "dikerjakan",
       assignedToId: assignee.id,
+      ...jumlahSatuan,
     },
   });
 

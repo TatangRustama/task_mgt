@@ -14,6 +14,8 @@ export type PostedTaskFields = {
   description: string | null;
   deadline: Date | string | null;
   priority: string;
+  jumlahIntervensi?: number | null;
+  satuan?: string | null;
 };
 
 export function ManagePostedTaskActions({

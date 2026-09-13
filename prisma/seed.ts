@@ -73,13 +73,37 @@ async function main() {
     },
   });
 
+  await prisma.user.updateMany({
+    where: { role: "super_admin", NOT: { email: "superadmin@kinerja.local" } },
+    data: {
+      email: "superadmin@kinerja.local",
+      nip: "superadmin",
+      name: "Super Admin",
+      jabatan: null,
+      unitId: null,
+    },
+  });
+
   await prisma.user.upsert({
-    where: { email: "admin@demo.go.id" },
+    where: { email: "superadmin@kinerja.local" },
+    update: { role: "super_admin", nip: "superadmin", jabatan: null, unitId: null, name: "Super Admin" },
+    create: {
+      name: "Super Admin",
+      nip: "superadmin",
+      email: "superadmin@kinerja.local",
+      passwordHash,
+      role: "super_admin",
+      jabatan: null,
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: "hr@demo.go.id" },
     update: { role: "admin", jabatan: null, unitId: null },
     create: {
-      name: "Admin Instansi",
-      nip: "199001012020011001",
-      email: "admin@demo.go.id",
+      name: "Admin Kepegawaian",
+      nip: "199101012021011001",
+      email: "hr@demo.go.id",
       passwordHash,
       role: "admin",
       jabatan: null,
@@ -90,7 +114,7 @@ async function main() {
     where: { email: "kepala@demo.go.id" },
     update: {
       unitId: kantor.id,
-      role: "pimpinan",
+      role: "personal",
       jabatan: "kepala_kantor",
     },
     create: {
@@ -98,7 +122,7 @@ async function main() {
       nip: "197001011995011001",
       email: "kepala@demo.go.id",
       passwordHash,
-      role: "pimpinan",
+      role: "personal",
       jabatan: "kepala_kantor",
       unitId: kantor.id,
     },
@@ -108,7 +132,7 @@ async function main() {
     where: { email: "pimpinan@demo.go.id" },
     update: {
       unitId: bidang.id,
-      role: "pimpinan",
+      role: "personal",
       jabatan: "kepala_bidang",
     },
     create: {
@@ -116,7 +140,7 @@ async function main() {
       nip: "198505152010011002",
       email: "pimpinan@demo.go.id",
       passwordHash,
-      role: "pimpinan",
+      role: "personal",
       jabatan: "kepala_bidang",
       unitId: bidang.id,
     },
@@ -126,7 +150,7 @@ async function main() {
     where: { email: "kasubbid@demo.go.id" },
     update: {
       unitId: subbid.id,
-      role: "pimpinan",
+      role: "personal",
       jabatan: "kepala_sub_bidang",
     },
     create: {
@@ -134,7 +158,7 @@ async function main() {
       nip: "198808082012012004",
       email: "kasubbid@demo.go.id",
       passwordHash,
-      role: "pimpinan",
+      role: "personal",
       jabatan: "kepala_sub_bidang",
       unitId: subbid.id,
     },
@@ -144,7 +168,7 @@ async function main() {
     where: { email: "pegawai@demo.go.id" },
     update: {
       unitId: subbid.id,
-      role: "pegawai",
+      role: "personal",
       jabatan: "pelaksana",
     },
     create: {
@@ -152,7 +176,7 @@ async function main() {
       nip: "199203032019012003",
       email: "pegawai@demo.go.id",
       passwordHash,
-      role: "pegawai",
+      role: "personal",
       jabatan: "pelaksana",
       unitId: subbid.id,
     },
@@ -272,6 +296,100 @@ async function main() {
     });
   }
 
+  const overdueDemo = await prisma.task.findFirst({
+    where: { title: "Kirim rekap pengaduan mingguan" },
+  });
+  if (!overdueDemo) {
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    await prisma.task.create({
+      data: {
+        title: "Kirim rekap pengaduan mingguan",
+        description: "Rekap pengaduan masyarakat minggu lalu belum dikirim",
+        source: "delegasi",
+        assignmentMode: "ditunjuk",
+        status: "dikerjakan",
+        priority: "tinggi",
+        unitId: subbid.id,
+        createdById: kasubbid.id,
+        assignedToId: pegawai.id,
+        deadline: twoDaysAgo,
+      },
+    });
+    await prisma.task.create({
+      data: {
+        title: "Perbaiki data duplikat antrian",
+        description: "Koreksi data antrian yang tertolak atasan",
+        source: "delegasi",
+        assignmentMode: "ditunjuk",
+        status: "ditolak",
+        priority: "sedang",
+        unitId: subbid.id,
+        createdById: kasubbid.id,
+        assignedToId: pegawai.id,
+        completedAt: threeDaysAgo,
+        review: {
+          create: {
+            reviewedById: kasubbid.id,
+            decision: "ditolak",
+            feedback: "Masih ada nomor antrian ganda. Perbaiki lalu kirim ulang.",
+            reviewedAt: threeDaysAgo,
+          },
+        },
+      },
+    });
+    await prisma.task.create({
+      data: {
+        title: "Laporan kunjungan lapangan",
+        description: "Laporan kunjungan sudah dilengkapi bukti, menunggu persetujuan",
+        source: "mandiri",
+        assignmentMode: "ditunjuk",
+        status: "menunggu_approval",
+        priority: "sedang",
+        unitId: subbid.id,
+        createdById: pegawai.id,
+        assignedToId: pegawai.id,
+        completedAt: twoDaysAgo,
+        evidence: {
+          create: {
+            photoUrls: [],
+            address: "Kantor Dinas Contoh",
+            notes: "Kunjungan selesai, menunggu review atasan.",
+          },
+        },
+      },
+    });
+    await prisma.task.create({
+      data: {
+        title: "Update papan informasi loket",
+        description: "Tugas selesai dengan hasil di bawah ekspektasi",
+        source: "delegasi",
+        assignmentMode: "ditunjuk",
+        status: "disetujui",
+        priority: "rendah",
+        unitId: subbid.id,
+        createdById: kasubbid.id,
+        assignedToId: pegawai.id,
+        completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        deadline: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+        review: {
+          create: {
+            reviewedById: kasubbid.id,
+            decision: "disetujui",
+            score: 1,
+            feedback: "Informasi terpasang, tetapi masih ada jadwal yang salah.",
+          },
+        },
+        rating: {
+          create: {
+            ratedById: kasubbid.id,
+            stars: 1,
+          },
+        },
+      },
+    });
+  }
+
   const asnDirectory = [
     {
       nip: "199001012020011001",
@@ -314,11 +432,12 @@ async function main() {
   }
 
   console.log("Seed selesai:");
-  console.log("- admin@demo.go.id / password123");
-  console.log("- kepala@demo.go.id / password123 (Kepala Kantor)");
-  console.log("- pimpinan@demo.go.id / password123 (Kepala Bidang)");
-  console.log("- kasubbid@demo.go.id / password123 (Kepala Sub Bidang)");
-  console.log("- pegawai@demo.go.id / password123 (Staf Pelaksana)");
+  console.log("- superadmin / password123 (Super Admin)");
+  console.log("- hr@demo.go.id / password123 (Admin Non-ASN)");
+  console.log("- kepala@demo.go.id / password123 (Personal · Kepala Kantor)");
+  console.log("- pimpinan@demo.go.id / password123 (Personal · Kepala Bidang)");
+  console.log("- kasubbid@demo.go.id / password123 (Personal · Kepala Sub Bidang)");
+  console.log("- pegawai@demo.go.id / password123 (Personal · Staf Pelaksana)");
 }
 
 main()

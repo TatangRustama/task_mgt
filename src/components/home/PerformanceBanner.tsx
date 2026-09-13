@@ -6,18 +6,24 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Clock3,
+  Inbox,
 } from "lucide-react";
 import { formatLongDate } from "@/lib/utils";
 
 type PerformanceBannerProps = {
   firstName: string;
   unitName: string | null;
+  isLeader?: boolean;
   completedWeek: number;
   pending: number;
   completedTotal: number;
   overdue: number;
   dueToday: number;
   awaitingReview: number;
+  awaitingMyReview?: number;
+  staleReview?: number;
+  unpickedPool?: number;
+  reportOverdue?: number;
 };
 
 function greetingByHour(date = new Date()) {
@@ -28,7 +34,7 @@ function greetingByHour(date = new Date()) {
   return "Selamat malam";
 }
 
-function insightText({
+function staffInsight({
   overdue,
   dueToday,
   awaitingReview,
@@ -39,6 +45,27 @@ function insightText({
   if (awaitingReview > 0) return `${awaitingReview} tugas menunggu persetujuan.`;
   if (pending > 0) return `${pending} tugas masih berjalan. Tetap konsisten.`;
   return "Semua tugas terkelola dengan baik. Pertahankan ritme ini.";
+}
+
+function leaderInsight({
+  awaitingMyReview,
+  staleReview,
+  reportOverdue,
+  unpickedPool,
+}: {
+  awaitingMyReview: number;
+  staleReview: number;
+  reportOverdue: number;
+  unpickedPool: number;
+}) {
+  const parts = [
+    awaitingMyReview ? `${awaitingMyReview} menunggu persetujuan` : null,
+    staleReview ? `${staleReview} review >24 jam` : null,
+    reportOverdue ? `${reportOverdue} terlambat di bawahan` : null,
+    unpickedPool ? `${unpickedPool} kolam belum diambil` : null,
+  ].filter(Boolean);
+  if (parts.length === 0) return "Antrian Anda kosong. Unit berjalan lancar.";
+  return parts.join(" · ");
 }
 
 function CapaianRing({ percent }: { percent: number }) {
@@ -87,34 +114,48 @@ function CapaianRing({ percent }: { percent: number }) {
 export function PerformanceBanner({
   firstName,
   unitName,
+  isLeader = false,
   completedWeek,
   pending,
   completedTotal,
   overdue,
   dueToday,
   awaitingReview,
+  awaitingMyReview = 0,
+  staleReview = 0,
+  unpickedPool = 0,
+  reportOverdue = 0,
 }: PerformanceBannerProps) {
   const activeTotal = completedTotal + pending;
   const percent = activeTotal === 0 ? 0 : Math.round((completedTotal / activeTotal) * 100);
   const doneShare = activeTotal === 0 ? 0 : (completedTotal / activeTotal) * 100;
   const today = new Date();
+  const leaderQueue = awaitingMyReview + staleReview + reportOverdue + unpickedPool;
 
-  const stats = [
+  const staffStats = [
     { label: "Minggu ini", value: completedWeek, icon: CalendarDays },
     { label: "Pending", value: pending, icon: Clock3 },
     { label: "Selesai", value: completedTotal, icon: CheckCircle2 },
   ];
+  const leaderStats = [
+    { label: "Persetujuan", value: awaitingMyReview, icon: ClipboardCheck },
+    { label: "Terlambat", value: reportOverdue, icon: CalendarClock },
+    { label: "Kolam", value: unpickedPool, icon: Inbox },
+  ];
+  const stats = isLeader ? leaderStats : staffStats;
 
-  const chips = [
-    dueToday > 0 && {
-      icon: CalendarClock,
-      label: `${dueToday} tempo hari ini`,
-    },
-    awaitingReview > 0 && {
-      icon: ClipboardCheck,
-      label: `${awaitingReview} review`,
-    },
-  ].filter(Boolean) as { icon: typeof CalendarClock; label: string }[];
+  const chips = isLeader
+    ? ([
+        staleReview > 0 && { icon: Clock3, label: `${staleReview} review lambat` },
+        awaitingMyReview > 0 && { icon: ClipboardCheck, label: `${awaitingMyReview} antrian` },
+      ].filter(Boolean) as { icon: typeof CalendarClock; label: string }[])
+    : ([
+        dueToday > 0 && { icon: CalendarClock, label: `${dueToday} tempo hari ini` },
+        awaitingReview > 0 && { icon: ClipboardCheck, label: `${awaitingReview} review` },
+      ].filter(Boolean) as { icon: typeof CalendarClock; label: string }[]);
+
+  const ctaHref = isLeader ? (awaitingMyReview > 0 ? "/pimpinan/persetujuan" : "/pimpinan") : "/board";
+  const ctaLabel = isLeader ? (awaitingMyReview > 0 ? "Buka persetujuan" : "Buka pantau") : "Lihat detail tugas";
 
   return (
     <section className="relative mb-3 overflow-hidden rounded-lg border border-accent bg-primary p-3 text-white md:p-4">
@@ -127,7 +168,7 @@ export function PerformanceBanner({
             Halo, {firstName}!
           </h2>
           <p className="mt-0.5 text-xs text-white/85 md:text-sm">
-            {greetingByHour(today)} · Ringkasan kinerja hari ini
+            {greetingByHour(today)} · {isLeader ? "Antrian pimpinan hari ini" : "Ringkasan kinerja hari ini"}
           </p>
           {unitName ? (
             <div className="mt-2 flex flex-wrap gap-1">
@@ -137,7 +178,14 @@ export function PerformanceBanner({
             </div>
           ) : null}
         </div>
-        <CapaianRing percent={percent} />
+        {isLeader ? (
+          <div className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-full border-4 border-white/30 text-center">
+            <span className="text-lg font-bold leading-none tracking-tight text-white">{leaderQueue}</span>
+            <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/80">Antrian</span>
+          </div>
+        ) : (
+          <CapaianRing percent={percent} />
+        )}
       </div>
 
       <div className="relative z-10 mt-3 grid grid-cols-3 gap-1.5">
@@ -160,11 +208,15 @@ export function PerformanceBanner({
       </div>
 
       <div className="relative z-10 mt-2">
-        <div className="flex h-1 overflow-hidden rounded-full bg-white/20">
-          <span className="h-full rounded-full bg-white" style={{ width: `${doneShare}%` }} />
-        </div>
-        <p className="mt-1.5 text-[11px] leading-4 text-white/85">
-          {insightText({ overdue, dueToday, awaitingReview, pending })}
+        {isLeader ? null : (
+          <div className="flex h-1 overflow-hidden rounded-full bg-white/20">
+            <span className="h-full rounded-full bg-white" style={{ width: `${doneShare}%` }} />
+          </div>
+        )}
+        <p className={isLeader ? "text-[11px] leading-4 text-white/85" : "mt-1.5 text-[11px] leading-4 text-white/85"}>
+          {isLeader
+            ? leaderInsight({ awaitingMyReview, staleReview, reportOverdue, unpickedPool })
+            : staffInsight({ overdue, dueToday, awaitingReview, pending })}
         </p>
       </div>
 
@@ -183,10 +235,10 @@ export function PerformanceBanner({
           </div>
         ) : null}
         <Link
-          href="/board"
+          href={ctaHref}
           className="inline-flex shrink-0 items-center justify-center gap-1 self-start rounded-lg border border-white bg-white px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-white/90 active:scale-95 sm:ml-auto sm:self-auto"
         >
-          Lihat detail tugas
+          {ctaLabel}
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>

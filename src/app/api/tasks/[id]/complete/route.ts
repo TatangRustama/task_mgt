@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { parseJumlahSatuan } from "@/lib/satuan";
 import { getCurrentUser } from "@/lib/session";
 import { saveUploadedFile } from "@/lib/upload";
 
@@ -30,7 +31,15 @@ export async function POST(
   const latitudeRaw = formData.get("latitude");
   const longitudeRaw = formData.get("longitude");
   const photos = formData.getAll("photos").filter((f): f is File => f instanceof File);
+  const parsedJumlah = parseJumlahSatuan(
+    formData.get("jumlahIntervensi"),
+    formData.get("satuan"),
+    true,
+  );
 
+  if (!parsedJumlah.ok) {
+    return NextResponse.json({ error: parsedJumlah.error }, { status: 400 });
+  }
   if (!notes) {
     return NextResponse.json({ error: "Catatan hasil wajib diisi" }, { status: 400 });
   }
@@ -72,6 +81,8 @@ export async function POST(
         data: {
           status: "menunggu_approval",
           completedAt: new Date(),
+          jumlahIntervensi: parsedJumlah.jumlahIntervensi,
+          satuan: parsedJumlah.satuan,
         },
       });
     });

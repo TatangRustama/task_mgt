@@ -10,14 +10,24 @@ export function ExportReportButton({
   date,
   month,
   year,
+  unit,
 }: {
   by: LaporanBy;
   view: LaporanView;
   date: string;
   month: number;
   year: number;
+  unit?: string | null;
 }) {
-  const href = `/api/reports/export?by=${by}&view=${view}&date=${encodeURIComponent(date)}&month=${month}&year=${year}`;
+  const params = new URLSearchParams({
+    by,
+    view,
+    date,
+    month: String(month),
+    year: String(year),
+  });
+  if (unit) params.set("unit", unit);
+  const href = `/api/reports/export?${params.toString()}`;
 
   return (
     <Button variant="outline" className="w-full no-print" asChild>

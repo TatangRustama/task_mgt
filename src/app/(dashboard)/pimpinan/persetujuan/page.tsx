@@ -8,13 +8,13 @@ import { requireUser } from "@/lib/session";
 export const dynamic = "force-dynamic";
 
 export default async function PersetujuanPage() {
-  const user = await requireUser(["admin", "pimpinan"]);
+  const user = await requireUser(["personal"]);
 
   const orgUser = await getDbOrgUser(user.id);
   const reportIds = orgUser ? await getDirectReportIds(orgUser) : [];
 
   const tasks =
-    user.role === "admin"
+    user.role === "super_admin"
       ? await prisma.task.findMany({
           where: { status: "menunggu_approval" },
           include: {
@@ -53,6 +53,8 @@ export default async function PersetujuanPage() {
             title: task.title,
             assignedToName: task.assignedTo?.name ?? null,
             completedAt: task.completedAt?.toISOString() ?? null,
+            jumlahIntervensi: task.jumlahIntervensi,
+            satuan: task.satuan,
             evidence: task.evidence
               ? {
                   notes: task.evidence.notes,

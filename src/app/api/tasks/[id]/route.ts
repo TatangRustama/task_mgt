@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { TaskPriority } from "@prisma/client";
 import { canManagePostedTersediaTask, canSeeTask } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
+import { parseJumlahSatuan } from "@/lib/satuan";
 import { getCurrentUser } from "@/lib/session";
 
 export async function GET(
@@ -64,6 +65,7 @@ export async function PATCH(
   const description = body.description ? String(body.description) : null;
   const deadline = body.deadline ? new Date(body.deadline) : null;
   const priority = (body.priority || loaded.task.priority) as TaskPriority;
+  const parsedJumlah = parseJumlahSatuan(body.jumlahIntervensi, body.satuan, false);
 
   if (!title || title.length > 60) {
     return NextResponse.json({ error: "Judul wajib diisi (max 60 karakter)" }, { status: 400 });
@@ -71,10 +73,20 @@ export async function PATCH(
   if (!PRIORITIES.has(priority)) {
     return NextResponse.json({ error: "Prioritas tidak valid" }, { status: 400 });
   }
+  if (!parsedJumlah.ok) {
+    return NextResponse.json({ error: parsedJumlah.error }, { status: 400 });
+  }
 
   const updated = await prisma.task.update({
     where: { id },
-    data: { title, description, deadline, priority },
+    data: {
+      title,
+      description,
+      deadline,
+      priority,
+      jumlahIntervensi: parsedJumlah.jumlahIntervensi,
+      satuan: parsedJumlah.satuan,
+    },
   });
 
   return NextResponse.json(updated);

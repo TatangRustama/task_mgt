@@ -4,6 +4,7 @@ import { LoginError } from "@/lib/auth-login-messages";
 import { ensureUserFromPegawai } from "@/lib/simpeg-accounts";
 import { lookupOrSyncPegawaiByNip } from "@/lib/simpeg-sync";
 import { prisma } from "@/lib/prisma";
+import { isStaffLoginIdentifier, privilegedEmail, privilegedUsername } from "@/lib/roles";
 
 export { LoginError, LOGIN_ERROR_MESSAGES, type LoginErrorCode } from "@/lib/auth-login-messages";
 
@@ -26,21 +27,55 @@ function isDatabaseError(error: unknown) {
 const pegawaiSelect = {
   id: true,
   nip: true,
+  nik: true,
   name: true,
   email: true,
   jabatanNama: true,
   unitId: true,
 } as const;
 
-async function findUserByIdentifier(identifier: string) {
-  if (identifier.includes("@")) {
-    return prisma.user.findUnique({ where: { email: identifier } });
+async function findPrivilegedUser(identifier: string) {
+  const key = privilegedUsername(identifier).replace(/\s+/g, "");
+  if (!key) return null;
+  const email = privilegedEmail(key);
+
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [{ nip: key }, { email: key }, { email }],
+    },
+  });
+
+  if (user && (user.role === "super_admin" || user.role === "admin")) {
+    return user;
+  }
+  return null;
+}
+
+async function findPersonalUser(identifier: string) {
+  const nipOrNik = normalizeLoginIdentifier(identifier);
+  if (!nipOrNik) return null;
+
+  const byNip = await prisma.user.findFirst({
+    where: { nip: nipOrNik, role: "personal" },
+  });
+  if (byNip) return byNip;
+
+  const pegawai = await prisma.pegawai.findFirst({
+    where: { OR: [{ nip: nipOrNik }, { nik: nipOrNik }] },
+    select: { ...pegawaiSelect, userId: true, nik: true },
+  });
+  if (pegawai?.userId) {
+    const linked = await prisma.user.findFirst({
+      where: { id: pegawai.userId, role: "personal" },
+    });
+    if (linked) return linked;
   }
 
-  const nip = normalizeLoginIdentifier(identifier);
-  if (!nip) return null;
+  if (pegawai) {
+    return ensureUserFromPegawai(pegawai);
+  }
 
-  return prisma.user.findUnique({ where: { nip } });
+  return provisionUserFromPegawai(nipOrNik);
 }
 
 async function provisionUserFromPegawai(identifier: string) {
@@ -66,14 +101,14 @@ async function provisionUserFromPegawai(identifier: string) {
 }
 
 export async function resolveLoginUser(identifier: string) {
-  const normalized = identifier.includes("@") ? identifier.trim().toLowerCase() : identifier.trim();
+  const trimmed = identifier.trim();
+  if (!trimmed) return null;
 
-  let user = await findUserByIdentifier(normalized);
-  if (user) return user;
+  if (isStaffLoginIdentifier(trimmed)) {
+    return findPersonalUser(trimmed);
+  }
 
-  if (normalized.includes("@")) return null;
-
-  return provisionUserFromPegawai(normalized);
+  return findPrivilegedUser(trimmed);
 }
 
 export type AuthUserPayload = {

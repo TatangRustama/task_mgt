@@ -1,0 +1,6 @@
+.env
+.env.*
+.vercel
+*.pem
+token bearer simpegpb.txt
+supabase auth.txt

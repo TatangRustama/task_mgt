@@ -14,6 +14,25 @@ export function PageMain({
   );
 }
 
+export function PageLoadingSkeleton() {
+  return (
+    <PageMain>
+      <div className="space-y-3" aria-hidden="true">
+        <div className="h-7 w-40 animate-pulse rounded-md bg-surface-container-high" />
+        <div className="h-4 w-64 max-w-full animate-pulse rounded-md bg-surface-container" />
+        <div className="mt-2 h-28 animate-pulse rounded-xl bg-surface-container-high" />
+        <div className="grid grid-cols-3 gap-2">
+          <div className="h-20 animate-pulse rounded-xl bg-surface-container" />
+          <div className="h-20 animate-pulse rounded-xl bg-surface-container" />
+          <div className="h-20 animate-pulse rounded-xl bg-surface-container" />
+        </div>
+        <div className="h-40 animate-pulse rounded-xl bg-surface-container-lowest border border-outline" />
+      </div>
+      <span className="sr-only">Memuat halaman</span>
+    </PageMain>
+  );
+}
+
 export function PageHeader({
   title,
   subtitle,
@@ -28,7 +47,7 @@ export function PageHeader({
   return (
     <section className="mb-3 md:mb-4">
       {title || action ? (
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           {title ? (
             <h2 className="text-xl font-bold leading-7 tracking-tight text-on-surface md:text-2xl md:leading-8">
               {title}

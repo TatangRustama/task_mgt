@@ -1,14 +1,82 @@
-import { DailyReport } from "@/components/report/DailyReport";
-import { MonthlyCalendar } from "@/components/report/MonthlyCalendar";
+import { Suspense } from "react";
+import { LaporanBoardView } from "@/components/report/LaporanBoard";
 import { ReportFilters } from "@/components/report/ReportFilters";
+import { LaporanPrintProvider } from "@/components/report/PrintReportButton";
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
-import { getDailyLaporanPrintContext, getLaporanPrintContext, printableTasks } from "@/lib/laporan-print";
-import { getDailyReport, getMonthlyCalendar } from "@/lib/reports";
+import { getLaporanBoard } from "@/lib/laporan-board";
+import { getDirectReportIds, getOrgScope } from "@/lib/org";
 import type { LaporanView } from "@/lib/report-types";
 import { requireUser } from "@/lib/session";
 import { formatISODate, isISODate, parseISODate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+
+function ReportBodyFallback() {
+  return (
+    <div className="space-y-3" aria-hidden="true">
+      <div className="h-10 animate-pulse rounded-lg bg-surface-container" />
+      <div className="h-48 animate-pulse rounded-xl bg-surface-container-high" />
+      <div className="h-24 animate-pulse rounded-xl bg-surface-container" />
+    </div>
+  );
+}
+
+async function LaporanBody({
+  view,
+  date,
+  month,
+  year,
+  unit,
+}: {
+  view: LaporanView;
+  date: string;
+  month: number;
+  year: number;
+  unit?: string;
+}) {
+  const user = await requireUser(["personal"]);
+  const { orgUser, visibleUnitIds, isLeader } = await getOrgScope(user);
+  const reportIds = orgUser && isLeader ? await getDirectReportIds(orgUser) : [];
+  const board = await getLaporanBoard({
+    viewerId: user.id,
+    rootUnitId: user.unitId,
+    visibleUnitIds,
+    isLeader,
+    directReportIds: reportIds,
+    focusUnitId: unit,
+    view,
+    date,
+    month,
+    year,
+  });
+
+  return (
+    <LaporanPrintProvider
+      view={view}
+      date={date}
+      month={month}
+      year={year}
+      unit={unit}
+      dailyTasks={view === "harian" ? (board?.tasks ?? []) : []}
+    >
+      <ReportFilters basePath="/laporan" view={view} date={date} month={month} year={year} unit={unit} />
+      {!board ? (
+        <p className="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-6 text-center text-sm text-on-surface-variant">
+          Unit belum tersedia untuk laporan.
+        </p>
+      ) : (
+        <LaporanBoardView
+          board={board}
+          view={view}
+          date={date}
+          month={month}
+          year={year}
+          unitId={unit && visibleUnitIds.includes(unit) ? unit : null}
+        />
+      )}
+    </LaporanPrintProvider>
+  );
+}
 
 export default async function LaporanPage({
   searchParams,
@@ -18,84 +86,39 @@ export default async function LaporanPage({
     date?: string;
     month?: string;
     year?: string;
-    assigneeId?: string;
+    unit?: string;
   }>;
 }) {
-  const user = await requireUser();
+  const user = await requireUser(["personal"]);
+  const { isLeader } = await getOrgScope(user);
   const params = await searchParams;
-  const view: LaporanView = params.view === "bulanan" ? "bulanan" : "harian";
+  const view: LaporanView =
+    params.view === "harian" || params.view === "bulanan" ? params.view : isLeader ? "bulanan" : "harian";
   const today = formatISODate(new Date());
   const date = isISODate(params.date) ? params.date : today;
   const selected = parseISODate(date);
   const month = Number(params.month || selected.getMonth() + 1);
   const year = Number(params.year || selected.getFullYear());
 
-  const scope = {
-    role: user.role,
-    userId: user.id,
-    unitId: user.unitId,
-    assigneeId: params.assigneeId,
-  };
-
-  const daily = view === "harian" ? await getDailyReport({ ...scope, date }) : null;
-  const monthly = view === "bulanan" ? await getMonthlyCalendar({ ...scope, month, year }) : null;
-  const hasUnit = Boolean(daily || monthly);
-  const printTasks = monthly ? printableTasks(monthly.tasks) : [];
-  const print =
-    view === "bulanan" && monthly
-      ? await getLaporanPrintContext({
-          userId: user.id,
-          month,
-          year,
-          instansiName: monthly.instansiName,
-          agencyName: monthly.agencyName,
-          taskIds: printTasks.map((task) => task.id),
-        })
-      : null;
-  const dailyPrint =
-    view === "harian" && daily
-      ? await getDailyLaporanPrintContext({
-          userId: user.id,
-          instansiName: daily.instansiName,
-          agencyName: daily.agencyName,
-        })
-      : null;
-
   return (
     <PageMain className="max-w-3xl space-y-6 print:max-w-none">
       <div className="no-print">
         <PageHeader
           title="Laporan"
-          subtitle={view === "harian" ? "Rekap tugas harian" : "Kalender rekap tugas bulanan"}
+          subtitle={
+            view === "harian"
+              ? isLeader
+                ? "Recap kerja bawahan langsung hari ini"
+                : "Rekap kerja Anda hari ini"
+              : isLeader
+                ? "Rapor bawahan langsung dan unit"
+                : "Rapor kinerja Anda"
+          }
         />
       </div>
-      <ReportFilters basePath="/laporan" view={view} date={date} month={month} year={year} />
-      {!hasUnit ? (
-        <p className="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-6 text-center text-sm text-on-surface-variant">
-          Unit belum tersedia untuk laporan.
-        </p>
-      ) : view === "harian" && daily && dailyPrint ? (
-        <DailyReport
-          by="tugas"
-          date={daily.date}
-          month={month}
-          year={year}
-          summary={daily.summary}
-          tasks={daily.tasks}
-          print={dailyPrint}
-        />
-      ) : monthly && print ? (
-        <MonthlyCalendar
-          by="tugas"
-          month={monthly.month}
-          year={monthly.year}
-          date={date}
-          days={monthly.days}
-          tasks={monthly.tasks}
-          printTasks={printTasks}
-          print={print}
-        />
-      ) : null}
+      <Suspense fallback={<ReportBodyFallback />}>
+        <LaporanBody view={view} date={date} month={month} year={year} unit={params.unit} />
+      </Suspense>
     </PageMain>
   );
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authenticateCredentials, LoginError } from "@/lib/auth-login";
+import { defaultHomePath } from "@/lib/roles";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
@@ -7,8 +8,8 @@ export async function POST(request: Request) {
   const password = String(body.password || "");
 
   try {
-    await authenticateCredentials(username, password);
-    return NextResponse.json({ ok: true });
+    const user = await authenticateCredentials(username, password);
+    return NextResponse.json({ ok: true, role: user.role, home: defaultHomePath(user.role) });
   } catch (error) {
     if (error instanceof LoginError) {
       return NextResponse.json({ ok: false, code: error.code, error: error.message }, { status: 401 });

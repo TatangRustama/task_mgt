@@ -43,8 +43,14 @@ function genderLabel(value?: string | null) {
   return value || "-";
 }
 
-export function PegawaiForm() {
-  const [jenis, setJenis] = useState<PegawaiJenis>("asn");
+export function PegawaiForm({
+  canAddNonAsn = false,
+  defaultJenis = "asn",
+}: {
+  canAddNonAsn?: boolean;
+  defaultJenis?: PegawaiJenis;
+}) {
+  const [jenis, setJenis] = useState<PegawaiJenis>(defaultJenis);
   const [nip, setNip] = useState("");
   const [nik, setNik] = useState("");
   const [name, setName] = useState("");
@@ -174,6 +180,7 @@ export function PegawaiForm() {
         </CardHeader>
         {formOpen ? (
         <CardContent className="space-y-4">
+          {canAddNonAsn ? (
           <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
@@ -199,6 +206,7 @@ export function PegawaiForm() {
               Non-ASN
             </Button>
           </div>
+          ) : null}
 
           {jenis === "asn" ? (
             <form onSubmit={searchNip} className="space-y-3">
@@ -314,14 +322,14 @@ export function PegawaiForm() {
       {jenis === "asn" ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Pegawai di bawah unit Anda</CardTitle>
+            <CardTitle className="text-base">Pegawai dalam Unit anda</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             {listLoading && bawahan.length === 0 ? (
               <p className="text-on-surface-variant">Memuat data pegawai...</p>
             ) : bawahan.length === 0 ? (
               <p className="text-on-surface-variant">
-                Tidak ada pegawai pada unit di bawah Anda.
+                Tidak ada pegawai dalam unit Anda.
               </p>
             ) : (
               <>

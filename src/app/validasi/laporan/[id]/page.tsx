@@ -1,14 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  evidenceRows,
-  getValidasiLaporan,
-  printHasil,
-  printKeterangan,
-  printParaf,
-  printTaskDate,
-} from "@/lib/laporan-print";
-import { getMonthYearLabel, statusLabel } from "@/lib/utils";
+import { MonthlyTaskDayRows } from "@/components/report/MonthlyTaskDayRows";
+import { evidenceRows, getValidasiLaporan } from "@/lib/laporan-print";
+import { getMonthYearLabel } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -83,27 +77,17 @@ export default async function ValidasiLaporanPage({
                   <th className="py-2 pr-2">No.</th>
                   <th className="py-2 pr-2">Hari/Tgl</th>
                   <th className="py-2 pr-2">Uraian Tugas</th>
-                  <th className="py-2 pr-2">Tempat</th>
-                  <th className="py-2 pr-2">Hasil</th>
                   <th className="py-2 pr-2">Keterangan</th>
-                  <th className="py-2">Paraf</th>
+                  <th className="py-2">Hasil</th>
                 </tr>
               </thead>
               <tbody>
-                {tasks.map((task, index) => (
-                  <tr key={task.id} className="border-b border-outline-variant align-top">
-                    <td className="py-2 pr-2">{index + 1}</td>
-                    <td className="py-2 pr-2">{printTaskDate(task)}</td>
-                    <td className="py-2 pr-2">
-                      <p className="font-medium">{task.title}</p>
-                      <p className="text-xs text-on-surface-variant">{statusLabel(task.status)}</p>
-                    </td>
-                    <td className="py-2 pr-2">{task.address || "-"}</td>
-                    <td className="py-2 pr-2">{printHasil(task) || "-"}</td>
-                    <td className="py-2 pr-2">{printKeterangan(task, author.name) || "-"}</td>
-                    <td className="py-2">{printParaf(task)}</td>
-                  </tr>
-                ))}
+                <MonthlyTaskDayRows
+                  tasks={tasks}
+                  authorName={author.name}
+                  cellClassName="py-2 pr-2"
+                  rowClassName="border-b border-outline-variant align-top"
+                />
               </tbody>
             </table>
           )}
@@ -113,7 +97,9 @@ export default async function ValidasiLaporanPage({
       {bukti.length > 0 ? (
         <Card>
           <CardContent className="space-y-4 py-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-secondary">Bukti dokumen</p>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-secondary">
+              Lampiran — Bukti dokumen
+            </p>
             {bukti.map((row, index) => (
               <div key={`${row.date}-${index}`}>
                 <p className="mb-2 text-sm font-medium text-on-surface">
@@ -121,8 +107,8 @@ export default async function ValidasiLaporanPage({
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   {row.photos.map((url) => (
-                    <div key={url} className="overflow-hidden rounded-lg border border-outline-variant">
-                      <img src={url} alt={row.title} className="h-40 w-full object-cover" />
+                    <div key={url} className="overflow-hidden rounded-lg border border-outline-variant bg-surface-container-low">
+                      <img src={url} alt={row.title} className="max-h-80 w-full object-contain" />
                     </div>
                   ))}
                 </div>

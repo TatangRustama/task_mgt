@@ -2,9 +2,11 @@ import { signOut } from "@/auth";
 import Link from "next/link";
 import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
 import { PageMain } from "@/components/layout/PageMain";
+import { kepegawaianStatus } from "@/lib/kepegawaian-status";
 import { getAtasan, getDbOrgUser, getDirectReports, jabatanLabel } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import { formatNip } from "@/lib/utils";
 import { ChevronRight, LogOut, Settings } from "lucide-react";
 
 export default async function ProfilPage() {
@@ -14,6 +16,28 @@ export default async function ProfilPage() {
   const unit = orgUser?.unit ?? (user.unitId ? await prisma.unit.findUnique({ where: { id: user.unitId } }) : null);
   const atasan = orgUser ? await getAtasan(orgUser) : null;
   const bawahan = orgUser ? await getDirectReports(orgUser) : [];
+  const pegawaiRows = bawahan.length
+    ? await prisma.user.findMany({
+        where: { id: { in: bawahan.map((person) => person.id) } },
+        select: {
+          id: true,
+          nip: true,
+          pegawai: { select: { nip: true, nik: true, jenis: true, kedudukanHukum: true } },
+        },
+      })
+    : [];
+  const identityById = new Map(
+    pegawaiRows.map((row) => {
+      const isNonAsn = row.pegawai?.jenis === "non_asn";
+      const identity = isNonAsn
+        ? `NIK ${row.pegawai?.nik || "-"}`
+        : `NIP ${formatNip(row.pegawai?.nip || row.nip)}`;
+      const kedudukan =
+        row.pegawai?.kedudukanHukum?.trim() ||
+        kepegawaianStatus(row.pegawai?.jenis, row.pegawai?.kedudukanHukum);
+      return [row.id, { identity, kedudukan }] as const;
+    }),
+  );
 
   const initials = user.name
     .split(" ")
@@ -57,15 +81,22 @@ export default async function ProfilPage() {
               Bawahan langsung ({bawahan.length})
             </h3>
             <ul className="divide-y divide-surface-container-highest text-sm">
-              {bawahan.slice(0, 12).map((person) => (
-                <li key={person.id} className="px-4 py-3">
-                  <p className="font-medium text-on-surface">{person.name}</p>
-                  <p className="text-on-surface-variant">
-                    {person.jabatan ? jabatanLabel[person.jabatan] : "Pegawai"}
-                    {person.unitName ? ` · ${person.unitName}` : ""}
-                  </p>
-                </li>
-              ))}
+              {bawahan.slice(0, 12).map((person) => {
+                const identity = identityById.get(person.id);
+                return (
+                  <li key={person.id} className="px-4 py-3">
+                    <p className="font-medium text-on-surface">{person.name}</p>
+                    <p className="text-on-surface-variant">
+                      {person.jabatan ? jabatanLabel[person.jabatan] : "Pegawai"}
+                      {person.unitName ? ` · ${person.unitName}` : ""}
+                    </p>
+                    <p className="mt-0.5 text-xs text-on-surface-variant">
+                      {identity?.identity || `NIP ${formatNip(null)}`}
+                      {identity?.kedudukan ? ` · ${identity.kedudukan}` : ""}
+                    </p>
+                  </li>
+                );
+              })}
             </ul>
             {bawahan.length > 12 ? (
               <p className="px-4 py-2 text-xs text-on-surface-variant">
@@ -77,7 +108,29 @@ export default async function ProfilPage() {
 
         <ChangePasswordForm />
 
-        {user.role === "admin" ? (
+        {user.role === "personal" ? (
+          <div className="overflow-hidden rounded-lg border border-surface-container-highest bg-surface-container-lowest card-shadow">
+            <h3 className="bg-surface px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">
+              Data kepegawaian
+            </h3>
+            {[
+              { href: "/pegawai", label: "Pegawai" },
+              { href: "/struktur", label: "Struktur organisasi" },
+              { href: "/setting", label: "Setting" },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex items-center justify-between border-t border-surface-container-highest px-4 py-3 text-sm text-on-surface transition hover:bg-surface-container-low"
+              >
+                {item.label}
+                <ChevronRight className="h-4 w-4 text-outline" />
+              </Link>
+            ))}
+          </div>
+        ) : null}
+
+        {user.role === "super_admin" ? (
           <Link
             href="/admin"
             className="flex items-center justify-between rounded-lg border border-surface-container-highest bg-surface-container-lowest p-4 card-shadow transition hover:bg-surface-container-low"
@@ -86,7 +139,7 @@ export default async function ProfilPage() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary-container text-on-secondary-container">
                 <Settings className="h-5 w-5" />
               </div>
-              <span className="text-base text-on-surface">Admin Instansi</span>
+              <span className="text-base text-on-surface">Manajemen pengguna</span>
             </div>
             <ChevronRight className="h-5 w-5 text-outline" />
           </Link>

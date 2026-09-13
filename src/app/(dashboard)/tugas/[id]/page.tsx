@@ -12,6 +12,7 @@ import { LocationMapView } from "@/components/map/LocationMapView";
 import { assignmentModeLabel, canManagePostedTersediaTask, canPickupPoolTask, canReviewTask, canSeeTask, getDbOrgUser } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { cn, formatDate, formatDateTime, priorityBarClass, statusLabel } from "@/lib/utils";
+import { formatJumlahSatuan } from "@/lib/satuan";
 import { requireUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export default async function TaskDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const user = await requireUser();
+  const user = await requireUser(["personal"]);
 
   const orgUser = await getDbOrgUser(user.id);
   if (!orgUser) notFound();
@@ -68,6 +69,9 @@ export default async function TaskDetailPage({
           </CardHeader>
           <CardContent className="space-y-2 pl-6 text-sm text-on-surface-variant">
             {task.description ? <p>{task.description}</p> : null}
+            {formatJumlahSatuan(task.jumlahIntervensi, task.satuan) ? (
+              <p>Jumlah yang diintervensi: {formatJumlahSatuan(task.jumlahIntervensi, task.satuan)}</p>
+            ) : null}
             <p>Unit: {task.unit.name}</p>
             <p>Dibuat oleh: {task.createdBy.name}</p>
             {task.assignedTo ? <p>Pegawai: {task.assignedTo.name}</p> : <p>Belum diambil staf</p>}
@@ -105,7 +109,12 @@ export default async function TaskDetailPage({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <CompleteTaskForm taskId={task.id} isRevision={task.status === "ditolak"} />
+              <CompleteTaskForm
+                taskId={task.id}
+                isRevision={task.status === "ditolak"}
+                jumlahIntervensi={task.jumlahIntervensi}
+                satuan={task.satuan}
+              />
             </CardContent>
           </Card>
         ) : null}

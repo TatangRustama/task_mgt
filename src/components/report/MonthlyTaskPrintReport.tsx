@@ -1,46 +1,48 @@
-import {
-  evidenceRows,
-  printHasil,
-  printKeterangan,
-  printParaf,
-  printTaskDate,
-  type LaporanPrintContext,
-} from "@/lib/laporan-print";
+import { groupTasksByPrintDate, type LaporanPrintContext, type PrintUnitReviewRow } from "@/lib/laporan-print-view";
+import { PrintLampiranBukti } from "@/components/report/PrintLampiranBukti";
+import { MonthlyTaskDayRows } from "@/components/report/MonthlyTaskDayRows";
 import type { ReportTask } from "@/lib/report-types";
-import { getMonthYearLabel } from "@/lib/utils";
+import { getMonthYearLabel, formatPrintedOnDate } from "@/lib/utils";
 
 export function MonthlyTaskPrintReport({
   month,
   year,
   tasks,
   print,
+  isLeader = false,
+  rows = [],
+  leaderTasks = [],
 }: {
   month: number;
   year: number;
   tasks: ReportTask[];
   print: LaporanPrintContext;
+  isLeader?: boolean;
+  rows?: PrintUnitReviewRow[];
+  leaderTasks?: ReportTask[];
 }) {
-  const rows = [...tasks].sort((a, b) => {
-    const aTime = new Date(a.completedAt || a.createdAt).getTime();
-    const bTime = new Date(b.completedAt || b.createdAt).getTime();
-    return aTime - bTime;
-  });
-  const bukti = evidenceRows(rows);
+  const groupedRows = groupTasksByPrintDate(tasks).flatMap((group) => group.tasks);
+  const mandiriRows = groupTasksByPrintDate(leaderTasks).flatMap((group) => group.tasks);
   const period = getMonthYearLabel(month, year).toUpperCase();
+  const lampiranTasks = [...mandiriRows, ...groupedRows];
 
   return (
     <div className="print-kinerja hidden print:block">
-      <header className="print-kop">
-        <img src="/branding/papua-barat.png" alt="Lambang Papua Barat" className="print-kop-logo" />
-        <div className="print-kop-text">
-          <p className="print-kop-gov">{print.kopGovernment}</p>
-          <p className="print-kop-agency">{print.kopAgency}</p>
-          <p className="print-kop-meta">{print.kopAddress}</p>
-          <p className="print-kop-meta">Laman {print.kopWebsite}</p>
-        </div>
-      </header>
+      {!isLeader ? (
+        <header className="print-kop">
+          <img src="/branding/papua-barat.png" alt="Lambang Papua Barat" className="print-kop-logo" />
+          <div className="print-kop-text">
+            <p className="print-kop-gov">{print.kopGovernment}</p>
+            <p className="print-kop-agency">{print.kopAgency}</p>
+            <p className="print-kop-meta">{print.kopAddress}</p>
+            <p className="print-kop-meta">Laman {print.kopWebsite}</p>
+          </div>
+        </header>
+      ) : null}
 
-      <h1 className="print-title">LAPORAN PELAKSANAAN KINERJA BULANAN {period}</h1>
+      <h1 className="print-title">
+        {isLeader ? "LAPORAN PENILAIAN KINERJA BULANAN" : "LAPORAN PELAKSANAAN KINERJA BULANAN"} {period}
+      </h1>
 
       <IdentityTable person={print.author} />
 
@@ -51,86 +53,82 @@ export function MonthlyTaskPrintReport({
         <p className="print-empty">Tidak ada atasan langsung.</p>
       )}
 
-      <table className="print-table print-table-tasks">
-        <thead>
-          <tr>
-            <th className="col-no">No.</th>
-            <th className="col-date">Hari/Tgl</th>
-            <th>Uraian Tugas</th>
-            <th className="col-place">Tempat</th>
-            <th className="col-hasil">Hasil</th>
-            <th>Keterangan</th>
-            <th className="col-paraf">Paraf</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 ? (
-            <tr>
-              <td colSpan={7} className="print-empty-cell">
-                Tidak ada tugas pada periode ini.
-              </td>
-            </tr>
-          ) : (
-            rows.map((task, index) => (
-              <tr key={task.id}>
-                <td className="center">{index + 1}</td>
-                <td className="center">{printTaskDate(task)}</td>
-                <td>{task.title}</td>
-                <td>{task.address || "-"}</td>
-                <td>{printHasil(task)}</td>
-                <td>{printKeterangan(task, print.author.name)}</td>
-                <td className="center">{printParaf(task)}</td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+      {isLeader ? (
+        <>
+          <p className="print-section-label">Rincian Tugas Mandiri</p>
+          <TaskTable
+            tasks={mandiriRows}
+            authorName={print.author.name}
+            empty="Tidak ada tugas mandiri pada periode ini."
+            showAtasanPenilaian
+          />
 
-      <h2 className="print-subtitle">BUKTI DOKUMEN</h2>
-      <table className="print-table print-table-bukti">
-        <thead>
-          <tr>
-            <th className="col-no">No.</th>
-            <th className="col-date">Hari/Tgl</th>
-            <th>Bukti Visual</th>
-          </tr>
-        </thead>
-        <tbody>
-          {bukti.length === 0 ? (
-            <tr>
-              <td colSpan={3} className="print-empty-cell">
-                Tidak ada bukti visual pada periode ini.
-              </td>
-            </tr>
-          ) : (
-            bukti.map((row, index) => (
-              <tr key={`${row.date}-${index}`}>
-                <td className="center">{index + 1}</td>
-                <td className="center">{row.date}</td>
-                <td>
-                  <div className="print-photos">
-                    {row.photos.map((url) => (
-                      <img key={url} src={url} alt={row.title} />
-                    ))}
-                  </div>
-                </td>
+          <p className="print-section-label">Review Tugas Unit</p>
+          <table className="print-table">
+            <thead>
+              <tr>
+                <th>Nama / unit</th>
+                <th>Predikat</th>
+                <th>Disetujui</th>
+                <th>Ditolak</th>
+                <th>Nilai</th>
+                <th>Tepat waktu</th>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="print-empty-cell">
+                    Tidak ada bawahan yang dinilai pada periode ini.
+                  </td>
+                </tr>
+              ) : (
+                rows.map((row) => (
+                  <tr key={row.name + row.role + row.identity}>
+                    <td>
+                      <strong>{row.name}</strong>
+                      <br />
+                      {row.identity}
+                      <br />
+                      {row.kedudukanHukum}
+                      <br />
+                      {row.role}
+                    </td>
+                    <td>{row.insight}</td>
+                    <td>{row.completed}</td>
+                    <td>{row.rejected}</td>
+                    <td>{row.averageScore ? `${row.averageScore}/3` : "-"}</td>
+                    <td>{row.completed ? `${row.onTimePercent}%` : "-"}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </>
+      ) : null}
 
+      <p className="print-section-label">{isLeader ? "Rincian Tugas Unit" : "Uraian tugas"}</p>
+      <TaskTable
+        tasks={groupedRows}
+        authorName={print.author.name}
+        empty="Tidak ada tugas pada periode ini."
+      />
+
+      <p className="print-printed-on">dicetak pada : {formatPrintedOnDate()}</p>
       <div className="print-sign">
         <div>
           <p>Mengetahui atasan langsung,</p>
           <p className="print-sign-jabatan">{print.atasan?.jabatan || "Atasan langsung"}</p>
           <div className="print-sign-space">
-            {print.qrDataUrl ? (
-              <img src={print.qrDataUrl} alt={`QR validasi laporan ${print.reportId}`} className="print-qr" />
-            ) : null}
+            <span>ttd</span>
           </div>
           <p className="print-sign-name">{print.atasan?.name || "_________________________"}</p>
           <p>NIP. {print.atasan?.nip || "-"}</p>
+        </div>
+        <div className="print-sign-qr">
+          {print.qrDataUrl ? (
+            <img src={print.qrDataUrl} alt={`QR validasi laporan ${print.reportId}`} className="print-qr" />
+          ) : null}
           <p className="print-report-id">ID laporan: {print.reportId}</p>
         </div>
         <div>
@@ -143,7 +141,52 @@ export function MonthlyTaskPrintReport({
           <p>NIP. {print.author.nip}</p>
         </div>
       </div>
+
+      <PrintLampiranBukti tasks={lampiranTasks} />
     </div>
+  );
+}
+
+function TaskTable({
+  tasks,
+  authorName,
+  empty,
+  showAtasanPenilaian = false,
+}: {
+  tasks: ReportTask[];
+  authorName: string;
+  empty: string;
+  showAtasanPenilaian?: boolean;
+}) {
+  const colSpan = showAtasanPenilaian ? 6 : 5;
+  return (
+    <table className="print-table print-table-tasks">
+      <thead>
+        <tr>
+          <th className="col-no">No.</th>
+          <th className="col-date">Hari/Tgl</th>
+          <th>Uraian Tugas</th>
+          <th>Keterangan</th>
+          <th className="col-hasil">Hasil</th>
+          {showAtasanPenilaian ? <th>Penilaian Atasan</th> : null}
+        </tr>
+      </thead>
+      <tbody>
+        {tasks.length === 0 ? (
+          <tr>
+            <td colSpan={colSpan} className="print-empty-cell">
+              {empty}
+            </td>
+          </tr>
+        ) : (
+          <MonthlyTaskDayRows
+            tasks={tasks}
+            authorName={authorName}
+            showAtasanPenilaian={showAtasanPenilaian}
+          />
+        )}
+      </tbody>
+    </table>
   );
 }
 

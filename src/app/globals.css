@@ -72,6 +72,14 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
+select {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .card-shadow {
   box-shadow: none;
 }
@@ -98,14 +106,19 @@ body {
   color: var(--on-secondary-container);
 }
 
+@page {
+  size: A4 portrait;
+  margin: 12mm 14mm;
+}
+
 @media print {
   @page {
-    size: A4;
+    size: A4 portrait;
     margin: 12mm 14mm;
   }
 
   nav,
-  header,
+  header:not(.print-kop),
   aside,
   .no-print {
     display: none !important;
@@ -242,16 +255,38 @@ body {
   }
 
   .print-table .col-hasil {
-    width: 16%;
+    width: 22%;
   }
 
   .print-table .col-paraf {
     width: 12%;
   }
 
+  .print-place-line {
+    font-size: 9.5pt;
+  }
+
+  .print-hasil-paraf {
+    text-align: center;
+    line-height: 1.35;
+  }
+
+  .print-paraf-line {
+    margin-top: 4px;
+    font-size: 9.5pt;
+  }
+
+  .print-wfh-output {
+    margin-bottom: 4px;
+  }
+
   .print-table .center,
   .print-empty-cell {
     text-align: center;
+  }
+
+  .print-table td.center[rowspan] {
+    vertical-align: middle;
   }
 
   .print-empty {
@@ -272,13 +307,80 @@ body {
     border: 1px solid #ccc;
   }
 
+  .print-table-bukti {
+    table-layout: fixed;
+  }
+
+  .print-table-bukti th:last-child,
+  .print-table-bukti td:last-child {
+    width: auto;
+    overflow: hidden;
+  }
+
+  .print-lampiran {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  .print-lampiran-caption {
+    text-align: center;
+    font-weight: 700;
+    margin: -4px 0 10px;
+  }
+
+  .print-bukti-title {
+    margin: 0 0 8px;
+    font-weight: 600;
+  }
+
+  .print-photos-lampiran {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 10px;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .print-photos-lampiran img {
+    display: block;
+    box-sizing: border-box;
+    width: auto;
+    max-width: 100%;
+    max-height: 140mm;
+    height: auto;
+    margin: 0 auto;
+    object-fit: contain;
+    object-position: center;
+    border: 1px solid #ccc;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .print-printed-on {
+    margin: 32px 0 8px;
+    text-align: right;
+    font-size: 10pt;
+  }
+
   .print-sign {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 48px;
-    margin-top: 36px;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 16px;
+    align-items: start;
+    margin-top: 12px;
     text-align: center;
     page-break-inside: avoid;
+  }
+
+  .print-sign-qr {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 8px;
+    min-width: 112px;
   }
 
   .print-sign-jabatan {
@@ -314,10 +416,6 @@ body {
     margin: 0 0 2px;
   }
 
-  .print-wfh {
-    page: print-wfh;
-  }
-
   .print-wfh-date {
     text-align: center;
     font-size: 12pt;
@@ -337,14 +435,14 @@ body {
     page-break-inside: avoid;
   }
 
+  .print-wfh-sign .print-printed-on {
+    margin: 0 0 8px;
+    text-align: center;
+  }
+
   .print-wfh-sign-space {
     min-height: 72px;
   }
-}
-
-@page print-wfh {
-  size: landscape;
-  margin: 12mm;
 }
 
 @keyframes nav-loader-slide {

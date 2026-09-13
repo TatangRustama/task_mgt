@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/session";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  await requireUser(["admin"]);
+  await requireUser(["super_admin"]);
   return children;
 }

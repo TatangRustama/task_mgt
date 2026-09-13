@@ -89,6 +89,17 @@ export function formatLongDate(date: Date | string) {
   }).format(typeof date === "string" ? parseISODate(date) : date);
 }
 
+export function formatPrintedOnDate(date: Date = new Date()) {
+  const label = new Intl.DateTimeFormat("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Jayapura",
+  }).format(date);
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 export function formatWfhReportDate(date: Date | string) {
   const value = typeof date === "string" ? parseISODate(date) : date;
   const weekday = new Intl.DateTimeFormat("id-ID", { weekday: "long" }).format(value);

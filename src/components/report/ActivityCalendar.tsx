@@ -92,8 +92,16 @@ export function ActivityCalendar({
           })}
         </div>
         {!compact ? (
-          <p className="mt-2 text-center text-[11px] text-tertiary">
-            Diposting · Hijau: selesai · ketuk tanggal untuk laporan harian
+          <p className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-[11px] text-tertiary">
+            <span className="inline-flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-emerald-600" aria-hidden />
+              Disetujui
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-on-secondary-container" aria-hidden />
+              Ditolak
+            </span>
+            <span>ketuk tanggal untuk recap harian</span>
           </p>
         ) : null}
       </CardContent>

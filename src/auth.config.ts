@@ -1,5 +1,20 @@
 import type { NextAuthConfig } from "next-auth";
 
+function stripLoopbackAuthUrl() {
+  for (const key of ["AUTH_URL", "NEXTAUTH_URL"] as const) {
+    const value = process.env[key];
+    if (!value) continue;
+    try {
+      const host = new URL(value).hostname;
+      if (host === "localhost" || host === "127.0.0.1") delete process.env[key];
+    } catch {
+      /* keep malformed values */
+    }
+  }
+}
+
+stripLoopbackAuthUrl();
+
 export const authConfig = {
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   trustHost: true,

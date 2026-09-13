@@ -1,6 +1,7 @@
 "use client";
 
-import { MapContainer, Marker, TileLayer } from "react-leaflet";
+import { useEffect } from "react";
+import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -11,6 +12,24 @@ const icon = L.icon({
   iconSize: [25, 41],
   iconAnchor: [12, 41],
 });
+
+function MapViewSync({ latitude, longitude }: { latitude: number; longitude: number }) {
+  const map = useMap();
+
+  useEffect(() => {
+    map.setView([latitude, longitude], 16);
+    const frame = window.requestAnimationFrame(() => {
+      map.invalidateSize();
+    });
+    const timeout = window.setTimeout(() => map.invalidateSize(), 250);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timeout);
+    };
+  }, [map, latitude, longitude]);
+
+  return null;
+}
 
 export function LocationMap({
   latitude,
@@ -23,7 +42,7 @@ export function LocationMap({
     <div className="relative z-0 isolate overflow-hidden rounded-lg border border-slate-200">
       <MapContainer
         center={[latitude, longitude]}
-        zoom={15}
+        zoom={16}
         scrollWheelZoom={false}
         className="relative z-0 h-40 w-full"
       >
@@ -32,6 +51,7 @@ export function LocationMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <Marker position={[latitude, longitude]} icon={icon} />
+        <MapViewSync latitude={latitude} longitude={longitude} />
       </MapContainer>
     </div>
   );

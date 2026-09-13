@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Save } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EvidenceFields, useEvidenceCapture } from "@/components/task/EvidenceCapture";
-import { formatISODate } from "@/lib/utils";
+import { InterventionFields } from "@/components/task/InterventionFields";
+import { parseJumlahSatuan } from "@/lib/satuan";
+import { cn, formatISODate } from "@/lib/utils";
 
 type EditableTask = {
   id: string;
@@ -22,6 +24,8 @@ type EditableTask = {
   description: string | null;
   deadline: Date | string | null;
   priority: string;
+  jumlahIntervensi?: number | null;
+  satuan?: string | null;
 };
 
 type TaskFormDialogProps = {
@@ -45,7 +49,7 @@ type OrgContext = {
 };
 
 const selectClassName =
-  "flex h-9 w-full rounded-lg border border-outline bg-surface-container-lowest px-3 text-sm text-on-surface focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary";
+  "box-border flex h-9 w-full min-w-0 max-w-full rounded-lg border border-outline bg-surface-container-lowest px-3 text-sm text-on-surface focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary";
 
 export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialogProps) {
   const router = useRouter();
@@ -56,6 +60,8 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
   const [priority, setPriority] = useState("sedang");
   const [assignmentMode, setAssignmentMode] = useState<"ditunjuk" | "kolam">("ditunjuk");
   const [assignedToId, setAssignedToId] = useState("");
+  const [jumlah, setJumlah] = useState("");
+  const [satuan, setSatuan] = useState("");
   const [org, setOrg] = useState<OrgContext | null>(null);
   const evidence = useEvidenceCapture(open && showComplete);
 
@@ -65,14 +71,20 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
       setShowComplete(false);
       setAssignmentMode("ditunjuk");
       setAssignedToId("");
+      setJumlah("");
+      setSatuan("");
       evidence.reset();
       return;
     }
     setPriority("sedang");
     setDeadline(mode === "mandiri" ? formatISODate(new Date()) : "");
+    setJumlah("");
+    setSatuan("");
     if (mode === "edit" && task) {
       setPriority(task.priority || "sedang");
       setDeadline(task.deadline ? formatISODate(new Date(task.deadline)) : "");
+      setJumlah(task.jumlahIntervensi != null ? String(task.jumlahIntervensi) : "");
+      setSatuan(task.satuan ?? "");
       return;
     }
     if (mode === "delegasi") {
@@ -97,6 +109,8 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
       source: mode === "edit" ? undefined : mode,
       assignmentMode: mode === "delegasi" ? assignmentMode : "ditunjuk",
       assignedToId: mode === "delegasi" && assignmentMode === "ditunjuk" ? assignedToId : null,
+      jumlahIntervensi: jumlah,
+      satuan,
     };
 
     if (mode === "edit" && task) {
@@ -108,6 +122,8 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
           description: payload.description,
           deadline: payload.deadline,
           priority: payload.priority,
+          jumlahIntervensi: payload.jumlahIntervensi,
+          satuan: payload.satuan,
         }),
       });
       const data = await res.json();
@@ -135,8 +151,16 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
     setError("");
 
     try {
+      const title = String(new FormData(event.currentTarget).get("title") || "").trim();
+      if (!title) {
+        throw new Error("Judul wajib diisi");
+      }
       if (mode === "delegasi" && assignmentMode === "ditunjuk" && !assignedToId) {
         throw new Error("Pilih penerima tugas");
+      }
+      const parsedJumlah = parseJumlahSatuan(jumlah, satuan, false);
+      if (!parsedJumlah.ok) {
+        throw new Error(parsedJumlah.error);
       }
       await saveTask(event.currentTarget);
       onOpenChange(false);
@@ -159,6 +183,12 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
       return;
     }
 
+    const parsedJumlah = parseJumlahSatuan(jumlah, satuan, true);
+    if (!parsedJumlah.ok) {
+      setError(parsedJumlah.error);
+      return;
+    }
+
     const evidenceError = evidence.validate();
     if (evidenceError) {
       setError(evidenceError);
@@ -170,9 +200,12 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
 
     try {
       const created = await saveTask(form);
+      const completeBody = evidence.toFormData();
+      completeBody.append("jumlahIntervensi", jumlah);
+      completeBody.append("satuan", satuan);
       const completeRes = await fetch(`/api/tasks/${created.id}/complete`, {
         method: "POST",
-        body: evidence.toFormData(),
+        body: completeBody,
       });
       const completeData = await completeRes.json();
       if (!completeRes.ok) {
@@ -189,8 +222,14 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader className="text-left">
+      <DialogContent
+        className={cn(
+          "box-border content-start min-w-0 gap-2 overflow-x-hidden overflow-y-auto",
+          "left-[max(0.5rem,env(safe-area-inset-left))] right-[max(0.5rem,env(safe-area-inset-right))] top-16 bottom-[max(0.5rem,env(safe-area-inset-bottom))] h-auto w-auto max-h-none max-w-none translate-x-0 translate-y-0",
+          "sm:left-1/2 sm:right-auto sm:top-20 sm:bottom-auto sm:max-h-[calc(100vh-6rem)] sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:translate-y-0",
+        )}
+      >
+        <DialogHeader className="min-w-0 pr-8 text-left">
           <DialogTitle className="text-2xl font-bold">
             {mode === "edit" ? "Edit Tugas" : mode === "mandiri" ? "Tambah Tugas" : "Delegasi Tugas"}
           </DialogTitle>
@@ -202,9 +241,9 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
               : "Tunjuk bawahan langsung, atau lempar ke board staf jika Anda kepala sub bidang."}
           </p>
         </DialogHeader>
-        <form key={task?.id ?? mode} onSubmit={handleSubmit} className="space-y-6">
+        <form key={task?.id ?? mode} onSubmit={handleSubmit} className="min-w-0 max-w-full space-y-6">
           {mode === "delegasi" ? (
-            <div className="space-y-3 rounded-lg border border-outline-variant bg-surface-container-low p-4">
+            <div className="min-w-0 space-y-3 rounded-lg border border-outline-variant bg-surface-container-low p-4">
               {org?.unit ? (
                 <p className="text-xs text-on-surface-variant">
                   {org.jabatanLabel} · {org.unit.name} ({org.unit.typeLabel})
@@ -263,7 +302,7 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
               )}
             </div>
           ) : null}
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
             <Label htmlFor="title">Judul Tugas</Label>
             <Input
               id="title"
@@ -274,7 +313,7 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
               defaultValue={mode === "edit" ? task?.title ?? "" : undefined}
             />
           </div>
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
             <Label htmlFor="description">Deskripsi</Label>
             <Textarea
               id="description"
@@ -283,18 +322,19 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
               defaultValue={mode === "edit" ? task?.description ?? "" : undefined}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="deadline">Deadline</Label>
               <Input
                 id="deadline"
                 name="deadline"
                 type="date"
+                className="min-w-0 max-w-full"
                 value={deadline}
                 onChange={(event) => setDeadline(event.target.value)}
               />
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="priority">Prioritas</Label>
               <select
                 id="priority"
@@ -310,6 +350,14 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
             </div>
           </div>
 
+          <InterventionFields
+            jumlah={jumlah}
+            satuan={satuan}
+            onJumlahChange={setJumlah}
+            onSatuanChange={setSatuan}
+            required={mode === "mandiri" && showComplete}
+          />
+
           {mode === "mandiri" && showComplete ? (
             <EvidenceFields
               notes={evidence.notes}
@@ -320,6 +368,8 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
               longitude={evidence.longitude}
               photos={evidence.photos}
               geoError={evidence.geoError}
+              geoLoading={evidence.geoLoading}
+              onTagLocation={evidence.requestLocation}
               onPhotoChange={async (event) => {
                 const photoError = await evidence.handlePhotoChange(event);
                 if (photoError) setError(photoError);
@@ -330,8 +380,14 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
 
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
-          <div className="space-y-2">
-            <Button type="submit" className="w-full" disabled={loading}>
+          <div className={mode === "mandiri" ? "flex gap-2" : undefined}>
+            <Button
+              type="submit"
+              className={mode === "mandiri" ? "min-w-0 flex-1" : "w-full"}
+              disabled={loading}
+              formNoValidate
+            >
+              <Save className="h-4 w-4" />
               {loading && !showComplete ? "Menyimpan..." : mode === "edit" ? "Simpan Perubahan" : "Simpan Tugas"}
             </Button>
             {mode === "mandiri" ? (
@@ -339,7 +395,7 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
                 <Button
                   type="button"
                   variant="success"
-                  className="w-full"
+                  className="min-w-0 flex-1"
                   disabled={loading}
                   onClick={handleComplete}
                 >
@@ -350,7 +406,7 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
                 <Button
                   type="button"
                   variant="success"
-                  className="w-full"
+                  className="min-w-0 flex-1"
                   disabled={loading}
                   onClick={() => {
                     setError("");
