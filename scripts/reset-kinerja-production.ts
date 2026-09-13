@@ -27,11 +27,12 @@ async function emptyPhotoBucket() {
   });
 
   let removed = 0;
-  for (;;) {
+  for (let round = 0; round < 50; round += 1) {
     const { data, error } = await supabase.storage.from(BUCKET).list("", { limit: 100 });
     if (error) throw new Error(`Gagal list foto: ${error.message}`);
-    if (!data?.length) break;
-    const names = data.map((file) => file.name).filter(Boolean);
+    const names = (data ?? [])
+      .filter((file) => file.id && file.name && file.name !== ".emptyFolderPlaceholder")
+      .map((file) => file.name);
     if (!names.length) break;
     const { error: removeError } = await supabase.storage.from(BUCKET).remove(names);
     if (removeError) throw new Error(`Gagal hapus foto: ${removeError.message}`);
