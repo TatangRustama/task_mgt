@@ -1,206 +1,223 @@
-import type { ReportSummary, ReportTask } from "@/lib/report-types";
-import { formatDate, getMonthYearLabel, statusLabel } from "@/lib/utils";
-import { formatJumlahSatuan } from "@/lib/satuan";
-import { printTargetLine } from "@/lib/laporan-print-view";
+import {
+  evidenceRows,
+  groupTasksByPrintDate,
+  groupTasksForWfhPrint,
+  printHasilParafText,
+  printKeterangan,
+  printUraianText,
+  taskWfhHasil,
+  type PrintPerson,
+  type PrintUnitReviewRow,
+} from "@/lib/laporan-print-view";
+import type { HarianPrintData, BulananPrintData } from "@/lib/laporan-print-data";
+import type { ReportTask } from "@/lib/report-types";
+import { formatPrintedOnDate, formatWfhReportDate, getMonthYearLabel } from "@/lib/utils";
+
+const DELIMITER = ";";
+
+function excelSafeText(value: string) {
+  return value
+    .replace(/[\u2010-\u2015\u2212]/g, "-")
+    .replace(/[\u00B7\u2022\u2027\u22C5]/g, "-")
+    .replace(/\u00A0/g, " ");
+}
 
 function csvCell(value: string | number | null | undefined) {
-  const text = String(value ?? "");
-  if (/[",\n\r]/.test(text)) {
+  const text = excelSafeText(String(value ?? ""));
+  if (/[";\n\r]/.test(text)) {
     return `"${text.replace(/"/g, '""')}"`;
   }
   return text;
 }
 
-function csvRow(cells: Array<string | number | null | undefined>) {
-  return `${cells.map(csvCell).join(",")}\r\n`;
+function csvRow(cells: Array<string | number | null | undefined> = []) {
+  return `${cells.map(csvCell).join(DELIMITER)}\r\n`;
 }
 
-export function buildTaskReportCsv(options: {
-  title: string;
-  unitName: string;
-  instansiName: string;
-  summary: ReportSummary;
-  tasks: ReportTask[];
-}) {
+function identityRows(person: PrintPerson, pangkatLabel: string) {
+  return [
+    csvRow(["Nama", person.name]),
+    csvRow(["NIP", person.nip]),
+    csvRow([pangkatLabel, person.pangkatGolongan]),
+    csvRow(["Jabatan", person.jabatan]),
+  ];
+}
+
+function taskTableRows(
+  tasks: ReportTask[],
+  authorName: string,
+  empty: string,
+  mergedHasilParaf: boolean,
+) {
   const lines = [
-    csvRow(["Laporan", options.title]),
-    csvRow(["Instansi", options.instansiName]),
-    csvRow(["Unit", options.unitName]),
-    csvRow([]),
-    csvRow(["Diposting", options.summary.posted]),
-    csvRow(["Selesai", options.summary.completed]),
-    csvRow(["Rata bintang", options.summary.averageScore || "-"]),
-    csvRow(["Tepat waktu %", options.summary.onTimePercent]),
-    csvRow([]),
     csvRow([
-      "No",
-      "Judul",
-      "Pegawai",
-      "Status",
-      "Sumber",
-      "Dibuat",
-      "Selesai",
-      "Deadline",
-      "Bintang",
-      "Jumlah",
-      "Satuan",
-      "Lokasi",
+      "No.",
+      "Hari/Tgl",
+      "Uraian Tugas",
+      "Keterangan",
+      mergedHasilParaf ? "Hasil/ Paraf" : "Hasil",
     ]),
   ];
-
-  options.tasks.forEach((task, index) => {
-    const title = [task.title, printTargetLine(task)].filter(Boolean).join(" — ");
-    lines.push(
-      csvRow([
-        index + 1,
-        title,
-        task.assigneeName,
-        task.status === "dikerjakan" ? "dikerjakan" : statusLabel(task.status),
-        task.source,
-        formatDate(task.assignedAt || task.createdAt),
-        formatDate(task.completedAt),
-        formatDate(task.deadline),
-        task.score ?? "-",
-        task.jumlahIntervensi ?? "-",
-        task.satuan || "-",
-        task.address || "-",
-      ]),
-    );
-  });
-
-  return `\uFEFF${lines.join("")}`;
-}
-
-export function buildDailyWfhCsv(options: {
-  date: string;
-  authorName: string;
-  authorNip: string;
-  tasks: ReportTask[];
-}) {
-  const lines = [
-    csvRow(["Laporan Kinerja WFH", options.date]),
-    csvRow(["Nama", options.authorName]),
-    csvRow(["NIP", options.authorNip]),
-    csvRow([]),
-    csvRow(["No", "Uraian Kegiatan", "Tempat", "Hasil/Output", "Dokumentasi"]),
-  ];
-
-  if (options.tasks.length === 0) {
-    lines.push(csvRow([1, "-", "Rumah", "-", "-"]));
-  } else {
-    options.tasks.forEach((task, index) => {
-      const uraian = [task.title, task.description, printTargetLine(task)].filter(Boolean).join(" — ");
-      const hasil =
-        task.status === "dikerjakan"
-          ? "dikerjakan"
-          : [
-              formatJumlahSatuan(task.jumlahIntervensi, task.satuan),
-              task.notes,
-              task.feedback,
-            ]
-              .filter(Boolean)
-              .join(" — ") || "-";
+  if (tasks.length === 0) {
+    lines.push(csvRow(["", "", empty, "", ""]));
+    return lines;
+  }
+  for (const group of groupTasksByPrintDate(tasks)) {
+    for (const task of group.tasks) {
       lines.push(
         csvRow([
-          index + 1,
-          uraian,
-          task.address?.trim() || "Rumah",
-          hasil,
-          task.photoUrls.length ? task.photoUrls.join("; ") : "-",
+          group.no,
+          group.date,
+          printUraianText(task),
+          printKeterangan(task, authorName, { includeFeedback: !mergedHasilParaf }) || "-",
+          printHasilParafText(task, mergedHasilParaf),
         ]),
       );
-    });
+    }
   }
-
-  return `\uFEFF${lines.join("")}`;
+  return lines;
 }
 
-export function buildLaporanAssessmentCsv(options: {
-  title: string;
-  unitName: string;
-  insight: string;
-  summary: { completed: number; rejected: number; averageScore: number; onTimePercent: number };
-  rows: Array<{
-    name: string;
-    role: string;
-    insight: string;
-    completed: number;
-    rejected: number;
-    averageScore: number;
-    onTimePercent: number;
-  }>;
-}) {
-  const lines = [
-    csvRow(["Laporan", options.title]),
-    csvRow(["Unit", options.unitName]),
-    csvRow(["Ringkasan", options.insight]),
-    csvRow([]),
-    csvRow(["Disetujui", options.summary.completed]),
-    csvRow(["Ditolak", options.summary.rejected]),
-    csvRow(["Rata bintang", options.summary.averageScore || "-"]),
-    csvRow(["Tepat waktu %", options.summary.onTimePercent]),
-    csvRow([]),
-    csvRow(["Nama", "Peran / unit", "Predikat", "Disetujui", "Ditolak", "Rata bintang", "Tepat waktu %"]),
-  ];
+function wfhUnitTableRows(tasks: ReportTask[], date: string, isLeader: boolean) {
+  const dateLabel = formatWfhReportDate(date);
+  const lines = [csvRow(["NO", "HARI/TANGGAL", "URAIAN KEGIATAN", "HASIL/ PARAF"])];
+  const groups = groupTasksForWfhPrint(tasks);
+  if (groups.length === 0) {
+    lines.push(csvRow([1, dateLabel, "-", "-"]));
+    return lines;
+  }
+  for (const group of groups) {
+    for (const task of group.tasks) {
+      const hasilParts: string[] = [];
+      if (task.status !== "dikerjakan") {
+        const hasil = taskWfhHasil(task);
+        if (hasil !== "-") hasilParts.push(hasil);
+      }
+      hasilParts.push(printHasilParafText(task, isLeader));
+      lines.push(
+        csvRow([group.no, dateLabel, printUraianText(task), hasilParts.filter(Boolean).join("\n")]),
+      );
+    }
+  }
+  return lines;
+}
 
-  for (const row of options.rows) {
+function reviewUnitRows(rows: PrintUnitReviewRow[]) {
+  const lines = [
+    csvRow(["Nama / unit", "Predikat", "Disetujui", "Ditolak", "Nilai", "Tepat waktu"]),
+  ];
+  if (rows.length === 0) {
+    lines.push(csvRow(["Tidak ada bawahan yang dinilai pada periode ini.", "", "", "", "", ""]));
+    return lines;
+  }
+  for (const row of rows) {
+    const nama = [row.name, row.identity, row.jabatanNama].filter((part) => part && part !== "-").join("\n");
     lines.push(
       csvRow([
-        row.name,
-        row.role,
+        nama,
         row.insight,
         row.completed,
         row.rejected,
-        row.averageScore || "-",
-        row.onTimePercent,
+        row.averageScore ? `${row.averageScore}/3` : "-",
+        row.completed ? `${row.onTimePercent}%` : "-",
       ]),
     );
   }
-
-  return `\uFEFF${lines.join("")}`;
+  return lines;
 }
 
-export function buildPegawaiReportCsv(options: {
-  month: number;
-  year: number;
-  unitName: string;
-  instansiName: string;
-  summary: ReportSummary;
-  rows: Array<{
-    name: string;
-    kinerja: string;
-    completed: number;
-    total: number;
-    averageScore: number;
-    onTimePercent: number;
-  }>;
-}) {
-  const period = getMonthYearLabel(options.month, options.year);
+function lampiranRows(tasks: ReportTask[]) {
+  const rows = evidenceRows(tasks);
+  if (rows.length === 0) return [];
+  const lines = [csvRow([]), csvRow(["Lampiran"]), csvRow(["Bukti Dokumen"]), csvRow(["No.", "Hari/Tgl", "Bukti Visual"])];
+  rows.forEach((row, index) => {
+    lines.push(csvRow([index + 1, row.date, [row.title, ...row.photos].join("\n")]));
+  });
+  return lines;
+}
+
+export function buildDailyPrintCsv(data: HarianPrintData) {
+  const { print, isLeader, date, tasks, leaderTasks, lampiranTasks } = data;
   const lines = [
-    csvRow(["Laporan Pegawai", period]),
-    csvRow(["Instansi", options.instansiName]),
-    csvRow(["Unit", options.unitName]),
+    csvRow(["LAPORAN KINERJA WFH"]),
+    csvRow([formatWfhReportDate(date)]),
     csvRow([]),
-    csvRow(["Diposting", options.summary.posted]),
-    csvRow(["Selesai", options.summary.completed]),
-    csvRow(["Rata bintang", options.summary.averageScore || "-"]),
-    csvRow(["Tepat waktu %", options.summary.onTimePercent]),
+    ...identityRows(print.author, "Pangkat"),
     csvRow([]),
-    csvRow(["Pegawai", "Kinerja", "Selesai", "Total", "Rata bintang", "Tepat waktu %"]),
+    csvRow(["Atasan langsung / Pemberi Tugas"]),
+    ...(print.atasan ? identityRows(print.atasan, "Pangkat") : [csvRow(["Tidak ada atasan langsung."])]),
   ];
 
-  for (const row of options.rows) {
+  if (isLeader) {
+    lines.push(csvRow([]), csvRow(["Rincian Tugas Mandiri"]));
     lines.push(
-      csvRow([
-        row.name,
-        row.kinerja,
-        row.completed,
-        row.total,
-        row.averageScore || "-",
-        row.onTimePercent,
-      ]),
+      ...taskTableRows(leaderTasks, print.author.name, "Tidak ada tugas mandiri pada tanggal ini.", true),
     );
+    lines.push(csvRow([]), csvRow(["Rincian Tugas Unit"]));
+    lines.push(...wfhUnitTableRows(tasks, date, true));
+  } else {
+    lines.push(csvRow([]));
+    lines.push(...wfhUnitTableRows(tasks, date, false));
   }
 
-  return `\uFEFF${lines.join("")}`;
+  lines.push(csvRow([]), csvRow(["dicetak pada :", formatPrintedOnDate()]));
+  lines.push(...lampiranRows(lampiranTasks));
+  return lines.join("");
+}
+
+export function buildMonthlyPrintCsv(data: BulananPrintData) {
+  const { print, isLeader, month, year, tasks, rows, leaderTasks, lampiranTasks } = data;
+  const period = getMonthYearLabel(month, year).toUpperCase();
+  const lines = [
+    csvRow([
+      isLeader ? "LAPORAN PENILAIAN KINERJA BULANAN" : "LAPORAN PELAKSANAAN KINERJA BULANAN",
+      period,
+    ]),
+    csvRow([]),
+    ...identityRows(print.author, "Pangkat/Golongan"),
+    csvRow([]),
+    csvRow(["Atasan langsung / Pemberi Tugas"]),
+    ...(print.atasan
+      ? identityRows(print.atasan, "Pangkat/Golongan")
+      : [csvRow(["Tidak ada atasan langsung."])]),
+  ];
+
+  if (isLeader) {
+    lines.push(csvRow([]), csvRow(["Rincian Tugas Mandiri"]));
+    lines.push(
+      ...taskTableRows(leaderTasks, print.author.name, "Tidak ada tugas mandiri pada periode ini.", true),
+    );
+    lines.push(csvRow([]), csvRow(["Review Tugas Unit"]));
+    lines.push(...reviewUnitRows(rows));
+  }
+
+  lines.push(csvRow([]), csvRow([isLeader ? "Rincian Tugas Unit" : "Uraian tugas"]));
+  lines.push(
+    ...taskTableRows(
+      tasks,
+      print.author.name,
+      "Tidak ada tugas pada periode ini.",
+      false,
+    ),
+  );
+  lines.push(csvRow([]), csvRow(["dicetak pada :", formatPrintedOnDate()]));
+  lines.push(...lampiranRows(lampiranTasks));
+  return lines.join("");
+}
+
+export function buildLaporanPrintCsv(data: HarianPrintData | BulananPrintData) {
+  return data.view === "harian" ? buildDailyPrintCsv(data) : buildMonthlyPrintCsv(data);
+}
+
+export function encodeExcelCsv(csv: string) {
+  const payload = `sep=${DELIMITER}\r\n${csv.replace(/^\uFEFF/, "")}`;
+  const bytes = new Uint8Array(2 + payload.length * 2);
+  bytes[0] = 0xff;
+  bytes[1] = 0xfe;
+  for (let i = 0; i < payload.length; i += 1) {
+    const code = payload.charCodeAt(i);
+    bytes[2 + i * 2] = code & 0xff;
+    bytes[2 + i * 2 + 1] = (code >> 8) & 0xff;
+  }
+  return bytes;
 }

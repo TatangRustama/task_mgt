@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { kepegawaianStatus } from "@/lib/kepegawaian-status";
+import { displayJabatan } from "@/lib/jabatan-display";
 import { USER_PAGE_SIZES } from "@/lib/roles";
 import { formatNip } from "@/lib/utils";
 
@@ -300,7 +301,7 @@ export function SuperAdminPegawaiList() {
               <p className="text-on-surface-variant">
                 {row.jenis === "non_asn" ? `NIK ${row.nik || "-"}` : `NIP ${formatNip(row.nip)}`}
               </p>
-              <p className="text-sm text-on-surface">{row.jabatanNama || "-"}</p>
+              <p className="text-sm text-on-surface">{displayJabatan(row)}</p>
             </button>
           ))
         )}

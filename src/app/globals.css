@@ -121,6 +121,25 @@ select {
   }
 }
 
+.pdf-export-host {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 210mm;
+  background: #fff;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.pdf-export-host .print-root {
+  position: static !important;
+  left: auto !important;
+  top: auto !important;
+  width: 210mm !important;
+  background: #fff !important;
+  color: #111 !important;
+}
+
 @media print {
   @page {
     size: A4 portrait;
@@ -149,14 +168,15 @@ select {
     width: auto;
     pointer-events: auto;
   }
+}
 
-  .print-kinerja,
-  .print-wfh {
-    font-family: "Times New Roman", Times, serif;
-    font-size: 11pt;
-    line-height: 1.35;
-    color: #111;
-  }
+.print-root {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 11pt;
+  line-height: 1.35;
+  color: #111;
+  background: #fff;
+}
 
   .print-kop {
     display: flex;
@@ -247,7 +267,7 @@ select {
   .print-table th,
   .print-table td {
     border: 1px solid #111;
-    padding: 5px 6px;
+    padding: 5px 6px 12px;
     vertical-align: top;
   }
 
@@ -279,6 +299,15 @@ select {
 
   .print-place-line {
     font-size: 9.5pt;
+  }
+
+  .print-uraian-title {
+    font-weight: 700;
+  }
+
+  .print-uraian-desc {
+    display: inline-block;
+    margin-top: 2px;
   }
 
   .print-hasil-paraf {
@@ -335,6 +364,7 @@ select {
   .print-lampiran {
     page-break-before: always;
     break-before: page;
+    margin-top: 0;
   }
 
   .print-lampiran-caption {
@@ -349,23 +379,21 @@ select {
   }
 
   .print-photos-lampiran {
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
     width: 100%;
     max-width: 100%;
+    align-items: start;
   }
 
-  .print-photos-lampiran img,
-  .print-bukti-img {
+  .print-photos-lampiran .print-bukti-img {
     display: block;
     box-sizing: border-box;
     width: 100%;
     max-width: 100%;
-    max-height: 140mm;
     height: auto;
-    margin: 0 auto;
+    margin: 0;
     object-fit: contain;
     object-position: center;
     border: 1px solid #ccc;
@@ -373,6 +401,16 @@ select {
     break-inside: avoid;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  .print-photos-lampiran .print-bukti-img-landscape {
+    grid-column: span 3;
+    max-height: 90mm;
+  }
+
+  .print-photos-lampiran .print-bukti-img-portrait {
+    grid-column: span 2;
+    max-height: 95mm;
   }
 
   .print-printed-on {
@@ -389,6 +427,19 @@ select {
     margin-top: 12px;
     text-align: center;
     page-break-inside: avoid;
+    break-inside: avoid;
+    overflow: visible;
+    padding-bottom: 4px;
+  }
+
+  .print-sign > div {
+    overflow: visible;
+    min-width: 0;
+  }
+
+  .print-sign p {
+    margin: 0;
+    line-height: 1.25;
   }
 
   .print-sign-qr {
@@ -396,18 +447,18 @@ select {
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    padding-top: 8px;
+    padding-top: 4px;
     min-width: 112px;
   }
 
   .print-sign-jabatan {
-    min-height: 2.4em;
     margin: 0;
+    line-height: 1.2;
   }
 
   .print-sign-space {
-    min-height: 96px;
-    height: auto;
+    min-height: 36px;
+    margin: 2px 0 4px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -430,7 +481,15 @@ select {
   .print-sign-name {
     font-weight: 700;
     text-decoration: underline;
-    margin: 0 0 2px;
+    margin: 0;
+    line-height: 1.3;
+  }
+
+  .print-sign-nip {
+    margin: 2px 0 0;
+    line-height: 1.4;
+    overflow: visible;
+    padding-bottom: 2px;
   }
 
   .print-wfh-date {
@@ -458,9 +517,8 @@ select {
   }
 
   .print-wfh-sign-space {
-    min-height: 72px;
+    min-height: 36px;
   }
-}
 
 @keyframes nav-loader-slide {
   0% {

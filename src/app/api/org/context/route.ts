@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   canDelegate,
   canUsePoolAssignment,
+  displayJabatan,
   getAtasan,
   getDbOrgUser,
   getDirectReports,
@@ -32,7 +33,12 @@ export async function GET() {
     name: user.name,
     role: user.role,
     jabatan: user.jabatan,
-    jabatanLabel: user.jabatan ? jabatanLabel[user.jabatan] : "Admin",
+    jabatanLabel:
+      user.role === "personal"
+        ? displayJabatan(user.pegawai, user.jabatan)
+        : user.jabatan
+          ? jabatanLabel[user.jabatan]
+          : "Admin",
     unit: user.unit
       ? {
           id: user.unit.id,
@@ -44,15 +50,7 @@ export async function GET() {
     canDelegate: canDelegate(user),
     canUsePool: canUsePoolAssignment(user),
     mustAssignNamed: mustAssignNamed(user),
-    atasan: atasan
-      ? {
-          ...atasan,
-          jabatanLabel: atasan.jabatan ? jabatanLabel[atasan.jabatan] : "-",
-        }
-      : null,
-    subordinates: subordinates.map((person) => ({
-      ...person,
-      jabatanLabel: person.jabatan ? jabatanLabel[person.jabatan] : "-",
-    })),
+    atasan,
+    subordinates,
   });
 }

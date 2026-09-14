@@ -6,15 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { displayJabatan } from "@/lib/jabatan-display";
 import { roleLabel } from "@/lib/roles";
 import { formatDateTime } from "@/lib/utils";
-
-const jabatanLabel: Record<"kepala_kantor" | "kepala_bidang" | "kepala_sub_bidang" | "pelaksana", string> = {
-  kepala_kantor: "Kepala Kantor",
-  kepala_bidang: "Kepala Bidang",
-  kepala_sub_bidang: "Kepala Sub Bidang",
-  pelaksana: "Staf Pelaksana",
-};
 
 const selectClassName =
   "flex h-11 w-full rounded-lg border border-outline-variant px-3 text-sm focus-visible:outline-none focus-visible:border-primary-container focus-visible:ring-1 focus-visible:ring-primary-container";
@@ -28,7 +22,7 @@ export type UserDetail = {
   email: string;
   nip: string;
   role: UserRole;
-  jabatan: keyof typeof jabatanLabel | null;
+  jabatan: "kepala_kantor" | "kepala_bidang" | "kepala_sub_bidang" | "pelaksana" | null;
   createdAt: string;
   updatedAt: string;
   unit: { id: string; name: string } | null;
@@ -212,7 +206,7 @@ export function UserDetailDialog({
               <Field label="Email" value={detail.email} />
               <Field
                 label="Jabatan"
-                value={detail.jabatan ? jabatanLabel[detail.jabatan] : detail.pegawai?.jabatanNama || "-"}
+                value={displayJabatan(detail.pegawai, detail.jabatan)}
               />
               <Field label="Unit" value={detail.unit?.name || "-"} />
               {detail.pegawai ? (

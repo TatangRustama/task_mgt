@@ -1,4 +1,5 @@
 import { UNASSIGNED_PEGAWAI_ID, type DayRecap, type PegawaiReportRow } from "@/lib/report-types";
+import { compareByPangkatDesc } from "@/lib/golongan";
 import { formatISODate } from "@/lib/utils";
 
 export type KinerjaLevel = "perlu_perhatian" | "lancar" | "tidak_aktif";
@@ -134,16 +135,11 @@ export function evaluateKinerja(
 }
 
 function sortPerhatian(a: EvaluatedPegawai, b: EvaluatedPegawai) {
-  if (a.eval.overdue !== b.eval.overdue) return b.eval.overdue - a.eval.overdue;
-  if (a.eval.rejected !== b.eval.rejected) return b.eval.rejected - a.eval.rejected;
-  return a.eval.completionRate - b.eval.completionRate;
+  return compareByPangkatDesc(a.person, b.person);
 }
 
 function sortLancar(a: EvaluatedPegawai, b: EvaluatedPegawai) {
-  if (a.eval.completionRate !== b.eval.completionRate) {
-    return b.eval.completionRate - a.eval.completionRate;
-  }
-  return (b.person.summary.averageScore || 0) - (a.person.summary.averageScore || 0);
+  return compareByPangkatDesc(a.person, b.person);
 }
 
 export function groupKinerjaHarian(people: PegawaiReportRow[], asOfDate: string) {
@@ -167,7 +163,7 @@ export function groupKinerja(
     poolEval: pool ? evaluateKinerja(pool, asOfDate, period) : null,
     perhatian: evaluated.filter((item) => item.eval.level === "perlu_perhatian").sort(sortPerhatian),
     lancar: evaluated.filter((item) => item.eval.level === "lancar").sort(sortLancar),
-    idle: evaluated.filter((item) => item.eval.level === "tidak_aktif"),
+    idle: evaluated.filter((item) => item.eval.level === "tidak_aktif").sort((a, b) => compareByPangkatDesc(a.person, b.person)),
   };
 }
 

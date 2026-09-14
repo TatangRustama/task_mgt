@@ -43,6 +43,7 @@ export type MonitorPerson = {
   isStaff: boolean;
   leadsUnitId: string | null;
   canReview: boolean;
+  golonganNama: string | null;
   openCount: number;
   overdueCount: number;
   rejectedCount: number;

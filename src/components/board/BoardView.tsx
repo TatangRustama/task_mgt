@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { TaskCard, TaskCardData } from "@/components/board/TaskCard";
 import { TaskFormDialog } from "@/components/task/TaskForm";
+import { calendarDay } from "@/lib/utils";
 
 export function BoardView({
   tasks,
@@ -31,11 +32,20 @@ export function BoardView({
     router.replace("/board", { scroll: false });
   }, [openDelegasi, router]);
 
-  const tersedia = tasks.filter((t) => t.status === "tersedia");
-  const dikerjakan = tasks.filter((t) => t.status === "dikerjakan" || t.status === "ditolak");
-  const selesai = tasks.filter((t) =>
-    ["menunggu_approval", "disetujui"].includes(t.status)
-  );
+  const today = calendarDay(new Date());
+  const byRecency = (a: TaskCardData, b: TaskCardData) =>
+    new Date(b.updatedAt ?? b.createdAt ?? 0).getTime() - new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
+
+  const tersedia = tasks.filter((t) => t.status === "tersedia").sort(byRecency);
+  const dikerjakan = tasks.filter((t) => t.status === "dikerjakan" || t.status === "ditolak").sort(byRecency);
+  const selesai = tasks
+    .filter((t) => ["menunggu_approval", "disetujui"].includes(t.status))
+    .filter((t) => calendarDay(t.completedAt) === today)
+    .sort((a, b) => {
+      const aAt = a.completedAt ?? a.updatedAt ?? a.createdAt;
+      const bAt = b.completedAt ?? b.updatedAt ?? b.createdAt;
+      return new Date(bAt ?? 0).getTime() - new Date(aAt ?? 0).getTime();
+    });
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -89,7 +99,7 @@ export function BoardView({
           {renderColumn(dikerjakan, "Belum ada tugas yang sedang dikerjakan.")}
         </TabsContent>
         <TabsContent value="selesai">
-          {renderColumn(selesai, "Belum ada tugas selesai.")}
+          {renderColumn(selesai, "Belum ada tugas selesai hari ini.")}
         </TabsContent>
       </Tabs>
 

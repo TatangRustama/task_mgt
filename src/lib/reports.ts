@@ -1,5 +1,6 @@
-import { Prisma } from "@prisma/client";
-import { getDbOrgUser, getDescendantUnitIds, isUnitLeader, jabatanLabel } from "@/lib/org";
+import { Prisma, type Jabatan } from "@prisma/client";
+import { displayJabatan } from "@/lib/jabatan-display";
+import { getDbOrgUser, getDescendantUnitIds, isUnitLeader } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { isSuperAdmin } from "@/lib/roles";
 import {
@@ -14,7 +15,8 @@ import {
   type ReportTask,
   emptySummary,
 } from "@/lib/report-types";
-import { formatISODate, parseISODate } from "@/lib/utils";
+import { compareByPangkatDesc } from "@/lib/golongan";
+import { formatISODate, isCompletedOnTime, parseISODate } from "@/lib/utils";
 import { normalizeStars } from "@/lib/rating";
 
 type ReportKind = "all" | "unit_tree" | "self";
@@ -132,10 +134,7 @@ function summarize(tasks: ReportTask[], start: Date, end: Date): ReportSummary {
     return completedAt >= start && completedAt < end;
   });
   const scored = completed.filter((task) => task.score != null);
-  const onTime = completed.filter((task) => {
-    if (!task.deadline) return true;
-    return Boolean(task.completedAt && new Date(task.completedAt) <= new Date(task.deadline));
-  });
+  const onTime = completed.filter((task) => isCompletedOnTime(task.completedAt, task.deadline));
 
   return {
     posted: posted.length,
@@ -168,14 +167,16 @@ const taskPrintInclude = {
 function toReportPegawai(user: {
   id: string;
   name: string;
-  jabatan: keyof typeof jabatanLabel | null;
+  jabatan: Jabatan | null;
   unit?: { name: string } | null;
+  pegawai?: { golonganNama: string | null; jabatanNama?: string | null; jenis?: string | null } | null;
 }): ReportPegawai {
   return {
     id: user.id,
     name: user.name,
-    jabatanLabel: user.jabatan ? jabatanLabel[user.jabatan] : null,
+    jabatanLabel: displayJabatan(user.pegawai, user.jabatan),
     unitName: user.unit?.name ?? null,
+    golonganNama: user.pegawai?.golonganNama ?? null,
   };
 }
 
@@ -189,6 +190,7 @@ export async function getReportPeople(options: ReportScope): Promise<ReportPegaw
         name: true,
         jabatan: true,
         unit: { select: { name: true } },
+        pegawai: { select: { golonganNama: true, jabatanNama: true, jenis: true } },
       },
     });
     if (!self) return [];
@@ -208,6 +210,7 @@ export async function getReportPeople(options: ReportScope): Promise<ReportPegaw
       name: true,
       jabatan: true,
       unit: { select: { name: true } },
+      pegawai: { select: { golonganNama: true, jabatanNama: true, jenis: true } },
     },
     orderBy: { name: "asc" },
   });
@@ -235,6 +238,7 @@ export function groupTasksByPegawai(
         name: task.assigneeId ? task.assigneeName : "Belum ditugaskan",
         jabatanLabel: task.assigneeId ? null : "Kolam tugas",
         unitName: null,
+        golonganNama: null,
         tasks: [],
         summary: emptySummary(),
       });
@@ -248,12 +252,9 @@ export function groupTasksByPegawai(
       summary: summarize(row.tasks, start, end),
     }))
     .sort((a, b) => {
-      const aActivity = a.summary.posted + a.summary.completed;
-      const bActivity = b.summary.posted + b.summary.completed;
-      if (aActivity !== bActivity) return bActivity - aActivity;
       if (a.id === UNASSIGNED_PEGAWAI_ID) return 1;
       if (b.id === UNASSIGNED_PEGAWAI_ID) return -1;
-      return a.name.localeCompare(b.name, "id");
+      return compareByPangkatDesc(a, b);
     });
 }
 

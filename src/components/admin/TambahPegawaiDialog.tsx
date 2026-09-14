@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { displayJabatan } from "@/lib/jabatan-display";
 import { formatNip } from "@/lib/utils";
 
 type PegawaiJenis = "asn" | "non_asn";
 
 type LookupResult = {
   id?: string;
+  jenis?: PegawaiJenis;
   nip: string;
   name: string;
   address?: string;
@@ -226,7 +228,7 @@ export function TambahPegawaiDialog({
               <div className="space-y-3 rounded-lg border border-surface-container-highest bg-surface-container-low p-3 text-sm">
                 <p className="font-medium text-on-surface">{result.name}</p>
                 <p className="text-on-surface-variant">NIP {formatNip(result.nip)}</p>
-                <p className="text-on-surface">{result.jabatanNama || "-"}</p>
+                <p className="text-on-surface">{displayJabatan(result)}</p>
                 <p className="text-xs text-on-surface-variant">{result.unorNama || "-"}</p>
                 {result.alreadySaved ? (
                   <p className="text-on-surface-variant">Pegawai ini sudah tersimpan.</p>

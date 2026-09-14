@@ -6,14 +6,21 @@ export function PrintUraianCell({
   task,
   extra,
 }: {
-  task: Pick<ReportTask, "title" | "address" | "assignedAt" | "createdAt" | "deadline">;
+  task: Pick<ReportTask, "title" | "description" | "address" | "assignedAt" | "createdAt" | "deadline">;
   extra?: string | null;
 }) {
   const place = printTempatLine(task);
   const target = printTargetLine(task);
+  const description = task.description?.trim();
   return (
     <>
-      {task.title.trim() || "-"}
+      <strong className="print-uraian-title">{task.title.trim() || "-"}</strong>
+      {description ? (
+        <>
+          <br />
+          <span className="print-uraian-desc">{description}</span>
+        </>
+      ) : null}
       {extra ? (
         <>
           <br />

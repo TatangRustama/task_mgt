@@ -30,7 +30,7 @@ export function PrintLampiranBukti({ tasks }: { tasks: ReportTask[] }) {
                       key={url}
                       src={printPhotoSrc(url)}
                       alt={row.title}
-                      className="print-bukti-img"
+                      className="print-bukti-img print-bukti-img-landscape"
                     />
                   ))}
                 </div>

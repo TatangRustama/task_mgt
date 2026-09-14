@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { jabatanLabel } from "@/lib/org";
+import { displayJabatan } from "@/lib/jabatan-display";
 import {
   laporanUnitLine,
   type LaporanBoard,
@@ -12,7 +12,8 @@ import { MONITOR_OVERLOAD_MIN, MONITOR_REVIEW_SLA_HOURS } from "@/lib/monitor-ty
 import { prisma } from "@/lib/prisma";
 import { mapTask } from "@/lib/reports";
 import type { DayRecap, LaporanView, ReportTask } from "@/lib/report-types";
-import { formatISODate, isMultiDayDeadline, parseISODate } from "@/lib/utils";
+import { compareByPangkatDesc } from "@/lib/golongan";
+import { formatISODate, isCompletedOnTime, isMultiDayDeadline, parseISODate } from "@/lib/utils";
 
 type ScopedTask = ReportTask & { unitId: string };
 
@@ -109,11 +110,7 @@ function scoreStats(tasks: ReportTask[]) {
 
 function onTimePercent(tasks: ReportTask[]) {
   if (!tasks.length) return 0;
-  const onTime = tasks.filter((task) => {
-    if (!task.deadline) return true;
-    if (!task.completedAt) return false;
-    return new Date(task.completedAt) <= new Date(task.deadline);
-  });
+  const onTime = tasks.filter((task) => isCompletedOnTime(task.completedAt, task.deadline));
   return Math.round((onTime.length / tasks.length) * 100);
 }
 
@@ -354,6 +351,7 @@ export async function getLaporanBoard(options: {
         jabatan: true,
         unitId: true,
         unit: { select: { id: true, name: true } },
+        pegawai: { select: { golonganNama: true, jabatanNama: true, jenis: true } },
       },
     });
     if (!me) return null;
@@ -375,11 +373,12 @@ export async function getLaporanBoard(options: {
       {
         id: me.id,
         name: me.name,
-        jabatanLabel: me.jabatan ? jabatanLabel[me.jabatan] : null,
+        jabatanLabel: displayJabatan(me.pegawai, me.jabatan),
         unitId: me.unitId,
         unitName: me.unit?.name ?? null,
         isStaff: me.jabatan === "pelaksana" || me.jabatan == null,
         leadsUnitId: null,
+        golonganNama: me.pegawai?.golonganNama ?? null,
       },
       mapped,
       start,
@@ -442,6 +441,7 @@ export async function getLaporanBoard(options: {
         jabatan: true,
         unitId: true,
         unit: { select: { name: true } },
+        pegawai: { select: { golonganNama: true, jabatanNama: true, jenis: true } },
       },
       orderBy: { name: "asc" },
     }),
@@ -470,11 +470,12 @@ export async function getLaporanBoard(options: {
         {
           id: person.id,
           name: person.name,
-          jabatanLabel: person.jabatan ? jabatanLabel[person.jabatan] : null,
+          jabatanLabel: displayJabatan(person.pegawai, person.jabatan),
           unitId: person.unitId,
           unitName: person.unit?.name ?? null,
           isStaff: person.jabatan === "pelaksana" || person.jabatan == null,
           leadsUnitId: leadsByUser.get(person.id) ?? null,
+          golonganNama: person.pegawai?.golonganNama ?? null,
         },
         byAssignee.get(person.id) ?? [],
         start,
@@ -556,13 +557,7 @@ export async function getLaporanBoard(options: {
     return person.unitId === heatmapParent;
   });
 
-  const rank: Record<LaporanTone, number> = { alert: 0, watch: 1, good: 2, idle: 3 };
-  people.sort((a, b) => {
-    if (rank[a.tone] !== rank[b.tone]) return rank[a.tone] - rank[b.tone];
-    if (a.rejected !== b.rejected) return b.rejected - a.rejected;
-    if (a.completed !== b.completed) return b.completed - a.completed;
-    return a.name.localeCompare(b.name, "id");
-  });
+  people.sort(compareByPangkatDesc);
 
   const displayedSummary = rollupFromBoard(people, childUnits);
   const days = options.view === "bulanan" ? recapDays(mapped, start, end, options.month, options.year) : [];

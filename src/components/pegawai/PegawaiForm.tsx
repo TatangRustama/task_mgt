@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { displayJabatan } from "@/lib/jabatan-display";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 5;
@@ -150,6 +151,7 @@ export function PegawaiForm({
     }
 
     setMessage("Pegawai berhasil ditambahkan");
+    await loadBawahan(1);
     if (jenis === "non_asn") {
       resetForm();
     } else {
@@ -291,7 +293,7 @@ export function PegawaiForm({
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field label="NIP" value={result.nip} />
-                  <Field label="Jabatan" value={result.jabatanNama} />
+                  <Field label="Jabatan" value={displayJabatan(result)} />
                   <Field label="Unit organisasi" value={result.unorNama} />
                   <Field label="Perangkat daerah" value={result.perangkatDaerahNama} />
                   <Field label="Golongan" value={result.golonganNama} />
@@ -349,7 +351,7 @@ export function PegawaiForm({
                         </Badge>
                       </div>
                       <p className="text-xs text-on-surface-variant">NIP {row.nip || "-"}</p>
-                      <p className="text-sm text-on-surface">{row.jabatanNama || "-"}</p>
+                      <p className="text-sm text-on-surface">{displayJabatan(row)}</p>
                       <p className="text-xs text-on-surface-variant">{row.unorNama || "-"}</p>
                     </div>
                   ))}

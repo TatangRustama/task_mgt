@@ -13,12 +13,12 @@ export function contentDispositionAttachment(filename: string) {
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(safe)}`;
 }
 
-export function dailyReportFilename(authorName: string, date: string) {
-  return `Laporan harian a.n. ${authorName} ${formatLongDate(date)}.csv`;
+export function dailyReportFilename(authorName: string, date: string, ext = "csv") {
+  return `Laporan harian a.n. ${authorName} ${formatLongDate(date)}.${ext}`;
 }
 
-export function monthlyReportFilename(authorName: string, month: number, year: number) {
-  return `Laporan bulan ${getMonthYearLabel(month, year)} a.n. ${authorName}.csv`;
+export function monthlyReportFilename(authorName: string, month: number, year: number, ext = "csv") {
+  return `Laporan bulan ${getMonthYearLabel(month, year)} a.n. ${authorName}.${ext}`;
 }
 
 export function pegawaiReportFilename(authorName: string, month: number, year: number) {

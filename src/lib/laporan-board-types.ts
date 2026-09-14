@@ -11,6 +11,7 @@ export type LaporanPerson = {
   unitName: string | null;
   isStaff: boolean;
   leadsUnitId: string | null;
+  golonganNama: string | null;
   completed: number;
   rejected: number;
   waiting: number;

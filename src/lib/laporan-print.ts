@@ -1,7 +1,8 @@
 import QRCode from "qrcode";
 import { headers } from "next/headers";
 import { formatGolonganPangkat } from "@/lib/golongan";
-import { getAtasan, getDbOrgUser, jabatanLabel } from "@/lib/org";
+import { displayJabatan } from "@/lib/jabatan-display";
+import { getAtasan, getDbOrgUser } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { mapTask } from "@/lib/reports";
 import { formatNip } from "@/lib/utils";
@@ -23,8 +24,10 @@ export {
   printHasilLine,
   printKeterangan,
   printParaf,
+  printHasilParafText,
   printTaskDate,
   printTempatLine,
+  printUraianText,
   printableTasks,
   taskWfhHasil,
   taskWfhTempat,
@@ -57,7 +60,7 @@ async function personFromUserId(
   const [pegawai, user] = await Promise.all([
     prisma.pegawai.findUnique({
       where: { userId },
-      select: { name: true, nip: true, golonganNama: true, jabatanNama: true },
+      select: { name: true, nip: true, golonganNama: true, jabatanNama: true, jenis: true },
     }),
     prisma.user.findUnique({
       where: { id: userId },
@@ -71,11 +74,7 @@ async function personFromUserId(
     name: pegawai?.name || user?.name || fallback?.name || "-",
     nip: formatNip(pegawai?.nip || user?.nip || fallback?.nip || "-"),
     pangkatGolongan: formatGolonganPangkat(pegawai?.golonganNama),
-    jabatan:
-      pegawai?.jabatanNama ||
-      (user?.jabatan ? jabatanLabel[user.jabatan] : null) ||
-      fallback?.jabatan ||
-      "-",
+    jabatan: displayJabatan(pegawai, user?.jabatan),
   };
 }
 
@@ -87,7 +86,7 @@ async function personFromUser(userId: string) {
   return personFromUserId(userId, {
     name: user?.name || "-",
     nip: user?.nip || "-",
-    jabatan: user?.jabatan ? jabatanLabel[user.jabatan] : "-",
+    jabatan: "-",
   });
 }
 

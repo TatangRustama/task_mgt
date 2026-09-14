@@ -143,9 +143,8 @@ export function useEvidenceCapture(enabled: boolean) {
   const validate = useCallback(() => {
     if (!notes.trim()) return "Catatan hasil wajib diisi";
     if (!address.trim()) return "Alamat/lokasi wajib diisi";
-    if (photos.length === 0) return "Minimal 1 foto bukti wajib diunggah";
     return null;
-  }, [notes, address, photos.length]);
+  }, [notes, address]);
 
   const toFormData = useCallback(() => {
     const formData = new FormData();
@@ -232,7 +231,7 @@ export function EvidenceFields({
             <Camera className="h-5 w-5" />
           </div>
           <span className="text-sm font-semibold text-on-surface">Ambil Foto</span>
-          <span className="mt-1 text-center text-[11px] text-on-surface-variant">Wajib (1-3 foto)</span>
+          <span className="mt-1 text-center text-[11px] text-on-surface-variant">Opsional (maks. 3 foto)</span>
           <input id="photos" type="file" accept="image/*" capture="environment" multiple onChange={onPhotoChange} className="hidden" />
         </label>
         <button

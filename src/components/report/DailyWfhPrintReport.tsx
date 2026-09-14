@@ -1,13 +1,11 @@
 import {
   groupTasksForWfhPrint,
-  printTempatLine,
   taskWfhHasil,
-  taskWfhUraian,
   type DailyLaporanPrintContext,
 } from "@/lib/laporan-print-view";
 import { PrintLampiranBukti } from "@/components/report/PrintLampiranBukti";
 import { PrintTaskTable } from "@/components/report/MonthlyTaskPrintReport";
-import { PrintHasilParafCell } from "@/components/report/PrintTaskCells";
+import { PrintHasilParafCell, PrintUraianCell } from "@/components/report/PrintTaskCells";
 import type { ReportTask } from "@/lib/report-types";
 import { formatPrintedOnDate, formatWfhReportDate, formatWfhSignDate } from "@/lib/utils";
 
@@ -17,16 +15,17 @@ export function DailyWfhPrintReport({
   print,
   isLeader = false,
   leaderTasks = [],
+  lampiranTasks = [],
 }: {
   date: string;
   tasks: ReportTask[];
   print: DailyLaporanPrintContext;
   isLeader?: boolean;
   leaderTasks?: ReportTask[];
+  lampiranTasks?: ReportTask[];
 }) {
   const dateLabel = formatWfhReportDate(date);
   const groups = groupTasksForWfhPrint(tasks);
-  const lampiranTasks = [...leaderTasks, ...tasks];
 
   return (
     <div className="print-wfh print-root" aria-hidden="true">
@@ -88,13 +87,7 @@ export function DailyWfhPrintReport({
                     </>
                   ) : null}
                   <td>
-                    {taskWfhUraian(task)}
-                    {printTempatLine(task) ? (
-                      <>
-                        <br />
-                        <span className="print-place-line">{printTempatLine(task)}</span>
-                      </>
-                    ) : null}
+                    <PrintUraianCell task={task} />
                   </td>
                   <td className="center">
                     {task.status !== "dikerjakan" && taskWfhHasil(task) !== "-" ? (
@@ -116,7 +109,7 @@ export function DailyWfhPrintReport({
           <span>ttd</span>
         </div>
         <p className="print-sign-name">{print.author.name}</p>
-        <p>NIP {print.author.nip.replace(/\s+/g, "")}</p>
+        <p className="print-sign-nip">NIP {print.author.nip.replace(/\s+/g, "")}</p>
       </div>
 
       <PrintLampiranBukti tasks={lampiranTasks} />

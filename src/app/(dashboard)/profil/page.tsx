@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
 import { PageMain } from "@/components/layout/PageMain";
 import { kepegawaianStatus } from "@/lib/kepegawaian-status";
-import { getAtasan, getDbOrgUser, getDirectReports, jabatanLabel } from "@/lib/org";
+import { getAtasan, getDbOrgUser, getDirectReports } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { formatNip } from "@/lib/utils";
@@ -87,7 +87,7 @@ export default async function ProfilPage() {
                   <li key={person.id} className="px-4 py-3">
                     <p className="font-medium text-on-surface">{person.name}</p>
                     <p className="text-on-surface-variant">
-                      {person.jabatan ? jabatanLabel[person.jabatan] : "Pegawai"}
+                      {person.jabatanLabel}
                       {person.unitName ? ` · ${person.unitName}` : ""}
                     </p>
                     <p className="mt-0.5 text-xs text-on-surface-variant">

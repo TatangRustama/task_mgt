@@ -1,6 +1,6 @@
 import type { Prisma, TaskStatus } from "@prisma/client";
 import { MONITOR_REVIEW_SLA_HOURS } from "@/lib/monitor-types";
-import { getAtasan, getDirectReportIds, getOrgScope, jabatanLabel } from "@/lib/org";
+import { getAtasan, getDirectReportIds, getOrgScope } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { isSuperAdmin } from "@/lib/roles";
 import type { SessionUser } from "@/lib/session";
@@ -202,7 +202,7 @@ export async function getHomeDashboard(user: SessionUser): Promise<HomeDashboard
     atasan: atasan
       ? {
           name: atasan.name,
-          jabatan: atasanPegawai?.jabatanNama || (atasan.jabatan ? jabatanLabel[atasan.jabatan] : null),
+          jabatan: atasan.jabatanLabel,
           nip: atasanPegawai?.nip || atasanUser?.nip || null,
           golongan: atasanPegawai?.golonganNama || null,
         }

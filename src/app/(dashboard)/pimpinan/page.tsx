@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Archive } from "lucide-react";
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
 import { MonitorDashboard } from "@/components/pimpinan/MonitorDashboard";
 import { laporanHref } from "@/lib/laporan-url";
@@ -59,7 +60,11 @@ export default async function PimpinanPage({
         title="Kinerja"
         subtitle="Bawahan langsung dan unit yang perlu tindakan hari ini"
         action={
-          <Link href="/laporan" className="text-sm font-semibold text-secondary hover:underline">
+          <Link
+            href="/laporan"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-600 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+          >
+            <Archive className="h-4 w-4" />
             Arsip
           </Link>
         }

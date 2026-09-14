@@ -15,8 +15,7 @@ export type PrintPerson = {
 export type PrintUnitReviewRow = {
   name: string;
   identity: string;
-  kedudukanHukum: string;
-  role: string;
+  jabatanNama: string;
   insight: string;
   completed: number;
   rejected: number;
@@ -150,9 +149,54 @@ export function printHasilLine(task: Pick<ReportTask, "score">) {
   return starLabel(task.score);
 }
 
+export function truncatePrintText(value: string, max = 30) {
+  const text = value.trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, max).trimEnd()}...`;
+}
+
 export function printTempatLine(task: Pick<ReportTask, "address">) {
   const place = task.address?.trim();
-  return place ? `- ${place}` : null;
+  if (!place) return null;
+  return `- ${truncatePrintText(place, 30)}`;
+}
+
+export function printUraianTitle(task: Pick<ReportTask, "title">) {
+  return task.title.trim() || "-";
+}
+
+export function printUraianDescription(task: Pick<ReportTask, "description">) {
+  return task.description?.trim() || null;
+}
+
+export function printUraianText(
+  task: Pick<ReportTask, "title" | "description" | "address" | "assignedAt" | "createdAt" | "deadline">,
+) {
+  return [
+    printUraianTitle(task),
+    printUraianDescription(task),
+    printTargetLine(task),
+    printTempatLine(task),
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+export function printHasilParafText(
+  task: Pick<ReportTask, "score" | "status" | "feedback" | "jumlahIntervensi" | "satuan">,
+  includePenilaian = false,
+) {
+  if (task.status === "dikerjakan") return "dikerjakan";
+  const parts: string[] = [];
+  if (includePenilaian) {
+    const jumlah = formatJumlahSatuan(task.jumlahIntervensi, task.satuan);
+    if (jumlah) parts.push(jumlah);
+  }
+  const hasil = printHasilLine(task);
+  if (hasil) parts.push(hasil);
+  parts.push(printParaf(task));
+  if (includePenilaian && task.feedback?.trim()) parts.push(task.feedback.trim());
+  return parts.filter(Boolean).join("\n") || "-";
 }
 
 export function printKeterangan(

@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatGolonganPangkat } from "@/lib/golongan";
+import { displayJabatan } from "@/lib/jabatan-display";
 import { kepegawaianStatus } from "@/lib/kepegawaian-status";
 import { formatDate, formatNip } from "@/lib/utils";
 
@@ -162,7 +163,7 @@ export function PegawaiDetailDialog({
               <Field label="Status kepegawaian" value={kepegawaianStatus(detail.jenis, detail.kedudukanHukum)} />
               <Field label={detail.jenis === "non_asn" ? "NIK" : "NIP"} value={detail.jenis === "non_asn" ? detail.nik : formatNip(detail.nip)} />
               <Field label="Kedudukan hukum" value={detail.kedudukanHukum} />
-              <Field label="Jabatan" value={detail.jabatanNama} />
+              <Field label="Jabatan" value={displayJabatan(detail)} />
               <Field label="Jenis jabatan" value={detail.jenisJabatanNama} />
               <Field label="Pangkat / golongan" value={formatGolonganPangkat(detail.golonganNama)} />
               <Field label="Unit organisasi" value={detail.unorNama} />

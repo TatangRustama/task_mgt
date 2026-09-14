@@ -49,6 +49,7 @@ export type ReportPegawai = {
   name: string;
   jabatanLabel: string | null;
   unitName: string | null;
+  golonganNama: string | null;
 };
 
 export type PegawaiReportRow = ReportPegawai & {

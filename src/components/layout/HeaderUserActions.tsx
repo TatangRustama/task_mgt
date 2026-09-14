@@ -83,7 +83,7 @@ export function HeaderNotifications({ initial }: { initial: UserNotifications })
         <div
           role="dialog"
           aria-label="Notifikasi"
-          className="absolute top-[calc(100%+8px)] left-0 z-50 max-h-[min(24rem,calc(100vh-6rem))] w-[min(22rem,calc(100vw-2.5rem))] overflow-y-auto rounded-xl border border-outline-variant bg-surface-container-lowest p-4 text-on-surface card-shadow"
+          className="fixed left-3 right-3 top-[4.25rem] z-50 max-h-[min(24rem,calc(100dvh-5.5rem))] overflow-y-auto rounded-xl border border-outline-variant bg-surface-container-lowest p-4 text-on-surface card-shadow md:absolute md:left-0 md:right-auto md:top-[calc(100%+8px)] md:w-[22rem]"
         >
           <p className="text-sm font-semibold text-on-surface">Notifikasi</p>
           {data.sections.length === 0 || data.count === 0 ? (
@@ -115,10 +115,10 @@ export function HeaderNotifications({ initial }: { initial: UserNotifications })
                             className="block rounded-lg px-2 py-1.5 transition hover:bg-surface-container"
                             onClick={() => setOpen(false)}
                           >
-                            <p className="truncate text-sm font-medium text-on-surface" title={item.title}>
+                            <p className="break-words text-sm font-medium text-on-surface" title={item.title}>
                               {item.title}
                             </p>
-                            <p className="mt-0.5 line-clamp-2 text-xs text-on-surface-variant">
+                            <p className="mt-0.5 break-words text-xs text-on-surface-variant">
                               {item.subtitle} · {formatRelativeTime(item.at)}
                             </p>
                           </Link>

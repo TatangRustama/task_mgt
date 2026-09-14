@@ -46,9 +46,6 @@ export async function POST(
   if (!address) {
     return NextResponse.json({ error: "Alamat/lokasi wajib diisi" }, { status: 400 });
   }
-  if (photos.length === 0) {
-    return NextResponse.json({ error: "Minimal 1 foto bukti wajib" }, { status: 400 });
-  }
   if (photos.length > 3) {
     return NextResponse.json({ error: "Maksimal 3 foto" }, { status: 400 });
   }

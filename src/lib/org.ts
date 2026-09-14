@@ -8,16 +8,15 @@ import {
   type User,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { compareByPangkatDesc } from "@/lib/golongan";
+import { displayJabatan, jabatanRoleLabel } from "@/lib/jabatan-display";
 import type { SessionUser } from "@/lib/session";
 import type { AtasanTaskNotice } from "@/lib/notification-types";
 import { isPrivilegedRole, isSuperAdmin } from "@/lib/roles";
 
-export const jabatanLabel: Record<Jabatan, string> = {
-  kepala_kantor: "Kepala Kantor",
-  kepala_bidang: "Kepala Bidang",
-  kepala_sub_bidang: "Kepala Sub Bidang",
-  pelaksana: "Staf Pelaksana",
-};
+export { displayJabatan } from "@/lib/jabatan-display";
+
+export const jabatanLabel: Record<Jabatan, string> = jabatanRoleLabel;
 
 export const unitTypeLabel: Record<UnitType, string> = {
   kantor: "Kantor",
@@ -35,12 +34,20 @@ export type OrgUser = Pick<User, "id" | "role" | "jabatan" | "unitId"> & {
   } | null;
 };
 
+const pegawaiDisplaySelect = {
+  golonganNama: true,
+  jabatanNama: true,
+  jenis: true,
+} as const;
+
 export type DirectReport = {
   id: string;
   name: string;
   jabatan: Jabatan | null;
+  jabatanLabel: string;
   unitId: string | null;
   unitName: string | null;
+  golonganNama: string | null;
 };
 
 export type Atasan = DirectReport;
@@ -108,6 +115,7 @@ export async function getDbOrgUser(userId: string) {
       unit: {
         select: { id: true, type: true, parentId: true, pimpinanId: true, name: true },
       },
+      pegawai: { select: { jenis: true, jabatanNama: true } },
     },
   });
 }
@@ -169,13 +177,16 @@ function toDirectReport(person: {
   jabatan: Jabatan | null;
   unitId: string | null;
   unit?: { name: string } | null;
+  pegawai?: { golonganNama: string | null; jabatanNama?: string | null; jenis?: string | null } | null;
 }): DirectReport {
   return {
     id: person.id,
     name: person.name,
     jabatan: person.jabatan,
+    jabatanLabel: displayJabatan(person.pegawai, person.jabatan),
     unitId: person.unitId,
     unitName: person.unit?.name ?? null,
+    golonganNama: person.pegawai?.golonganNama ?? null,
   };
 }
 
@@ -196,6 +207,7 @@ export async function getDirectReports(user: OrgUser): Promise<DirectReport[]> {
         jabatan: true,
         unitId: true,
         unit: { select: { name: true } },
+        pegawai: { select: pegawaiDisplaySelect },
       },
       orderBy: { name: "asc" },
     }),
@@ -211,6 +223,7 @@ export async function getDirectReports(user: OrgUser): Promise<DirectReport[]> {
             name: true,
             jabatan: true,
             unitId: true,
+            pegawai: { select: pegawaiDisplaySelect },
           },
         },
         users: {
@@ -220,6 +233,7 @@ export async function getDirectReports(user: OrgUser): Promise<DirectReport[]> {
             name: true,
             jabatan: true,
             unitId: true,
+            pegawai: { select: pegawaiDisplaySelect },
           },
           orderBy: { name: "asc" },
         },
@@ -247,7 +261,7 @@ export async function getDirectReports(user: OrgUser): Promise<DirectReport[]> {
   }
 
   byId.delete(user.id);
-  return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name, "id"));
+  return Array.from(byId.values()).sort(compareByPangkatDesc);
 }
 
 export async function getAtasan(user: OrgUser): Promise<Atasan | null> {
@@ -270,6 +284,7 @@ export async function getAtasan(user: OrgUser): Promise<Atasan | null> {
         jabatan: true,
         unitId: true,
         unit: { select: { name: true } },
+        pegawai: { select: pegawaiDisplaySelect },
       },
     });
     if (leader) return toDirectReport(leader);
@@ -290,6 +305,7 @@ export async function getAtasan(user: OrgUser): Promise<Atasan | null> {
             name: true,
             jabatan: true,
             unitId: true,
+            pegawai: { select: pegawaiDisplaySelect },
           },
         },
       },

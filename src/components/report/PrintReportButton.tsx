@@ -7,6 +7,7 @@ import { MonthlyTaskPrintReport } from "@/components/report/MonthlyTaskPrintRepo
 import { Button } from "@/components/ui/button";
 import type { DailyLaporanPrintContext, LaporanPrintContext, PrintUnitReviewRow } from "@/lib/laporan-print-view";
 import { isPrintableTask } from "@/lib/laporan-print-view";
+import { downloadPrintPdf, printPdfFilename } from "@/lib/print-pdf";
 import type { LaporanView, ReportTask } from "@/lib/report-types";
 
 type PrintPrepare = {
@@ -23,10 +24,10 @@ export function PrintReportButton() {
       variant="outline"
       className="w-full no-print"
       disabled={print?.busy}
-      onClick={() => (print ? print.prepareAndPrint() : window.print())}
+      onClick={() => print?.prepareAndPrint()}
     >
       <Printer className="h-4 w-4" />
-      {print?.busy ? "Menyiapkan..." : "Cetak Laporan"}
+      {print?.busy ? "Menyiapkan PDF..." : "Cetak Laporan"}
     </Button>
   );
 }
@@ -39,6 +40,7 @@ type HarianPayload = {
   isLeader: boolean;
   tasks?: ReportTask[];
   leaderTasks?: ReportTask[];
+  lampiranTasks?: ReportTask[];
 };
 type BulananPayload = {
   view: "bulanan";
@@ -47,7 +49,16 @@ type BulananPayload = {
   isLeader: boolean;
   rows: PrintAssessmentRow[];
   leaderTasks?: ReportTask[];
+  lampiranTasks?: ReportTask[];
 };
+
+function applyPrintPhotoOrientation(img: HTMLImageElement) {
+  if (!img.classList.contains("print-bukti-img")) return;
+  if (img.naturalWidth <= 0 || img.naturalHeight <= 0) return;
+  const portrait = img.naturalHeight >= img.naturalWidth;
+  img.classList.toggle("print-bukti-img-portrait", portrait);
+  img.classList.toggle("print-bukti-img-landscape", !portrait);
+}
 
 function waitForPrintImages() {
   const images = [
@@ -58,14 +69,23 @@ function waitForPrintImages() {
       (img) =>
         new Promise<void>((resolve) => {
           if (img.complete && img.naturalWidth > 0) {
+            applyPrintPhotoOrientation(img);
             resolve();
             return;
           }
-          const done = () => resolve();
+          const done = () => {
+            applyPrintPhotoOrientation(img);
+            resolve();
+          };
           img.addEventListener("load", done, { once: true });
           img.addEventListener("error", done, { once: true });
         }),
     ),
+  ).then(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
   );
 }
 
@@ -91,6 +111,7 @@ export function LaporanPrintProvider({
     tasks: ReportTask[];
     isLeader: boolean;
     leaderTasks: ReportTask[];
+    lampiranTasks: ReportTask[];
   } | null>(null);
   const [bulanan, setBulanan] = useState<{
     print: LaporanPrintContext;
@@ -98,6 +119,7 @@ export function LaporanPrintProvider({
     isLeader: boolean;
     rows: PrintAssessmentRow[];
     leaderTasks: ReportTask[];
+    lampiranTasks: ReportTask[];
   } | null>(null);
   const pendingPrint = useRef(false);
 
@@ -106,30 +128,62 @@ export function LaporanPrintProvider({
     setBulanan(null);
   }, [view, date, month, year, unit]);
 
+  async function savePdf(authorName: string, reportView: "harian" | "bulanan") {
+    await waitForPrintImages();
+    await downloadPrintPdf(
+      printPdfFilename({
+        view: reportView,
+        authorName,
+        date,
+        month,
+        year,
+      }),
+    );
+  }
+
   useEffect(() => {
     if (!pendingPrint.current) return;
     if (view === "harian" && !harian) return;
     if (view === "bulanan" && !bulanan) return;
     pendingPrint.current = false;
+    const authorName =
+      view === "harian" ? harian?.print.author.name : bulanan?.print.author.name;
+    if (!authorName) {
+      setBusy(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
-      await waitForPrintImages();
-      if (!cancelled) window.print();
+      try {
+        await savePdf(authorName, view);
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [view, harian, bulanan]);
+  }, [view, harian, bulanan, date, month, year]);
 
   async function prepareAndPrint() {
+    if (busy) return;
+
     if (view === "harian" && harian) {
-      await waitForPrintImages();
-      window.print();
+      setBusy(true);
+      try {
+        await savePdf(harian.print.author.name, "harian");
+      } finally {
+        setBusy(false);
+      }
       return;
     }
     if (view === "bulanan" && bulanan) {
-      await waitForPrintImages();
-      window.print();
+      setBusy(true);
+      try {
+        await savePdf(bulanan.print.author.name, "bulanan");
+      } finally {
+        setBusy(false);
+      }
       return;
     }
 
@@ -146,6 +200,7 @@ export function LaporanPrintProvider({
       const res = await fetch(`/api/reports/print-context?${params.toString()}`);
       if (!res.ok) {
         pendingPrint.current = false;
+        setBusy(false);
         return;
       }
       const data = (await res.json()) as HarianPayload | BulananPayload;
@@ -155,6 +210,7 @@ export function LaporanPrintProvider({
           tasks: data.tasks ?? [],
           isLeader: data.isLeader,
           leaderTasks: data.leaderTasks ?? [],
+          lampiranTasks: data.lampiranTasks ?? [],
         });
       } else {
         setBulanan({
@@ -163,9 +219,11 @@ export function LaporanPrintProvider({
           isLeader: data.isLeader,
           rows: data.rows,
           leaderTasks: data.leaderTasks ?? [],
+          lampiranTasks: data.lampiranTasks ?? [],
         });
       }
-    } finally {
+    } catch {
+      pendingPrint.current = false;
       setBusy(false);
     }
   }
@@ -180,6 +238,7 @@ export function LaporanPrintProvider({
           print={harian.print}
           isLeader={harian.isLeader}
           leaderTasks={harian.leaderTasks}
+          lampiranTasks={harian.lampiranTasks}
         />
       ) : null}
       {bulanan ? (
@@ -191,6 +250,7 @@ export function LaporanPrintProvider({
           isLeader={bulanan.isLeader}
           rows={bulanan.rows}
           leaderTasks={bulanan.leaderTasks}
+          lampiranTasks={bulanan.lampiranTasks}
         />
       ) : null}
     </PrintPrepareContext.Provider>

@@ -1,4 +1,4 @@
-import { jabatanLabel } from "@/lib/org";
+import { displayJabatan } from "@/lib/jabatan-display";
 import {
   MONITOR_IDLE_DAYS,
   MONITOR_OVERLOAD_MIN,
@@ -12,10 +12,11 @@ import {
   type MonitorTask,
   type MonitorUnitHeat,
 } from "@/lib/monitor-types";
+import { compareByPangkatDesc } from "@/lib/golongan";
 import { prisma } from "@/lib/prisma";
 import { mapTask } from "@/lib/reports";
 import type { ReportTask } from "@/lib/report-types";
-import { addDays, formatISODate } from "@/lib/utils";
+import { addDays, formatISODate, isCompletedOnTime } from "@/lib/utils";
 
 export {
   MONITOR_FOCUS_LABEL,
@@ -208,6 +209,7 @@ export async function getMonitorBoard(options: {
         jabatan: true,
         unitId: true,
         unit: { select: { name: true } },
+        pegawai: { select: { golonganNama: true, jabatanNama: true, jenis: true } },
       },
       orderBy: { name: "asc" },
     }),
@@ -300,12 +302,13 @@ export async function getMonitorBoard(options: {
     return {
       id: person.id,
       name: person.name,
-      jabatanLabel: person.jabatan ? jabatanLabel[person.jabatan] : null,
+      jabatanLabel: displayJabatan(person.pegawai, person.jabatan),
       unitId: person.unitId,
       unitName: person.unit?.name ?? null,
       isStaff,
       leadsUnitId: leadsByUser.get(person.id) ?? null,
       canReview: directReportIds.size === 0 || directReportIds.has(person.id),
+      golonganNama: person.pegawai?.golonganNama ?? null,
       openCount: openTasks.length,
       overdueCount: exceptionTasks.filter((task) => task.kinds.includes("overdue")).length,
       rejectedCount: exceptionTasks.filter((task) => task.kinds.includes("rejected")).length,
@@ -322,14 +325,7 @@ export async function getMonitorBoard(options: {
     };
   });
 
-  allPeople.sort((a, b) => {
-    if (a.overdueCount !== b.overdueCount) return b.overdueCount - a.overdueCount;
-    if (a.rejectedCount !== b.rejectedCount) return b.rejectedCount - a.rejectedCount;
-    if (a.reviewStaleCount !== b.reviewStaleCount) return b.reviewStaleCount - a.reviewStaleCount;
-    if (Number(a.isIdle) !== Number(b.isIdle)) return Number(b.isIdle) - Number(a.isIdle);
-    if (a.openCount !== b.openCount) return b.openCount - a.openCount;
-    return a.name.localeCompare(b.name, "id");
-  });
+  allPeople.sort(compareByPangkatDesc);
 
   function unitStats(unitId: string): MonitorUnitHeat {
     const row = units.find((unit) => unit.id === unitId);
@@ -342,10 +338,7 @@ export async function getMonitorBoard(options: {
       if (!task.completedAt) return false;
       return new Date(task.completedAt) >= ratingCutoff;
     });
-    const onTime = windowCompleted.filter((task) => {
-      if (!task.deadline) return true;
-      return Boolean(task.completedAt && new Date(task.completedAt) <= new Date(task.deadline));
-    });
+    const onTime = windowCompleted.filter((task) => isCompletedOnTime(task.completedAt, task.deadline));
     const scored = windowCompleted.filter((task) => task.score != null);
     const reviewHours: number[] = [];
     for (const task of unitTasks) {

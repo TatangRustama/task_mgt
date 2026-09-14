@@ -17,6 +17,9 @@ export type TaskCardData = {
   assignmentMode?: AssignmentMode;
   assignedTo?: { name: string } | null;
   createdById?: string;
+  createdAt?: Date | string | null;
+  updatedAt?: Date | string | null;
+  completedAt?: Date | string | null;
   jumlahIntervensi?: number | null;
   satuan?: string | null;
 };

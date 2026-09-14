@@ -12,6 +12,7 @@ export function MonthlyTaskPrintReport({
   isLeader = false,
   rows = [],
   leaderTasks = [],
+  lampiranTasks = [],
 }: {
   month: number;
   year: number;
@@ -20,11 +21,11 @@ export function MonthlyTaskPrintReport({
   isLeader?: boolean;
   rows?: PrintUnitReviewRow[];
   leaderTasks?: ReportTask[];
+  lampiranTasks?: ReportTask[];
 }) {
   const groupedRows = groupTasksByPrintDate(tasks).flatMap((group) => group.tasks);
   const mandiriRows = groupTasksByPrintDate(leaderTasks).flatMap((group) => group.tasks);
   const period = getMonthYearLabel(month, year).toUpperCase();
-  const lampiranTasks = [...mandiriRows, ...groupedRows];
 
   return (
     <div className="print-kinerja print-root" aria-hidden="true">
@@ -72,15 +73,17 @@ export function MonthlyTaskPrintReport({
                 </tr>
               ) : (
                 rows.map((row) => (
-                  <tr key={row.name + row.role + row.identity}>
+                  <tr key={row.name + row.identity + row.jabatanNama}>
                     <td>
                       <strong>{row.name}</strong>
                       <br />
                       {row.identity}
-                      <br />
-                      {row.kedudukanHukum}
-                      <br />
-                      {row.role}
+                      {row.jabatanNama && row.jabatanNama !== "-" ? (
+                        <>
+                          <br />
+                          {row.jabatanNama}
+                        </>
+                      ) : null}
                     </td>
                     <td>{row.insight}</td>
                     <td>{row.completed}</td>
@@ -111,7 +114,7 @@ export function MonthlyTaskPrintReport({
             <span>ttd</span>
           </div>
           <p className="print-sign-name">{print.atasan?.name || "_________________________"}</p>
-          <p>NIP. {print.atasan?.nip || "-"}</p>
+          <p className="print-sign-nip">NIP. {print.atasan?.nip || "-"}</p>
         </div>
         <div className="print-sign-qr">
           {print.qrDataUrl ? (
@@ -126,7 +129,7 @@ export function MonthlyTaskPrintReport({
             <span>ttd</span>
           </div>
           <p className="print-sign-name">{print.author.name}</p>
-          <p>NIP. {print.author.nip}</p>
+          <p className="print-sign-nip">NIP. {print.author.nip}</p>
         </div>
       </div>
 

@@ -59,6 +59,18 @@ export function calendarDay(value: string | Date | null | undefined) {
   return formatISODate(date);
 }
 
+export function isCompletedOnTime(
+  completedAt: string | Date | null | undefined,
+  deadline: string | Date | null | undefined,
+) {
+  if (!deadline) return true;
+  if (!completedAt) return false;
+  const done = calendarDay(completedAt);
+  const due = calendarDay(deadline);
+  if (!done || !due) return false;
+  return done <= due;
+}
+
 export function isMultiDayDeadline(
   assignedAt: string | Date | null | undefined,
   createdAt: string | Date | null | undefined,

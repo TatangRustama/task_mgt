@@ -52,3 +52,32 @@ export function golonganSortKey(golonganNama: string | null | undefined) {
   const index = GOLONGAN_ORDER.findIndex((code) => text.includes(code));
   return index === -1 ? GOLONGAN_ORDER.length : index;
 }
+
+export function compareByPangkatDesc(
+  a: { name: string; golonganNama?: string | null },
+  b: { name: string; golonganNama?: string | null },
+) {
+  const rank = golonganSortKey(a.golonganNama) - golonganSortKey(b.golonganNama);
+  if (rank !== 0) return rank;
+  return a.name.localeCompare(b.name, "id");
+}
+
+export function sortByPangkatDesc<T extends { name: string; golonganNama?: string | null }>(items: T[]) {
+  return [...items].sort(compareByPangkatDesc);
+}
+
+export function pageIdsByPangkatDesc(
+  rows: Array<{ id: string; name: string; golonganNama?: string | null }>,
+  page: number,
+  pageSize: number,
+) {
+  const start = Math.max(0, (page - 1) * pageSize);
+  return sortByPangkatDesc(rows)
+    .slice(start, start + pageSize)
+    .map((row) => row.id);
+}
+
+export function orderByIds<T extends { id: string }>(rows: T[], ids: string[]) {
+  const order = new Map(ids.map((id, index) => [id, index]));
+  return [...rows].sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+}

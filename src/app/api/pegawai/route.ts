@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { PegawaiJenis, Prisma } from "@prisma/client";
+import { orderByIds, pageIdsByPangkatDesc } from "@/lib/golongan";
 import { getDescendantUnitIds } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { pegawaiUnorAssignment } from "@/lib/admin-pegawai";
@@ -50,7 +51,6 @@ export async function GET(request: Request) {
   }
 
   if (scope === "bawahan") {
-    where.jenis = "asn";
     if (!isSuperAdmin(user.role)) {
       if (!user.unitId) {
         return emptyPage(page, pageSize);
@@ -62,26 +62,33 @@ export async function GET(request: Request) {
       where.unitId = { in: unitIds };
     }
     if (user.nip) {
-      where.NOT = { nip: user.nip };
+      where.NOT = [
+        { nip: user.nip },
+        { nik: user.nip },
+      ];
     }
   }
 
-  const [total, data] = await Promise.all([
-    prisma.pegawai.count({ where }),
-    prisma.pegawai.findMany({
-      where,
-      orderBy: [{ name: "asc" }],
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-  ]);
+  const total = await prisma.pegawai.count({ where });
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const ranked = await prisma.pegawai.findMany({
+    where,
+    select: { id: true, name: true, golonganNama: true },
+  });
+  const pageIds = pageIdsByPangkatDesc(ranked, page, pageSize);
+  const data = pageIds.length
+    ? orderByIds(
+        await prisma.pegawai.findMany({ where: { id: { in: pageIds } } }),
+        pageIds,
+      )
+    : [];
 
   return NextResponse.json({
     data,
     total,
     page,
     pageSize,
-    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    totalPages,
   });
 }
 
@@ -95,7 +102,8 @@ export async function POST(request: Request) {
   const jenis = body.jenis as PegawaiJenis;
   const name = String(body.name || "").trim();
   const address = String(body.address || "").trim();
-  const unorId = typeof body.unorId === "string" ? body.unorId.trim() : "";
+  const unorId =
+    (typeof body.unorId === "string" ? body.unorId.trim() : "") || user.unitId || "";
 
   if (!["asn", "non_asn"].includes(jenis)) {
     return NextResponse.json({ error: "Jenis pegawai tidak valid" }, { status: 400 });

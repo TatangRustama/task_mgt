@@ -4,6 +4,7 @@ import {
   collectDescendantUnitIds,
   pegawaiStatusWhere,
 } from "@/lib/admin-pegawai";
+import { orderByIds, pageIdsByPangkatDesc } from "@/lib/golongan";
 import { prisma } from "@/lib/prisma";
 import { parseUserPageSize } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
@@ -46,24 +47,31 @@ export async function GET(request: Request) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const page = Math.min(requestedPage, totalPages);
 
-  const data = await prisma.pegawai.findMany({
+  const ranked = await prisma.pegawai.findMany({
     where,
-    select: {
-      id: true,
-      name: true,
-      jenis: true,
-      nip: true,
-      nik: true,
-      jabatanNama: true,
-      golonganNama: true,
-      kedudukanHukum: true,
-      unorNama: true,
-      perangkatDaerahNama: true,
-    },
-    orderBy: [{ name: "asc" }],
-    skip: (page - 1) * pageSize,
-    take: pageSize,
+    select: { id: true, name: true, golonganNama: true },
   });
+  const pageIds = pageIdsByPangkatDesc(ranked, page, pageSize);
+  const data = pageIds.length
+    ? orderByIds(
+        await prisma.pegawai.findMany({
+          where: { id: { in: pageIds } },
+          select: {
+            id: true,
+            name: true,
+            jenis: true,
+            nip: true,
+            nik: true,
+            jabatanNama: true,
+            golonganNama: true,
+            kedudukanHukum: true,
+            unorNama: true,
+            perangkatDaerahNama: true,
+          },
+        }),
+        pageIds,
+      )
+    : [];
 
   return NextResponse.json({
     data,

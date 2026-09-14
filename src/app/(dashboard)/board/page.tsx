@@ -5,6 +5,7 @@ import { PageHeader, PageMain } from "@/components/layout/PageMain";
 import { canDelegate, canSeeTaskWithScope, getOrgScope } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import { formatISODate, parseISODate } from "@/lib/utils";
 
 export default async function BoardPage({
   searchParams,
@@ -15,17 +16,31 @@ export default async function BoardPage({
   const params = await searchParams;
   const { orgUser, visibleUnitIds, isLeader } = await getOrgScope(user);
 
+  const todayStart = parseISODate(formatISODate(new Date()));
   const tasks = visibleUnitIds.length
     ? await prisma.task.findMany({
         where: {
-          OR: [
-            { unitId: { in: visibleUnitIds } },
-            { assignedToId: user.id },
-            { createdById: user.id },
+          AND: [
+            {
+              OR: [
+                { unitId: { in: visibleUnitIds } },
+                { assignedToId: user.id },
+                { createdById: user.id },
+              ],
+            },
+            {
+              OR: [
+                { status: { in: ["tersedia", "dikerjakan", "ditolak"] } },
+                {
+                  status: { in: ["menunggu_approval", "disetujui"] },
+                  completedAt: { gte: todayStart },
+                },
+              ],
+            },
           ],
         },
         include: { assignedTo: { select: { name: true } } },
-        orderBy: { createdAt: "desc" },
+        orderBy: { updatedAt: "desc" },
       })
     : [];
 
