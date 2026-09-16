@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { DescriptionField } from "@/components/task/DescriptionField";
 import { EvidenceFields, useEvidenceCapture } from "@/components/task/EvidenceCapture";
 import { InterventionFields } from "@/components/task/InterventionFields";
 import { parseJumlahSatuan } from "@/lib/satuan";
@@ -321,11 +321,9 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
           </div>
           <div className="min-w-0 space-y-2">
             <Label htmlFor="description">Deskripsi</Label>
-            <Textarea
-              id="description"
-              name="description"
-              placeholder="Detail singkat tugas"
-              defaultValue={mode === "edit" ? task?.description ?? "" : undefined}
+            <DescriptionField
+              key={`${mode}-${task?.id ?? "new"}-${open}`}
+              defaultValue={mode === "edit" ? task?.description ?? "" : ""}
             />
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

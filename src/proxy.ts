@@ -6,7 +6,7 @@ import { canManageOrg, canUseEmployeeApp, coerceRole, defaultHomePath, isAppAdmi
 
 const { auth } = NextAuth(authConfig);
 
-const publicPaths = ["/login", "/api/auth", "/api/health", "/manifest.json", "/validasi"];
+const publicPaths = ["/login", "/api/auth", "/api/health", "/manifest.json", "/validasi", "/sw.js"];
 const employeePrefixes = ["/mandiri", "/board", "/pimpinan", "/laporan", "/tugas"];
 
 export const proxy = auth((request) => {
@@ -59,6 +59,6 @@ export const proxy = auth((request) => {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|manifest.json|uploads|.*\\.(?:svg|png|ico|webmanifest)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|uploads|.*\\.(?:svg|png|ico|js|webmanifest)$).*)",
   ],
 };

@@ -5,6 +5,7 @@ import { ReportMonthNav } from "@/components/report/ReportMonthNav";
 import { laporanHref } from "@/lib/laporan-url";
 import type { DayRecap, LaporanBy, ReportTask } from "@/lib/report-types";
 import { cn, formatISODate, statusLabel } from "@/lib/utils";
+import { descriptionPreview } from "@/lib/task-description";
 
 const WEEKDAYS = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 
@@ -111,7 +112,7 @@ export function MonthlyCalendar({
                 <h4 className="font-semibold text-on-surface">{task.title}</h4>
                 <p className="mt-1 line-clamp-2 text-sm text-on-surface-variant">
                   {task.assigneeName} · {statusLabel(task.status)}
-                  {task.description ? ` — ${task.description}` : ""}
+                  {task.description ? ` — ${descriptionPreview(task.description) || task.description}` : ""}
                 </p>
               </div>
             </Link>

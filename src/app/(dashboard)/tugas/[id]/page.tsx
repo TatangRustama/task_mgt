@@ -14,6 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { cn, formatDate, formatDateTime, priorityBarClass, statusLabel } from "@/lib/utils";
 import { formatJumlahSatuan } from "@/lib/satuan";
 import { requireUser } from "@/lib/session";
+import { TaskDescription } from "@/components/task/TaskDescription";
 
 export const dynamic = "force-dynamic";
 
@@ -68,7 +69,7 @@ export default async function TaskDetailPage({
             <CardTitle>{task.title}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 pl-6 text-sm text-on-surface-variant">
-            {task.description ? <p>{task.description}</p> : null}
+            {task.description ? <TaskDescription text={task.description} /> : null}
             {formatJumlahSatuan(task.jumlahIntervensi, task.satuan) ? (
               <p>Jumlah yang diintervensi: {formatJumlahSatuan(task.jumlahIntervensi, task.satuan)}</p>
             ) : null}

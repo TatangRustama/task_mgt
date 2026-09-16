@@ -11,6 +11,7 @@ import {
 } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { parseJumlahSatuan } from "@/lib/satuan";
+import { notifyNewPostedTask } from "@/lib/push-notify";
 import { getCurrentUser } from "@/lib/session";
 import { parseAssignedAt, parseFormDateInput } from "@/lib/utils";
 
@@ -128,6 +129,15 @@ export async function POST(request: Request) {
         ...jumlahSatuan,
       },
     });
+    await notifyNewPostedTask({
+      taskId: task.id,
+      title: task.title,
+      createdByName: sessionUser.name,
+      assignmentMode: task.assignmentMode,
+      assignedToId: task.assignedToId,
+      unitId: task.unitId,
+      createdById: task.createdById,
+    });
     return NextResponse.json(task, { status: 201 });
   }
 
@@ -166,6 +176,15 @@ export async function POST(request: Request) {
       assignedToId: assignee.id,
       ...jumlahSatuan,
     },
+  });
+  await notifyNewPostedTask({
+    taskId: task.id,
+    title: task.title,
+    createdByName: sessionUser.name,
+    assignmentMode: task.assignmentMode,
+    assignedToId: task.assignedToId,
+    unitId: task.unitId,
+    createdById: task.createdById,
   });
 
   return NextResponse.json(task, { status: 201 });

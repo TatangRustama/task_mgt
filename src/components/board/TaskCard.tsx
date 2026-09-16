@@ -5,6 +5,7 @@ import { ManagePostedTaskActions } from "@/components/task/ManagePostedTaskActio
 import { Badge } from "@/components/ui/badge";
 import { cn, formatDate, isOverdue, priorityBarClass } from "@/lib/utils";
 import { formatJumlahSatuan } from "@/lib/satuan";
+import { descriptionPreview } from "@/lib/task-description";
 
 export type TaskCardData = {
   id: string;
@@ -55,7 +56,7 @@ export function TaskCard({
         </h3>
         {task.description ? (
           <p className="truncate text-sm leading-tight text-on-surface-variant" title={task.description}>
-            {task.description}
+            {descriptionPreview(task.description) || task.description}
           </p>
         ) : null}
         {formatJumlahSatuan(task.jumlahIntervensi, task.satuan) ? (

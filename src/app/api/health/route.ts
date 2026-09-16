@@ -46,6 +46,7 @@ export async function GET() {
       NEXTAUTH_URL: nextAuthUrl,
       AUTH_URL: process.env.AUTH_URL ?? null,
       VERCEL_URL: vercelUrl,
+      VAPID: Boolean(process.env.VAPID_PUBLIC_KEY?.trim() && process.env.VAPID_PRIVATE_KEY?.trim()),
     },
     databaseError,
     urlMismatch,

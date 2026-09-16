@@ -3,6 +3,7 @@ import { Header } from "@/components/layout/Header";
 import { SideNav } from "@/components/layout/SideNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { MandiriCreateControl } from "@/components/layout/CreateTaskFab";
+import { EnablePushNotifications } from "@/components/layout/EnablePushNotifications";
 import { getDbOrgUser, isUnitLeader } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { canUseEmployeeApp, isSuperAdmin } from "@/lib/roles";
@@ -34,6 +35,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       <div className="pt-16 pb-24 md:ml-64 print:m-0 print:p-0">{children}</div>
       <BottomNav role={user.role} isLeader={isLeader} />
       {canCreateMandiri ? <MandiriCreateControl /> : null}
+      {canCreateMandiri ? <EnablePushNotifications /> : null}
     </div>
   );
 }

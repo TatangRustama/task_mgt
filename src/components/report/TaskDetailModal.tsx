@@ -13,6 +13,7 @@ import type { ReportTask } from "@/lib/report-types";
 import { formatStars } from "@/lib/rating";
 import { formatJumlahSatuan } from "@/lib/satuan";
 import { cn, formatDate, formatDateTime, priorityBarClass, statusLabel } from "@/lib/utils";
+import { TaskDescription } from "@/components/task/TaskDescription";
 
 export function TaskDetailModal({
   task,
@@ -41,7 +42,7 @@ export function TaskDetailModal({
                 <DialogTitle>{task.title}</DialogTitle>
               </DialogHeader>
               <div className="space-y-3 text-sm text-on-surface-variant">
-                {task.description ? <p>{task.description}</p> : null}
+                {task.description ? <TaskDescription text={task.description} /> : null}
                 {formatJumlahSatuan(task.jumlahIntervensi, task.satuan) ? (
                   <p>Jumlah yang diintervensi: {formatJumlahSatuan(task.jumlahIntervensi, task.satuan)}</p>
                 ) : null}

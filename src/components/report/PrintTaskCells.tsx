@@ -1,6 +1,36 @@
 import { printHasilLine, printParaf, printTargetLine, printTempatLine } from "@/lib/laporan-print-view";
+import { parseTaskDescription } from "@/lib/task-description";
 import { formatJumlahSatuan } from "@/lib/satuan";
 import type { ReportTask } from "@/lib/report-types";
+
+function PrintDescription({ text }: { text: string }) {
+  const blocks = parseTaskDescription(text);
+  if (blocks.length === 0) return null;
+
+  return (
+    <div className="print-uraian-desc">
+      {blocks.map((block, index) => {
+        if (block.type === "paragraph") {
+          return (
+            <div key={index} className="print-desc-p">
+              {block.text}
+            </div>
+          );
+        }
+
+        return (
+          <div key={index} className="print-desc-list">
+            {block.items.map((item, itemIndex) => (
+              <div key={itemIndex} className="print-desc-item">
+                {block.type === "ol" ? `${itemIndex + 1}. ${item}` : `• ${item}`}
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export function PrintUraianCell({
   task,
@@ -18,7 +48,7 @@ export function PrintUraianCell({
       {description ? (
         <>
           <br />
-          <span className="print-uraian-desc">{description}</span>
+          <PrintDescription text={description} />
         </>
       ) : null}
       {extra ? (
