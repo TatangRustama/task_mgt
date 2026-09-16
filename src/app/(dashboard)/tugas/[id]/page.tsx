@@ -1,5 +1,5 @@
-import Image from "next/image";
 import { notFound } from "next/navigation";
+import { EvidencePhotoGrid } from "@/components/task/EvidencePhotoGrid";
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -134,13 +134,7 @@ export default async function TaskDetailPage({
                   longitude={task.evidence.longitude}
                 />
               ) : null}
-              <div className="grid grid-cols-2 gap-2">
-                {task.evidence.photoUrls.map((url) => (
-                  <div key={url} className="relative aspect-square overflow-hidden rounded-lg">
-                    <Image src={url} alt="Bukti" fill className="object-cover" />
-                  </div>
-                ))}
-              </div>
+              <EvidencePhotoGrid urls={task.evidence.photoUrls} />
             </CardContent>
           </Card>
         ) : null}

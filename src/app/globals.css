@@ -387,6 +387,15 @@ select {
     align-items: start;
   }
 
+  .print-photos-lampiran .print-bukti-open {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: zoom-in;
+    appearance: none;
+  }
+
   .print-photos-lampiran .print-bukti-img {
     display: block;
     box-sizing: border-box;
@@ -403,13 +412,19 @@ select {
     print-color-adjust: exact;
   }
 
-  .print-photos-lampiran .print-bukti-img-landscape {
+  .print-photos-lampiran .print-bukti-open.print-bukti-img-landscape {
     grid-column: span 3;
+  }
+
+  .print-photos-lampiran .print-bukti-open.print-bukti-img-portrait {
+    grid-column: span 2;
+  }
+
+  .print-photos-lampiran .print-bukti-img-landscape {
     max-height: 90mm;
   }
 
   .print-photos-lampiran .print-bukti-img-portrait {
-    grid-column: span 2;
     max-height: 95mm;
   }
 

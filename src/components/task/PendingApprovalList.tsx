@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
+import { EvidencePhotoGrid } from "@/components/task/EvidencePhotoGrid";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { LocationMapView } from "@/components/map/LocationMapView";
@@ -89,15 +89,7 @@ export function PendingApprovalList({ tasks }: { tasks: PendingApprovalTask[] })
                         longitude={task.evidence.longitude}
                       />
                     ) : null}
-                    {task.evidence.photoUrls.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        {task.evidence.photoUrls.map((url) => (
-                          <div key={url} className="relative aspect-square overflow-hidden rounded-lg">
-                            <Image src={url} alt="Bukti" fill className="object-cover" />
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
+                    <EvidencePhotoGrid urls={task.evidence.photoUrls} />
                   </div>
                 ) : (
                   <p className="text-sm text-on-surface-variant">Tidak ada bukti pekerjaan.</p>

@@ -1,8 +1,13 @@
+"use client";
+
+import { useState } from "react";
+import { PhotoLightbox } from "@/components/task/PhotoLightbox";
 import { evidenceRows, printPhotoSrc } from "@/lib/laporan-print-view";
 import type { ReportTask } from "@/lib/report-types";
 
 export function PrintLampiranBukti({ tasks }: { tasks: ReportTask[] }) {
   const rows = evidenceRows(tasks);
+  const [viewer, setViewer] = useState<{ urls: string[]; index: number } | null>(null);
   if (rows.length === 0) return null;
 
   return (
@@ -25,13 +30,21 @@ export function PrintLampiranBukti({ tasks }: { tasks: ReportTask[] }) {
               <td>
                 <p className="print-bukti-title">{row.title}</p>
                 <div className="print-photos print-photos-lampiran">
-                  {row.photos.map((url) => (
-                    <img
+                  {row.photos.map((url, photoIndex) => (
+                    <button
                       key={url}
-                      src={printPhotoSrc(url)}
-                      alt={row.title}
-                      className="print-bukti-img print-bukti-img-landscape"
-                    />
+                      type="button"
+                      className="print-bukti-open print-bukti-img-landscape"
+                      aria-label={`Perbesar bukti ${row.title}`}
+                      onClick={() => setViewer({ urls: row.photos, index: photoIndex })}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={printPhotoSrc(url)}
+                        alt={row.title}
+                        className="print-bukti-img print-bukti-img-landscape"
+                      />
+                    </button>
                   ))}
                 </div>
               </td>
@@ -39,6 +52,13 @@ export function PrintLampiranBukti({ tasks }: { tasks: ReportTask[] }) {
           ))}
         </tbody>
       </table>
+      <PhotoLightbox
+        urls={viewer?.urls ?? []}
+        index={viewer?.index ?? null}
+        onClose={() => setViewer(null)}
+        onIndexChange={(next) => setViewer((current) => (current ? { ...current, index: next } : current))}
+        alt="Bukti"
+      />
     </section>
   );
 }

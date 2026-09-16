@@ -20,7 +20,7 @@ type ScopedTask = ReportTask & { unitId: string };
 const taskUiInclude = {
   assignedTo: { select: { id: true, name: true } },
   createdBy: { select: { name: true } },
-  evidence: { select: { address: true, notes: true } },
+  evidence: { select: { address: true, notes: true, photoUrls: true } },
   review: { select: { score: true, reviewedAt: true, feedback: true } },
   rating: { select: { stars: true } },
 } as const;

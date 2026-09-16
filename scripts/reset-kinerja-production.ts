@@ -26,27 +26,59 @@ async function emptyPhotoBucket() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  let removed = 0;
-  for (let round = 0; round < 50; round += 1) {
-    const { data, error } = await supabase.storage.from(BUCKET).list("", { limit: 100 });
+  async function listPhotoPaths(prefix = ""): Promise<string[]> {
+    const { data, error } = await supabase.storage.from(BUCKET).list(prefix, { limit: 1000 });
     if (error) throw new Error(`Gagal list foto: ${error.message}`);
-    const names = (data ?? [])
-      .filter((file) => file.id && file.name && file.name !== ".emptyFolderPlaceholder")
-      .map((file) => file.name);
-    if (!names.length) break;
-    const { error: removeError } = await supabase.storage.from(BUCKET).remove(names);
+
+    const paths: string[] = [];
+    for (const item of data ?? []) {
+      if (!item.name || item.name === ".emptyFolderPlaceholder") continue;
+      const path = prefix ? `${prefix}/${item.name}` : item.name;
+      if (item.id) paths.push(path);
+      else paths.push(...(await listPhotoPaths(path)));
+    }
+    return paths;
+  }
+
+  const names = await listPhotoPaths();
+  let removed = 0;
+  for (let i = 0; i < names.length; i += 100) {
+    const batch = names.slice(i, i + 100);
+    const { error: removeError } = await supabase.storage.from(BUCKET).remove(batch);
     if (removeError) throw new Error(`Gagal hapus foto: ${removeError.message}`);
-    removed += names.length;
+    removed += batch.length;
   }
   console.log(`Emptied ${removed} files from ${BUCKET}`);
 }
 
 async function main() {
+  const [taskCount, evidenceCount, reviewCount, ratingCount, reportCount] = await Promise.all([
+    prisma.task.count(),
+    prisma.taskEvidence.count(),
+    prisma.taskReview.count(),
+    prisma.taskRating.count(),
+    prisma.monthlyTaskReport.count(),
+  ]);
+  console.log(
+    `Before: ${taskCount} tasks, ${evidenceCount} evidence, ${reviewCount} reviews, ${ratingCount} ratings, ${reportCount} monthly reports`,
+  );
+
   const reports = await prisma.monthlyTaskReport.deleteMany();
   const tasks = await prisma.task.deleteMany();
   console.log(`Deleted ${reports.count} monthly reports`);
   console.log(`Deleted ${tasks.count} tasks (evidence, reviews, ratings cascade)`);
   await emptyPhotoBucket();
+
+  const leftover = await Promise.all([
+    prisma.task.count(),
+    prisma.taskEvidence.count(),
+    prisma.taskReview.count(),
+    prisma.taskRating.count(),
+    prisma.monthlyTaskReport.count(),
+  ]);
+  console.log(
+    `After: ${leftover[0]} tasks, ${leftover[1]} evidence, ${leftover[2]} reviews, ${leftover[3]} ratings, ${leftover[4]} monthly reports`,
+  );
 }
 
 main()

@@ -56,6 +56,9 @@ function applyPrintPhotoOrientation(img: HTMLImageElement) {
   if (!img.classList.contains("print-bukti-img")) return;
   if (img.naturalWidth <= 0 || img.naturalHeight <= 0) return;
   const portrait = img.naturalHeight >= img.naturalWidth;
+  const target = img.closest(".print-bukti-open") ?? img;
+  target.classList.toggle("print-bukti-img-portrait", portrait);
+  target.classList.toggle("print-bukti-img-landscape", !portrait);
   img.classList.toggle("print-bukti-img-portrait", portrait);
   img.classList.toggle("print-bukti-img-landscape", !portrait);
 }
