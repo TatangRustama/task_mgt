@@ -64,7 +64,7 @@ async function getPendingApprovalSection(reportIds: string[] | null): Promise<No
 async function getPerhatianSection(user: OrgUser): Promise<NoticeSection> {
   const now = new Date();
   const href = kinerjaHref({
-    view: "pantau",
+    view: "unit",
     month: now.getMonth() + 1,
     year: now.getFullYear(),
     date: formatISODate(now),
@@ -99,7 +99,7 @@ async function getPerhatianSection(user: OrgUser): Promise<NoticeSection> {
       title: unit.leaderName || unit.name,
       subtitle: unit.insight,
       href: kinerjaHref({
-        view: "pantau",
+        view: "unit",
         month: now.getMonth() + 1,
         year: now.getFullYear(),
         date: formatISODate(now),

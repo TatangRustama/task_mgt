@@ -155,7 +155,7 @@ export function PerformanceBanner({
       ].filter(Boolean) as { icon: typeof CalendarClock; label: string }[]);
 
   const ctaHref = isLeader ? (awaitingMyReview > 0 ? "/pimpinan/persetujuan" : "/pimpinan") : "/board";
-  const ctaLabel = isLeader ? (awaitingMyReview > 0 ? "Buka persetujuan" : "Buka pantau") : "Lihat detail tugas";
+  const ctaLabel = isLeader ? (awaitingMyReview > 0 ? "Buka persetujuan" : "Buka unit") : "Lihat detail tugas";
 
   return (
     <section className="relative mb-3 overflow-hidden rounded-lg border border-accent bg-primary p-3 text-white md:p-4">

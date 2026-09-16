@@ -241,7 +241,7 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
           </DialogTitle>
           <p className="text-sm text-on-surface-variant">
             {mode === "edit"
-              ? "Perbarui detail tugas yang Anda posting. Hanya tugas tersedia yang belum diambil yang dapat diubah."
+              ? "Perbarui detail tugas yang Anda posting. Hanya tugas tersedia atau dikerjakan yang dapat diubah."
               : mode === "mandiri"
               ? "Isi detail tugas baru yang akan dilaporkan."
               : "Tunjuk bawahan langsung, atau lempar ke board staf jika Anda kepala sub bidang."}

@@ -35,8 +35,8 @@ export function TaskCard({
   const overdue = task.status === "tersedia" && isOverdue(task.deadline);
   const canManage =
     Boolean(currentUserId) &&
-    task.status === "tersedia" &&
-    task.createdById === currentUserId;
+    task.createdById === currentUserId &&
+    (task.status === "tersedia" || task.status === "dikerjakan");
 
   return (
     <div className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-outline bg-surface-container-lowest transition hover:border-primary">

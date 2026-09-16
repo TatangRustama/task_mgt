@@ -133,7 +133,7 @@ export function monitorHref(query: {
   focus?: MonitorFocus;
 }) {
   const params = new URLSearchParams();
-  params.set("view", "pantau");
+  params.set("view", "unit");
   params.set("date", query.date);
   params.set("month", String(query.month));
   params.set("year", String(query.year));

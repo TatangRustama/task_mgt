@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { TaskPriority } from "@prisma/client";
-import { canManagePostedTersediaTask, canSeeTask } from "@/lib/org";
+import { canDeletePostedTask, canManagePostedTask, canSeeTask } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { parseJumlahSatuan } from "@/lib/satuan";
 import { getCurrentUser } from "@/lib/session";
@@ -34,15 +34,15 @@ export async function GET(
 
 const PRIORITIES = new Set<TaskPriority>(["rendah", "sedang", "tinggi"]);
 
-async function getPostedTersediaTask(userId: string, taskId: string) {
+async function getEditablePostedTask(userId: string, taskId: string) {
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) {
     return { error: NextResponse.json({ error: "Tugas tidak ditemukan" }, { status: 404 }) };
   }
-  if (!canManagePostedTersediaTask({ id: userId }, task)) {
+  if (!canManagePostedTask({ id: userId }, task)) {
     return {
       error: NextResponse.json(
-        { error: "Hanya pembuat tugas yang dapat mengubah tugas tersedia" },
+        { error: "Hanya pembuat tugas yang dapat mengubah tugas tersedia atau dikerjakan" },
         { status: 403 },
       ),
     };
@@ -58,7 +58,7 @@ export async function PATCH(
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const loaded = await getPostedTersediaTask(user.id, id);
+  const loaded = await getEditablePostedTask(user.id, id);
   if ("error" in loaded) return loaded.error;
 
   const body = await request.json();
@@ -103,8 +103,16 @@ export async function DELETE(
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const loaded = await getPostedTersediaTask(user.id, id);
-  if ("error" in loaded) return loaded.error;
+  const task = await prisma.task.findUnique({ where: { id } });
+  if (!task) {
+    return NextResponse.json({ error: "Tugas tidak ditemukan" }, { status: 404 });
+  }
+  if (!canDeletePostedTask(user, task)) {
+    return NextResponse.json(
+      { error: "Hanya pembuat tugas yang dapat menghapus tugas tersedia atau dikerjakan" },
+      { status: 403 },
+    );
+  }
 
   await prisma.task.delete({ where: { id } });
   return NextResponse.json({ ok: true });

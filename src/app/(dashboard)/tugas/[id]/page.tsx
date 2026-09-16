@@ -9,7 +9,7 @@ import { ManagePostedTaskActions } from "@/components/task/ManagePostedTaskActio
 import { ReviewForm } from "@/components/task/ReviewForm";
 import { StarRating } from "@/components/task/StarRating";
 import { LocationMapView } from "@/components/map/LocationMapView";
-import { assignmentModeLabel, canManagePostedTersediaTask, canPickupPoolTask, canReviewTask, canSeeTask, getDbOrgUser } from "@/lib/org";
+import { assignmentModeLabel, canManagePostedTask, canPickupPoolTask, canReviewTask, canSeeTask, getDbOrgUser } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { cn, formatDate, formatDateTime, priorityBarClass, statusLabel } from "@/lib/utils";
 import { formatJumlahSatuan } from "@/lib/satuan";
@@ -44,7 +44,7 @@ export default async function TaskDetailPage({
   if (!task || !(await canSeeTask(user, task))) notFound();
 
   const canKeep = canPickupPoolTask(user, task);
-  const canManagePosted = canManagePostedTersediaTask(user, task);
+  const canManagePosted = canManagePostedTask(user, task);
 
   const canComplete =
     task.assignedToId === user.id &&

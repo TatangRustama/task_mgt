@@ -9,7 +9,7 @@ import { ReportActionButtons } from "@/components/report/ReportActionButtons";
 import { ReportMonthNav } from "@/components/report/ReportMonthNav";
 import { TaskReportList } from "@/components/report/TaskReportList";
 import { Badge } from "@/components/ui/badge";
-import { laporanHref } from "@/lib/laporan-url";
+import { reportHref, type ReportBasePath } from "@/lib/laporan-url";
 import {
   laporanPersonLabel,
   type LaporanBoard,
@@ -42,6 +42,12 @@ export function LaporanBoardView({
   month,
   year,
   unitId,
+  basePath = "/laporan",
+  peopleHeading,
+  ownPerson = null,
+  ownHeading = "Individu",
+  ownDefaultOpen = false,
+  showActions = true,
 }: {
   board: LaporanBoard;
   view: LaporanView;
@@ -49,6 +55,12 @@ export function LaporanBoardView({
   month: number;
   year: number;
   unitId: string | null;
+  basePath?: ReportBasePath;
+  peopleHeading?: string;
+  ownPerson?: LaporanPerson | null;
+  ownHeading?: string;
+  ownDefaultOpen?: boolean;
+  showActions?: boolean;
 }) {
   const query = { view, date, month, year, unit: unitId };
   const defaultOpen =
@@ -57,9 +69,10 @@ export function LaporanBoardView({
     board.people[0]?.id ??
     null;
   const [openId, setOpenId] = useState<string | null>(defaultOpen);
+  const [ownOpen, setOwnOpen] = useState(ownDefaultOpen);
 
   function href(next: { unit?: string | null; view?: LaporanView }) {
-    return laporanHref({
+    return reportHref(basePath, {
       ...query,
       view: next.view ?? view,
       unit: next.unit === undefined ? unitId : next.unit,
@@ -70,11 +83,13 @@ export function LaporanBoardView({
     <div className="no-print space-y-4">
       <div className="no-print space-y-3">
         {view === "harian" ? (
-          <DailyDateNav basePath="/laporan" date={date} month={month} year={year} />
+          <DailyDateNav basePath={basePath} date={date} month={month} year={year} />
         ) : (
-          <ReportMonthNav basePath="/laporan" month={month} year={year} date={date} />
+          <ReportMonthNav basePath={basePath} month={month} year={year} date={date} />
         )}
-        <ReportActionButtons by="pegawai" view={view} date={date} month={month} year={year} unit={unitId} />
+        {showActions ? (
+          <ReportActionButtons by="pegawai" view={view} date={date} month={month} year={year} unit={unitId} />
+        ) : null}
       </div>
 
       <section className="overflow-hidden rounded-lg border border-accent bg-primary p-3 text-white md:p-4">
@@ -85,7 +100,7 @@ export function LaporanBoardView({
         <p className="mt-1.5 text-sm text-white/90">{board.insight}</p>
       </section>
 
-      <div className={cn("grid grid-cols-2 gap-2", board.isLeader ? "sm:grid-cols-4" : "sm:grid-cols-3")}>
+      <div className={cn("grid gap-2", board.isLeader ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3")}>
         <Stat label="Disetujui" value={board.summary.completed} />
         <Stat label="Ditolak" value={board.summary.rejected} warn={board.summary.rejected > 0} />
         <Stat label="Nilai" value={board.summary.averageScore ? `${board.summary.averageScore}/3` : "-"} />
@@ -116,7 +131,7 @@ export function LaporanBoardView({
       ) : null}
 
       {view === "bulanan" && board.days.some((day) => day.completed + day.posted > 0) ? (
-        <ActivityCalendar basePath="/laporan" month={month} year={year} days={board.days} />
+        <ActivityCalendar basePath={basePath} month={month} year={year} days={board.days} />
       ) : null}
 
       {board.childUnits.length > 0 ? (
@@ -132,9 +147,24 @@ export function LaporanBoardView({
         </section>
       ) : null}
 
+      {ownPerson ? (
+        <section className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">{ownHeading}</h3>
+          <PersonCard
+            person={ownPerson}
+            open={ownOpen}
+            onToggle={() => setOwnOpen((open) => !open)}
+            month={month}
+            year={year}
+            showCalendar={view === "bulanan"}
+            basePath={basePath}
+          />
+        </section>
+      ) : null}
+
       <section className="space-y-2">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-          {board.isLeader ? "Bawahan langsung" : "Kinerja Anda"}
+          {peopleHeading ?? (board.isLeader ? "Bawahan langsung" : "Kinerja Anda")}
         </h3>
         {board.people.length === 0 ? (
           <p className="rounded-lg border border-dashed border-outline-variant bg-surface-container-lowest p-6 text-center text-sm text-on-surface-variant">
@@ -154,6 +184,7 @@ export function LaporanBoardView({
               month={month}
               year={year}
               showCalendar={view === "bulanan"}
+              basePath={basePath}
             />
           ))
         )}
@@ -222,6 +253,7 @@ function PersonCard({
   month,
   year,
   showCalendar,
+  basePath,
 }: {
   person: LaporanPerson;
   open: boolean;
@@ -229,6 +261,7 @@ function PersonCard({
   month: number;
   year: number;
   showCalendar: boolean;
+  basePath: ReportBasePath;
 }) {
   return (
     <div className="overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest card-shadow">
@@ -267,7 +300,7 @@ function PersonCard({
         <div className="space-y-3 border-t border-outline-variant p-3">
           {showCalendar && person.tasks.length > 0 ? (
             <ActivityCalendar
-              basePath="/laporan"
+              basePath={basePath}
               month={month}
               year={year}
               days={personDays(person, month, year)}

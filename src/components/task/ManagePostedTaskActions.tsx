@@ -23,10 +23,14 @@ export function ManagePostedTaskActions({
   task,
   afterDeleteHref,
   className,
+  showEdit = true,
+  showDelete = true,
 }: {
   task: PostedTaskFields;
   afterDeleteHref?: string;
   className?: string;
+  showEdit?: boolean;
+  showDelete?: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -55,32 +59,38 @@ export function ManagePostedTaskActions({
     router.refresh();
   }
 
+  if (!showEdit && !showDelete) return null;
+
   return (
     <>
       <div className={cn("flex gap-2", className)}>
-        <Button
-          type="button"
-          variant="secondary"
-          size="xs"
-          className="flex-1 shadow-none"
-          onClick={() => setEditing(true)}
-        >
-          <Pencil className="h-3 w-3" />
-          Edit
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          className="flex-1 bg-error-container text-error shadow-none hover:bg-error-container/80 hover:text-error"
-          onClick={() => {
-            setError("");
-            setConfirmDelete(true);
-          }}
-        >
-          <Trash2 className="h-3 w-3" />
-          Hapus
-        </Button>
+        {showEdit ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="xs"
+            className="flex-1 shadow-none"
+            onClick={() => setEditing(true)}
+          >
+            <Pencil className="h-3 w-3" />
+            Edit
+          </Button>
+        ) : null}
+        {showDelete ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            className="flex-1 bg-error-container text-error shadow-none hover:bg-error-container/80 hover:text-error"
+            onClick={() => {
+              setError("");
+              setConfirmDelete(true);
+            }}
+          >
+            <Trash2 className="h-3 w-3" />
+            Hapus
+          </Button>
+        ) : null}
       </div>
 
       <TaskFormDialog

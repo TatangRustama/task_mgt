@@ -42,7 +42,7 @@ export const emptySummary = (): ReportSummary => ({
 
 export type LaporanBy = "tugas" | "pegawai";
 export type LaporanView = "harian" | "bulanan";
-export type KinerjaView = "pantau" | LaporanView;
+export type KinerjaView = "unit" | "individu";
 
 export type ReportPegawai = {
   id: string;

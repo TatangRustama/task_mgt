@@ -329,6 +329,7 @@ export async function getLaporanBoard(options: {
   month: number;
   year: number;
   detail?: "ui" | "print";
+  ownAssignedOnly?: boolean;
 }): Promise<LaporanBoard | null> {
   const start =
     options.view === "harian"
@@ -359,7 +360,9 @@ export async function getLaporanBoard(options: {
     const tasks = await prisma.task.findMany({
       where: {
         AND: [
-          { OR: [{ assignedToId: me.id }, { createdById: me.id }] },
+          options.ownAssignedOnly
+            ? { assignedToId: me.id }
+            : { OR: [{ assignedToId: me.id }, { createdById: me.id }] },
           periodWhere(start, end, options.view),
           { status: { not: "dibatalkan" } },
         ],

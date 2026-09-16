@@ -37,18 +37,33 @@ async function LaporanBody({
   const user = await requireUser(["personal"]);
   const { orgUser, visibleUnitIds, isLeader } = await getOrgScope(user);
   const reportIds = orgUser && isLeader ? await getDirectReportIds(orgUser) : [];
-  const board = await getLaporanBoard({
-    viewerId: user.id,
-    rootUnitId: user.unitId,
-    visibleUnitIds,
-    isLeader,
-    directReportIds: reportIds,
-    focusUnitId: unit,
-    view,
-    date,
-    month,
-    year,
-  });
+  const [board, ownBoard] = await Promise.all([
+    getLaporanBoard({
+      viewerId: user.id,
+      rootUnitId: user.unitId,
+      visibleUnitIds,
+      isLeader,
+      directReportIds: reportIds,
+      focusUnitId: unit,
+      view,
+      date,
+      month,
+      year,
+    }),
+    isLeader
+      ? getLaporanBoard({
+          viewerId: user.id,
+          rootUnitId: user.unitId,
+          visibleUnitIds,
+          isLeader: false,
+          ownAssignedOnly: true,
+          view,
+          date,
+          month,
+          year,
+        })
+      : Promise.resolve(null),
+  ]);
 
   return (
     <LaporanPrintProvider
@@ -72,6 +87,9 @@ async function LaporanBody({
           month={month}
           year={year}
           unitId={unit && visibleUnitIds.includes(unit) ? unit : null}
+          ownPerson={ownBoard?.people[0] ?? null}
+          ownHeading="Laporan individu"
+          ownDefaultOpen={false}
         />
       )}
     </LaporanPrintProvider>

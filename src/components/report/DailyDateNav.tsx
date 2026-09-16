@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigationLoader } from "@/components/layout/NavigationLoader";
-import { reportHref, type ReportBasePath } from "@/lib/laporan-url";
+import { kinerjaHref, reportHref, type ReportBasePath } from "@/lib/laporan-url";
 import { addDays, formatISODate, parseISODate } from "@/lib/utils";
 
 export function DailyDateNav({
@@ -27,7 +27,11 @@ export function DailyDateNav({
 
   function goTo(value: string) {
     start();
-    router.push(reportHref(basePath, { view: "harian", date: value, month, year }));
+    router.push(
+      basePath === "/pimpinan"
+        ? kinerjaHref({ view: "individu", date: value, month, year })
+        : reportHref(basePath, { view: "harian", date: value, month, year }),
+    );
   }
 
   return (

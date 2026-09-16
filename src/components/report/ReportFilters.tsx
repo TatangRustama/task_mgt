@@ -64,30 +64,19 @@ export function KinerjaViewTabs({
   date,
   month,
   year,
-  showPantau,
 }: {
   view: KinerjaView;
   date: string;
   month: number;
   year: number;
-  showPantau: boolean;
 }) {
-  if (!showPantau) {
-    return (
-      <ReportFilters basePath="/pimpinan" view={view === "pantau" ? "bulanan" : view} date={date} month={month} year={year} />
-    );
-  }
-
   return (
-    <div className="no-print grid grid-cols-3 rounded-lg bg-surface-container p-1">
-      <Segment href={kinerjaHref({ view: "pantau", date, month, year })} active={view === "pantau"}>
-        Pantau
+    <div className="no-print grid grid-cols-2 rounded-lg bg-surface-container p-1">
+      <Segment href={kinerjaHref({ view: "unit", date, month, year })} active={view === "unit"}>
+        Unit
       </Segment>
-      <Segment href={kinerjaHref({ view: "harian", date, month, year })} active={view === "harian"}>
-        Harian
-      </Segment>
-      <Segment href={kinerjaHref({ view: "bulanan", date, month, year })} active={view === "bulanan"}>
-        Bulanan
+      <Segment href={kinerjaHref({ view: "individu", date, month, year })} active={view === "individu"}>
+        Individu
       </Segment>
     </div>
   );

@@ -379,11 +379,25 @@ export function canPickupPoolTask(user: SessionUser, task: TaskAccess) {
   );
 }
 
+export function canManagePostedTask(
+  user: Pick<SessionUser, "id">,
+  task: Pick<TaskAccess, "createdById" | "status">,
+) {
+  return task.createdById === user.id && (task.status === "tersedia" || task.status === "dikerjakan");
+}
+
 export function canManagePostedTersediaTask(
   user: Pick<SessionUser, "id">,
   task: Pick<TaskAccess, "createdById" | "status">,
 ) {
-  return task.createdById === user.id && task.status === "tersedia";
+  return canManagePostedTask(user, task);
+}
+
+export function canDeletePostedTask(
+  user: Pick<SessionUser, "id">,
+  task: Pick<TaskAccess, "createdById" | "status">,
+) {
+  return canManagePostedTask(user, task);
 }
 
 export async function canReviewTask(user: OrgUser, assignedToId: string | null) {

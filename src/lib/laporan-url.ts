@@ -37,8 +37,13 @@ export function laporanHref(query: LaporanQuery) {
   return reportHref("/laporan", query);
 }
 
+export function parseKinerjaView(value: string | undefined): KinerjaView {
+  if (value === "individu" || value === "harian" || value === "bulanan") return "individu";
+  return "unit";
+}
+
 export function kinerjaHref({
-  view = "pantau",
+  view = "unit",
   date,
   month,
   year,
@@ -50,7 +55,7 @@ export function kinerjaHref({
   if (date) params.set("date", date);
   if (month) params.set("month", String(month));
   if (year) params.set("year", String(year));
-  if (view === "pantau") {
+  if (view === "unit") {
     if (unit) params.set("unit", unit);
     if (focus && focus !== "all") params.set("focus", focus);
   }
