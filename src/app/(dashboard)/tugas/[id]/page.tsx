@@ -157,7 +157,7 @@ export default async function TaskDetailPage({
                   <StarRating value={task.rating.stars} readOnly />
                 </div>
               ) : null}
-              {task.review.feedback ? <p>Catatan: {task.review.feedback}</p> : null}
+              {task.review.feedback ? <p>Feedback: {task.review.feedback}</p> : null}
               <p>Review oleh: {task.review.reviewedBy.name}</p>
               <p>{formatDateTime(task.review.reviewedAt)}</p>
             </CardContent>

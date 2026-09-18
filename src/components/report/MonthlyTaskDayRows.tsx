@@ -1,5 +1,6 @@
 import { groupTasksByPrintDate, printKeterangan } from "@/lib/laporan-print-view";
 import { PrintHasilParafCell, PrintUraianCell } from "@/components/report/PrintTaskCells";
+import { formatJumlahSatuan } from "@/lib/satuan";
 import type { ReportTask } from "@/lib/report-types";
 
 export function MonthlyTaskDayRows({
@@ -7,13 +8,11 @@ export function MonthlyTaskDayRows({
   authorName,
   cellClassName = "",
   rowClassName,
-  mergedHasilParaf = false,
 }: {
   tasks: ReportTask[];
   authorName: string;
   cellClassName?: string;
   rowClassName?: string;
-  mergedHasilParaf?: boolean;
 }) {
   const groups = groupTasksByPrintDate(tasks);
 
@@ -32,13 +31,13 @@ export function MonthlyTaskDayRows({
           </>
         ) : null}
         <td className={cellClassName}>
-          <PrintUraianCell task={task} />
+          <PrintUraianCell task={task} extra={formatJumlahSatuan(task.jumlahIntervensi, task.satuan)} />
         </td>
         <td className={cellClassName}>
-          {printKeterangan(task, authorName, { includeFeedback: !mergedHasilParaf }) || "-"}
+          {printKeterangan(task, authorName, { includeFeedback: false }) || "-"}
         </td>
         <td className={`center ${cellClassName}`.trim()}>
-          <PrintHasilParafCell task={task} includePenilaian={mergedHasilParaf} />
+          <PrintHasilParafCell task={task} />
         </td>
       </tr>
     ));

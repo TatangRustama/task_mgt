@@ -193,11 +193,16 @@ export function printUraianDescription(task: Pick<ReportTask, "description">) {
 }
 
 export function printUraianText(
-  task: Pick<ReportTask, "title" | "description" | "address" | "assignedAt" | "createdAt" | "deadline">,
+  task: Pick<
+    ReportTask,
+    "title" | "description" | "address" | "assignedAt" | "createdAt" | "deadline" | "jumlahIntervensi" | "satuan"
+  >,
+  options?: { includeJumlah?: boolean },
 ) {
   return [
     printUraianTitle(task),
     printUraianDescription(task),
+    options?.includeJumlah ? formatJumlahSatuan(task.jumlahIntervensi, task.satuan) : null,
     printTargetLine(task),
     printTempatLine(task),
   ]
@@ -206,20 +211,34 @@ export function printUraianText(
 }
 
 export function printHasilParafText(
-  task: Pick<ReportTask, "score" | "status" | "feedback" | "jumlahIntervensi" | "satuan">,
-  includePenilaian = false,
+  task: Pick<ReportTask, "feedback" | "score" | "status" | "reviewedAt">,
 ) {
-  if (task.status === "dikerjakan") return "dikerjakan";
-  const parts: string[] = [];
-  if (includePenilaian) {
-    const jumlah = formatJumlahSatuan(task.jumlahIntervensi, task.satuan);
-    if (jumlah) parts.push(jumlah);
-  }
-  const hasil = printHasilLine(task);
-  if (hasil) parts.push(hasil);
-  parts.push(printParaf(task));
-  if (includePenilaian && task.feedback?.trim()) parts.push(task.feedback.trim());
-  return parts.filter(Boolean).join("\n") || "-";
+  const parts = printDailyHasilParafParts(task);
+  return [parts.feedback, parts.penilaian, parts.status, parts.reviewedAt].join("\n");
+}
+
+export function printDailyKeteranganText(task: Pick<ReportTask, "notes">) {
+  return task.notes?.trim() || "-";
+}
+
+export function printDailyHasilParafParts(
+  task: Pick<ReportTask, "feedback" | "score" | "status" | "reviewedAt">,
+) {
+  const penilaian = printHasilLine(task);
+  const reviewed = task.reviewedAt ? formatPrintDate(task.reviewedAt) : null;
+  return {
+    feedback: task.feedback?.trim() || "-",
+    penilaian: penilaian || "-",
+    status: printParaf(task),
+    reviewedAt: reviewed && reviewed !== "-" ? reviewed : "-",
+  };
+}
+
+export function printDailyHasilParafText(
+  task: Pick<ReportTask, "feedback" | "score" | "status" | "reviewedAt">,
+) {
+  const parts = printDailyHasilParafParts(task);
+  return [`Feedback :\n${parts.feedback}`, parts.penilaian, parts.status, parts.reviewedAt].join("\n");
 }
 
 export function printKeterangan(

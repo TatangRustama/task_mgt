@@ -156,7 +156,8 @@ async function captureSection(
 }
 
 export async function downloadPrintPdf(filename: string) {
-  const source = document.querySelector<HTMLElement>(".print-root");
+  const source = document.querySelector<HTMLElement>(".print-wfh.print-root")
+    ?? document.querySelector<HTMLElement>(".print-root");
   if (!source) return;
 
   const html2canvas = (await import("html2canvas")).default;

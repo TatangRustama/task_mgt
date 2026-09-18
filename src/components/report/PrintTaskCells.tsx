@@ -1,6 +1,9 @@
-import { printHasilLine, printParaf, printTargetLine, printTempatLine } from "@/lib/laporan-print-view";
+import {
+  printDailyHasilParafParts,
+  printTargetLine,
+  printTempatLine,
+} from "@/lib/laporan-print-view";
 import { parseTaskDescription } from "@/lib/task-description";
-import { formatJumlahSatuan } from "@/lib/satuan";
 import type { ReportTask } from "@/lib/report-types";
 
 function PrintDescription({ text }: { text: string }) {
@@ -75,29 +78,40 @@ export function PrintUraianCell({
 
 export function PrintHasilParafCell({
   task,
-  includePenilaian = false,
 }: {
-  task: Pick<ReportTask, "score" | "status" | "feedback" | "jumlahIntervensi" | "satuan">;
-  includePenilaian?: boolean;
+  task: Pick<ReportTask, "feedback" | "score" | "status" | "reviewedAt">;
 }) {
-  if (task.status === "dikerjakan") {
-    return (
-      <div className="print-hasil-paraf">
-        <div className="print-paraf-line">dikerjakan</div>
-      </div>
-    );
-  }
-
-  const jumlah = formatJumlahSatuan(task.jumlahIntervensi, task.satuan);
-  const hasil = printHasilLine(task);
+  const { feedback, penilaian, status, reviewedAt } = printDailyHasilParafParts(task);
   return (
     <div className="print-hasil-paraf">
-      {includePenilaian && jumlah ? <div>{jumlah}</div> : null}
-      {hasil ? <div className="print-hasil-line">{hasil}</div> : null}
-      <div className="print-paraf-line">{printParaf(task)}</div>
-      {includePenilaian && task.feedback?.trim() ? (
-        <div className="print-paraf-line">{task.feedback.trim()}</div>
-      ) : null}
+      <div>{feedback}</div>
+      <div className="print-hasil-line">{penilaian}</div>
+      <div className="print-paraf-line">{status}</div>
+      <div className="print-paraf-line">{reviewedAt}</div>
+    </div>
+  );
+}
+
+export function PrintDailyKeteranganCell({ task }: { task: Pick<ReportTask, "notes"> }) {
+  const notes = task.notes?.trim() || "-";
+  return <div className="print-daily-keterangan-value">{notes}</div>;
+}
+
+export function PrintDailyHasilParafCell({
+  task,
+}: {
+  task: Pick<ReportTask, "feedback" | "score" | "status" | "reviewedAt">;
+}) {
+  const { feedback, penilaian, status, reviewedAt } = printDailyHasilParafParts(task);
+  return (
+    <div className="print-hasil-paraf print-daily-hasil">
+      <div className="print-daily-feedback">
+        <strong>Feedback : </strong>
+        <div className="print-daily-feedback-value">{feedback}</div>
+      </div>
+      <div className="print-hasil-line">{penilaian}</div>
+      <div className="print-paraf-line">{status}</div>
+      <div className="print-paraf-line">{reviewedAt}</div>
     </div>
   );
 }

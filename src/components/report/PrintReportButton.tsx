@@ -171,27 +171,10 @@ export function LaporanPrintProvider({
   async function prepareAndPrint() {
     if (busy) return;
 
-    if (view === "harian" && harian) {
-      setBusy(true);
-      try {
-        await savePdf(harian.print.author.name, "harian");
-      } finally {
-        setBusy(false);
-      }
-      return;
-    }
-    if (view === "bulanan" && bulanan) {
-      setBusy(true);
-      try {
-        await savePdf(bulanan.print.author.name, "bulanan");
-      } finally {
-        setBusy(false);
-      }
-      return;
-    }
-
     setBusy(true);
     pendingPrint.current = true;
+    setHarian(null);
+    setBulanan(null);
     const params = new URLSearchParams({
       view,
       date,

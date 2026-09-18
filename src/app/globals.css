@@ -300,6 +300,16 @@ select {
     width: 22%;
   }
 
+  .print-table-daily .col-keterangan {
+    width: 22%;
+  }
+
+  .print-daily-keterangan-value,
+  .print-daily-feedback-value {
+    margin-top: 2px;
+    white-space: pre-line;
+  }
+
   .print-table .col-paraf {
     width: 12%;
   }
@@ -564,6 +574,11 @@ select {
   .print-wfh-sign .print-printed-on {
     margin: 0 0 8px;
     text-align: center;
+  }
+
+  .print-sign-jabatan {
+    margin: 0 0 4px;
+    line-height: 1.35;
   }
 
   .print-wfh-sign-space {

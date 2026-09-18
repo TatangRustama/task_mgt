@@ -25,6 +25,12 @@ export function TaskDetailModal({
   onOpenChange: (open: boolean) => void;
 }) {
   const completed = Boolean(task?.completedAt);
+  const showPenilaian =
+    completed ||
+    task?.status === "disetujui" ||
+    task?.status === "ditolak" ||
+    task?.score != null ||
+    Boolean(task?.feedback?.trim());
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -56,7 +62,7 @@ export function TaskDetailModal({
                 <EvidencePhotoGrid urls={task.photoUrls} />
               </div>
 
-              {completed ? (
+              {showPenilaian ? (
                 <div className="rounded-lg border border-surface-container-highest bg-surface-container-low p-4">
                   <p className="text-sm font-semibold text-on-surface">Penilaian atasan</p>
                   <p className="mt-0.5 text-xs text-on-surface-variant">
@@ -67,6 +73,11 @@ export function TaskDetailModal({
                   <div className="mt-3">
                     <StarRating value={task.score} readOnly />
                   </div>
+                  {task.feedback?.trim() ? (
+                    <p className="mt-3 text-sm text-on-surface-variant">
+                      Feedback: {task.feedback.trim()}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
             </div>

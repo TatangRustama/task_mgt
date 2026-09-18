@@ -5,7 +5,13 @@ import { PhotoLightbox } from "@/components/task/PhotoLightbox";
 import { evidenceRows, printPhotoSrc } from "@/lib/laporan-print-view";
 import type { ReportTask } from "@/lib/report-types";
 
-export function PrintLampiranBukti({ tasks }: { tasks: ReportTask[] }) {
+export function PrintLampiranBukti({
+  tasks,
+  showDate = true,
+}: {
+  tasks: ReportTask[];
+  showDate?: boolean;
+}) {
   const rows = evidenceRows(tasks);
   const [viewer, setViewer] = useState<{ urls: string[]; index: number } | null>(null);
   if (rows.length === 0) return null;
@@ -18,7 +24,7 @@ export function PrintLampiranBukti({ tasks }: { tasks: ReportTask[] }) {
         <thead>
           <tr>
             <th className="col-no">No.</th>
-            <th className="col-date">Hari/Tgl</th>
+            {showDate ? <th className="col-date">Hari/Tgl</th> : null}
             <th>Bukti Visual</th>
           </tr>
         </thead>
@@ -26,7 +32,7 @@ export function PrintLampiranBukti({ tasks }: { tasks: ReportTask[] }) {
           {rows.map((row, index) => (
             <tr key={`${row.date}-${index}`}>
               <td className="center">{index + 1}</td>
-              <td className="center">{row.date}</td>
+              {showDate ? <td className="center">{row.date}</td> : null}
               <td>
                 <p className="print-bukti-title">{row.title}</p>
                 <div className="print-photos print-photos-lampiran">

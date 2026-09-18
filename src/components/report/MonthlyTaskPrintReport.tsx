@@ -44,12 +44,11 @@ export function MonthlyTaskPrintReport({
 
       {isLeader ? (
         <>
-          <p className="print-section-label">Rincian Tugas Mandiri</p>
+          <p className="print-section-label">Rincian Tugas Individu</p>
           <PrintTaskTable
             tasks={mandiriRows}
             authorName={print.author.name}
-            empty="Tidak ada tugas mandiri pada periode ini."
-            mergedHasilParaf
+            empty="Tidak ada tugas individu pada periode ini."
           />
 
           <p className="print-section-label">Review Tugas Unit</p>
@@ -142,12 +141,10 @@ export function PrintTaskTable({
   tasks,
   authorName,
   empty,
-  mergedHasilParaf = false,
 }: {
   tasks: ReportTask[];
   authorName: string;
   empty: string;
-  mergedHasilParaf?: boolean;
 }) {
   return (
     <table className="print-table print-table-tasks">
@@ -157,7 +154,7 @@ export function PrintTaskTable({
           <th className="col-date">Hari/Tgl</th>
           <th>Uraian Tugas</th>
           <th>Keterangan</th>
-          <th className="col-hasil">{mergedHasilParaf ? "Hasil/ Paraf" : "Hasil"}</th>
+          <th className="col-hasil">Hasil/ Paraf</th>
         </tr>
       </thead>
       <tbody>
@@ -168,11 +165,7 @@ export function PrintTaskTable({
             </td>
           </tr>
         ) : (
-          <MonthlyTaskDayRows
-            tasks={tasks}
-            authorName={authorName}
-            mergedHasilParaf={mergedHasilParaf}
-          />
+          <MonthlyTaskDayRows tasks={tasks} authorName={authorName} />
         )}
       </tbody>
     </table>

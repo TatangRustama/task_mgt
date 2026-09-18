@@ -43,7 +43,7 @@ export async function POST(
   }
 
   if (decision === "ditolak" && !feedback) {
-    return NextResponse.json({ error: "Catatan revisi wajib diisi" }, { status: 400 });
+    return NextResponse.json({ error: "Feedback wajib diisi" }, { status: 400 });
   }
 
   const updated = await prisma.$transaction(async (tx) => {

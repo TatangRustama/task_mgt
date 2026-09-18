@@ -2,10 +2,11 @@ import {
   evidenceRows,
   groupTasksByPrintDate,
   groupTasksForWfhPrint,
+  printDailyHasilParafText,
+  printDailyKeteranganText,
   printHasilParafText,
   printKeterangan,
   printUraianText,
-  taskWfhHasil,
   type PrintPerson,
   type PrintUnitReviewRow,
 } from "@/lib/laporan-print-view";
@@ -43,21 +44,8 @@ function identityRows(person: PrintPerson, pangkatLabel: string) {
   ];
 }
 
-function taskTableRows(
-  tasks: ReportTask[],
-  authorName: string,
-  empty: string,
-  mergedHasilParaf: boolean,
-) {
-  const lines = [
-    csvRow([
-      "No.",
-      "Hari/Tgl",
-      "Uraian Tugas",
-      "Keterangan",
-      mergedHasilParaf ? "Hasil/ Paraf" : "Hasil",
-    ]),
-  ];
+function monthlyTaskTableRows(tasks: ReportTask[], authorName: string, empty: string) {
+  const lines = [csvRow(["No.", "Hari/Tgl", "Uraian Tugas", "Keterangan", "Hasil/ Paraf"])];
   if (tasks.length === 0) {
     lines.push(csvRow(["", "", empty, "", ""]));
     return lines;
@@ -68,9 +56,9 @@ function taskTableRows(
         csvRow([
           group.no,
           group.date,
-          printUraianText(task),
-          printKeterangan(task, authorName, { includeFeedback: !mergedHasilParaf }) || "-",
-          printHasilParafText(task, mergedHasilParaf),
+          printUraianText(task, { includeJumlah: true }),
+          printKeterangan(task, authorName, { includeFeedback: false }) || "-",
+          printHasilParafText(task),
         ]),
       );
     }
@@ -78,24 +66,41 @@ function taskTableRows(
   return lines;
 }
 
-function wfhUnitTableRows(tasks: ReportTask[], date: string, isLeader: boolean) {
-  const dateLabel = formatWfhReportDate(date);
-  const lines = [csvRow(["NO", "HARI/TANGGAL", "URAIAN KEGIATAN", "HASIL/ PARAF"])];
+function dailyIndividuTableRows(tasks: ReportTask[], empty: string) {
+  const lines = [csvRow(["No.", "Uraian Tugas", "Keterangan", "Hasil/ Paraf"])];
+  if (tasks.length === 0) {
+    lines.push(csvRow(["", empty, "", ""]));
+    return lines;
+  }
+  tasks.forEach((task, index) => {
+    lines.push(
+      csvRow([
+        index + 1,
+        printUraianText(task),
+        printDailyKeteranganText(task),
+        printDailyHasilParafText(task),
+      ]),
+    );
+  });
+  return lines;
+}
+
+function dailyUnitTableRows(tasks: ReportTask[]) {
+  const lines = [csvRow(["NO", "URAIAN KEGIATAN", "KETERANGAN", "HASIL/ PARAF"])];
   const groups = groupTasksForWfhPrint(tasks);
   if (groups.length === 0) {
-    lines.push(csvRow([1, dateLabel, "-", "-"]));
+    lines.push(csvRow([1, "-", "-", "-"]));
     return lines;
   }
   for (const group of groups) {
     for (const task of group.tasks) {
-      const hasilParts: string[] = [];
-      if (task.status !== "dikerjakan") {
-        const hasil = taskWfhHasil(task);
-        if (hasil !== "-") hasilParts.push(hasil);
-      }
-      hasilParts.push(printHasilParafText(task, isLeader));
       lines.push(
-        csvRow([group.no, dateLabel, printUraianText(task), hasilParts.filter(Boolean).join("\n")]),
+        csvRow([
+          group.no,
+          printUraianText(task),
+          printDailyKeteranganText(task),
+          printDailyHasilParafText(task),
+        ]),
       );
     }
   }
@@ -126,12 +131,14 @@ function reviewUnitRows(rows: PrintUnitReviewRow[]) {
   return lines;
 }
 
-function lampiranRows(tasks: ReportTask[]) {
+function lampiranRows(tasks: ReportTask[], showDate = true) {
   const rows = evidenceRows(tasks);
   if (rows.length === 0) return [];
-  const lines = [csvRow([]), csvRow(["Lampiran"]), csvRow(["Bukti Dokumen"]), csvRow(["No.", "Hari/Tgl", "Bukti Visual"])];
+  const header = showDate ? ["No.", "Hari/Tgl", "Bukti Visual"] : ["No.", "Bukti Visual"];
+  const lines = [csvRow([]), csvRow(["Lampiran"]), csvRow(["Bukti Dokumen"]), csvRow(header)];
   rows.forEach((row, index) => {
-    lines.push(csvRow([index + 1, row.date, [row.title, ...row.photos].join("\n")]));
+    const visual = [row.title, ...row.photos].join("\n");
+    lines.push(showDate ? csvRow([index + 1, row.date, visual]) : csvRow([index + 1, visual]));
   });
   return lines;
 }
@@ -149,19 +156,20 @@ export function buildDailyPrintCsv(data: HarianPrintData) {
   ];
 
   if (isLeader) {
-    lines.push(csvRow([]), csvRow(["Rincian Tugas Mandiri"]));
+    lines.push(csvRow([]), csvRow(["Rincian Tugas Individu"]));
     lines.push(
-      ...taskTableRows(leaderTasks, print.author.name, "Tidak ada tugas mandiri pada tanggal ini.", true),
+      ...dailyIndividuTableRows(leaderTasks, "Tidak ada tugas individu pada tanggal ini."),
     );
     lines.push(csvRow([]), csvRow(["Rincian Tugas Unit"]));
-    lines.push(...wfhUnitTableRows(tasks, date, true));
+    lines.push(...dailyUnitTableRows(tasks));
   } else {
     lines.push(csvRow([]));
-    lines.push(...wfhUnitTableRows(tasks, date, false));
+    lines.push(...dailyUnitTableRows(tasks));
   }
 
   lines.push(csvRow([]), csvRow(["dicetak pada :", formatPrintedOnDate()]));
-  lines.push(...lampiranRows(lampiranTasks));
+  lines.push(csvRow([print.author.jabatan]));
+  lines.push(...lampiranRows(lampiranTasks, false));
   return lines.join("");
 }
 
@@ -183,9 +191,9 @@ export function buildMonthlyPrintCsv(data: BulananPrintData) {
   ];
 
   if (isLeader) {
-    lines.push(csvRow([]), csvRow(["Rincian Tugas Mandiri"]));
+    lines.push(csvRow([]), csvRow(["Rincian Tugas Individu"]));
     lines.push(
-      ...taskTableRows(leaderTasks, print.author.name, "Tidak ada tugas mandiri pada periode ini.", true),
+      ...monthlyTaskTableRows(leaderTasks, print.author.name, "Tidak ada tugas individu pada periode ini."),
     );
     lines.push(csvRow([]), csvRow(["Review Tugas Unit"]));
     lines.push(...reviewUnitRows(rows));
@@ -193,11 +201,10 @@ export function buildMonthlyPrintCsv(data: BulananPrintData) {
 
   lines.push(csvRow([]), csvRow([isLeader ? "Rincian Tugas Unit" : "Uraian tugas"]));
   lines.push(
-    ...taskTableRows(
+    ...monthlyTaskTableRows(
       tasks,
       print.author.name,
       "Tidak ada tugas pada periode ini.",
-      false,
     ),
   );
   lines.push(csvRow([]), csvRow(["dicetak pada :", formatPrintedOnDate()]));

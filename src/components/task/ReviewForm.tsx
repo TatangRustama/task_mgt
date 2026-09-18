@@ -91,12 +91,12 @@ export function ReviewForm({ taskId }: { taskId: string }) {
       ) : null}
 
       <div className="space-y-2">
-        <Label htmlFor={`feedback-${taskId}`}>Catatan</Label>
+        <Label htmlFor={`feedback-${taskId}`}>Feedback</Label>
         <Textarea
           id={`feedback-${taskId}`}
           value={feedback}
           onChange={(e) => setFeedback(e.target.value)}
-          placeholder={decision === "ditolak" ? "Alasan penolakan / revisi" : "Umpan balik (opsional)"}
+          placeholder={decision === "ditolak" ? "Alasan penolakan / revisi" : "Feedback (opsional)"}
           required={decision === "ditolak"}
         />
       </div>
