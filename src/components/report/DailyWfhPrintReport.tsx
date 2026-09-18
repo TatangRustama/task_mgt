@@ -29,7 +29,7 @@ export function DailyWfhPrintReport({
 
   return (
     <div className="print-wfh print-root" aria-hidden="true">
-      <h1 className="print-title">LAPORAN KINERJA WFH</h1>
+      <h1 className="print-title">LAPORAN KINERJA</h1>
       <p className="print-wfh-date">{dateLabel}</p>
 
       <IdentityTable person={print.author} />

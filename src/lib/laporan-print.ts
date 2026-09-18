@@ -15,6 +15,7 @@ import {
 
 export {
   PRINT_TASK_STATUSES,
+  dailyPrintTasks,
   evidenceRows,
   formatPrintDate,
   groupTasksByPrintDate,

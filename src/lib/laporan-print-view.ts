@@ -1,6 +1,6 @@
 import { starLabel } from "@/lib/rating";
 import type { ReportTask } from "@/lib/report-types";
-import { isMultiDayDeadline, statusLabel } from "@/lib/utils";
+import { calendarDay, isMultiDayDeadline, statusLabel } from "@/lib/utils";
 import { formatJumlahSatuan } from "@/lib/satuan";
 
 export const PRINT_TASK_STATUSES = ["dikerjakan", "menunggu_approval", "disetujui"] as const;
@@ -82,6 +82,29 @@ export function printableTasks<T extends {
   deadline?: string | Date | null;
 }>(tasks: T[]): T[] {
   return tasks.filter((task) => isPrintableTask(task));
+}
+
+export function belongsToDailyPrintDate(
+  task: {
+    assignedAt?: string | Date | null;
+    createdAt?: string | Date | null;
+    completedAt?: string | Date | null;
+  },
+  date: string,
+) {
+  const completed = calendarDay(task.completedAt);
+  if (completed) return completed === date;
+  return calendarDay(task.assignedAt || task.createdAt) === date;
+}
+
+export function dailyPrintTasks<T extends {
+  status: string;
+  assignedAt?: string | Date | null;
+  createdAt?: string | Date | null;
+  completedAt?: string | Date | null;
+  deadline?: string | Date | null;
+}>(tasks: T[], date: string): T[] {
+  return printableTasks(tasks).filter((task) => belongsToDailyPrintDate(task, date));
 }
 
 export function taskWfhUraian(task: Pick<ReportTask, "title" | "description" | "assignedAt" | "createdAt" | "deadline">) {

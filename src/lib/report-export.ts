@@ -139,7 +139,7 @@ function lampiranRows(tasks: ReportTask[]) {
 export function buildDailyPrintCsv(data: HarianPrintData) {
   const { print, isLeader, date, tasks, leaderTasks, lampiranTasks } = data;
   const lines = [
-    csvRow(["LAPORAN KINERJA WFH"]),
+    csvRow(["LAPORAN KINERJA"]),
     csvRow([formatWfhReportDate(date)]),
     csvRow([]),
     ...identityRows(print.author, "Pangkat"),
