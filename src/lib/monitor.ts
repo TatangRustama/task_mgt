@@ -5,6 +5,7 @@ import {
   MONITOR_RATING_WINDOW_DAYS,
   MONITOR_REVIEW_SLA_HOURS,
   taskPriorityValue,
+  taskWeightedScore,
   unitLeadershipLine,
   type MonitorBoard,
   type MonitorExceptionKind,
@@ -62,6 +63,10 @@ function median(values: number[]) {
 
 function uniqueKinds(kinds: MonitorExceptionKind[]) {
   return [...new Set(kinds)];
+}
+
+function roundScore(value: number) {
+  return Math.round(value * 10) / 10;
 }
 
 function classifyTask(
@@ -335,7 +340,6 @@ const loadMonitorBoard = cache(async (
     const completedTasks = completedByPerson.get(person.id) ?? [];
     const completedIds = new Set(completedTasks.map((task) => task.id));
     const stackedOpenTasks = openTasks.filter((task) => !completedIds.has(task.id));
-    const workloadTasks = [...completedTasks, ...stackedOpenTasks];
     const lastAt = lastCompletedAt.get(person.id) ?? null;
     const lastCompletedIso = lastAt?.toISOString() ?? null;
     const idleDays = lastAt ? Math.max(0, Math.floor((todayStart.getTime() - startOfDay(lastAt).getTime()) / 86400000)) : null;
@@ -366,7 +370,14 @@ const loadMonitorBoard = cache(async (
       openCount: openTasks.length,
       completedCount: completedTasks.length,
       stackedOpenCount: stackedOpenTasks.length,
-      workloadScore: workloadTasks.reduce((sum, task) => sum + taskPriorityValue(task.priority), 0),
+      completedLoad: completedTasks.reduce((sum, task) => sum + taskPriorityValue(task.priority), 0),
+      openLoad: stackedOpenTasks.reduce((sum, task) => sum + taskPriorityValue(task.priority), 0),
+      workloadScore: roundScore(
+        [...completedTasks, ...stackedOpenTasks].reduce((sum, task) => {
+          const value = taskWeightedScore(task.priority, task.score);
+          return value == null ? sum : sum + value;
+        }, 0),
+      ),
       overdueCount: exceptionTasks.filter((task) => task.kinds.includes("overdue")).length,
       rejectedCount: exceptionTasks.filter((task) => task.kinds.includes("rejected")).length,
       reviewStaleCount: exceptionTasks.filter((task) => task.kinds.includes("review")).length,

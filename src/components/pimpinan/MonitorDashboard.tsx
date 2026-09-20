@@ -183,6 +183,13 @@ function sharePercent(value: number, total: number) {
   return Math.round((value / total) * 100);
 }
 
+function formatScore(value: number) {
+  return new Intl.NumberFormat("id-ID", {
+    minimumFractionDigits: value % 1 === 0 ? 0 : 1,
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
 function WorkloadChart({ people }: { people: MonitorPerson[] }) {
   const ranked = [...people].sort((a, b) => {
     if (b.completedCount !== a.completedCount) return b.completedCount - a.completedCount;
@@ -191,8 +198,8 @@ function WorkloadChart({ people }: { people: MonitorPerson[] }) {
   });
   const openTotal = ranked.reduce((sum, person) => sum + person.stackedOpenCount, 0);
   const completedTotal = ranked.reduce((sum, person) => sum + person.completedCount, 0);
-  const taskTotal = openTotal + completedTotal;
-  const barMax = Math.max(...ranked.map((person) => person.completedCount + person.stackedOpenCount), 0);
+  const scoreTotal = ranked.reduce((sum, person) => sum + person.workloadScore, 0);
+  const barMax = Math.max(...ranked.map((person) => person.completedLoad + person.openLoad), 0);
 
   return (
     <section className="space-y-2">
@@ -201,6 +208,9 @@ function WorkloadChart({ people }: { people: MonitorPerson[] }) {
           <h3 className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Beban kerja</h3>
           <p className="mt-0.5 text-sm text-on-surface">
             {completedTotal} selesai · {openTotal} terbuka
+          </p>
+          <p className="mt-0.5 text-[11px] text-on-surface-variant">
+            Persen dan bintang = nilai tertimbang. Barchart = beban prioritas.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3 text-[11px] text-on-surface-variant">
@@ -216,9 +226,8 @@ function WorkloadChart({ people }: { people: MonitorPerson[] }) {
       </div>
       <div className="overflow-hidden rounded-lg border border-outline bg-surface-container-lowest">
         {ranked.map((person, index) => {
-          const personTasks = person.completedCount + person.stackedOpenCount;
-          const doneWidth = barMax > 0 ? `${(person.completedCount / barMax) * 100}%` : "0%";
-          const openWidth = barMax > 0 ? `${(person.stackedOpenCount / barMax) * 100}%` : "0%";
+          const doneWidth = barMax > 0 ? `${(person.completedLoad / barMax) * 100}%` : "0%";
+          const openWidth = barMax > 0 ? `${(person.openLoad / barMax) * 100}%` : "0%";
           return (
             <div
               key={person.id}
@@ -227,7 +236,7 @@ function WorkloadChart({ people }: { people: MonitorPerson[] }) {
               <div className="flex min-w-0 items-baseline gap-2">
                 <p className="min-w-0 truncate text-sm font-semibold text-on-surface">{person.name}</p>
                 <span className="shrink-0 text-sm font-bold tabular-nums text-on-surface">
-                  {sharePercent(personTasks, taskTotal)}%
+                  {sharePercent(person.workloadScore, scoreTotal)}%
                 </span>
                 {person.isIdle ? (
                   <span className="shrink-0 rounded-md bg-error-container px-1.5 py-0.5 text-[10px] font-semibold text-error">
@@ -238,12 +247,12 @@ function WorkloadChart({ people }: { people: MonitorPerson[] }) {
               <div
                 className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-surface-container-high"
                 role="img"
-                aria-label={`${person.name}, selesai ${person.completedCount}, terbuka ${person.stackedOpenCount}, ${person.workloadScore}`}
+                aria-label={`${person.name}, selesai ${person.completedCount}, terbuka ${person.stackedOpenCount}, ${formatScore(person.workloadScore)}`}
               >
-                {person.completedCount > 0 ? (
+                {person.completedLoad > 0 ? (
                   <span className="h-full bg-primary" style={{ width: doneWidth }} />
                 ) : null}
-                {person.stackedOpenCount > 0 ? (
+                {person.openLoad > 0 ? (
                   <span className="h-full bg-amber-600" style={{ width: openWidth }} />
                 ) : null}
               </div>
@@ -258,7 +267,7 @@ function WorkloadChart({ people }: { people: MonitorPerson[] }) {
                 </div>
                 <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold tabular-nums text-on-surface">
                   <Star className="h-3 w-3 fill-amber-500 text-amber-500" aria-hidden="true" />
-                  {person.workloadScore}
+                  {formatScore(person.workloadScore)}
                 </span>
               </div>
             </div>

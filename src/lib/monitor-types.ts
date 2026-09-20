@@ -16,6 +16,23 @@ export function taskPriorityValue(priority: string) {
   return TASK_PRIORITY_VALUE[priority] ?? 2;
 }
 
+export const TASK_QUALITY_MULTIPLIER: Record<1 | 2 | 3, number> = {
+  1: 0.7,
+  2: 1,
+  3: 1.2,
+};
+
+export function taskQualityMultiplier(stars: number | null | undefined) {
+  if (stars !== 1 && stars !== 2 && stars !== 3) return null;
+  return TASK_QUALITY_MULTIPLIER[stars];
+}
+
+export function taskWeightedScore(priority: string, stars: number | null | undefined) {
+  const multiplier = taskQualityMultiplier(stars);
+  if (multiplier == null) return null;
+  return taskPriorityValue(priority) * multiplier;
+}
+
 export const MONITOR_FOCUSES = [
   "all",
   "overdue",
@@ -57,6 +74,8 @@ export type MonitorPerson = {
   openCount: number;
   completedCount: number;
   stackedOpenCount: number;
+  completedLoad: number;
+  openLoad: number;
   workloadScore: number;
   overdueCount: number;
   rejectedCount: number;
