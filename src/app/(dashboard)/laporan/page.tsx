@@ -4,7 +4,7 @@ import { ReportFilters } from "@/components/report/ReportFilters";
 import { LaporanPrintProvider } from "@/components/report/PrintReportButton";
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
 import { getLaporanBoard } from "@/lib/laporan-board";
-import { getDirectReportIds, getOrgScope } from "@/lib/org";
+import { getOrgScope } from "@/lib/org";
 import type { LaporanView } from "@/lib/report-types";
 import { requireUser } from "@/lib/session";
 import { formatISODate, isISODate, parseISODate } from "@/lib/utils";
@@ -14,9 +14,13 @@ export const dynamic = "force-dynamic";
 function ReportBodyFallback() {
   return (
     <div className="space-y-3" aria-hidden="true">
-      <div className="h-10 animate-pulse rounded-lg bg-surface-container" />
-      <div className="h-48 animate-pulse rounded-xl bg-surface-container-high" />
-      <div className="h-24 animate-pulse rounded-xl bg-surface-container" />
+      <div className="h-28 animate-pulse rounded-lg bg-surface-container" />
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="h-28 animate-pulse rounded-lg bg-surface-container-high" />
+        <div className="h-28 animate-pulse rounded-lg bg-surface-container-high" />
+      </div>
+      <div className="h-20 animate-pulse rounded-lg bg-surface-container" />
+      <div className="h-20 animate-pulse rounded-lg bg-surface-container" />
     </div>
   );
 }
@@ -35,15 +39,13 @@ async function LaporanBody({
   unit?: string;
 }) {
   const user = await requireUser(["personal"]);
-  const { orgUser, visibleUnitIds, isLeader } = await getOrgScope(user);
-  const reportIds = orgUser && isLeader ? await getDirectReportIds(orgUser) : [];
+  const { visibleUnitIds, isLeader } = await getOrgScope(user);
   const [board, ownBoard] = await Promise.all([
     getLaporanBoard({
       viewerId: user.id,
       rootUnitId: user.unitId,
       visibleUnitIds,
       isLeader,
-      directReportIds: reportIds,
       focusUnitId: unit,
       view,
       date,
@@ -65,34 +67,26 @@ async function LaporanBody({
       : Promise.resolve(null),
   ]);
 
+  if (!board) {
+    return (
+      <p className="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-6 text-center text-sm text-on-surface-variant">
+        Unit belum tersedia untuk laporan.
+      </p>
+    );
+  }
+
   return (
-    <LaporanPrintProvider
+    <LaporanBoardView
+      board={{ ...board, tasks: [] }}
       view={view}
       date={date}
       month={month}
       year={year}
-      unit={unit}
-      dailyTasks={view === "harian" ? (board?.tasks ?? []) : []}
-    >
-      <ReportFilters basePath="/laporan" view={view} date={date} month={month} year={year} unit={unit} />
-      {!board ? (
-        <p className="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-6 text-center text-sm text-on-surface-variant">
-          Unit belum tersedia untuk laporan.
-        </p>
-      ) : (
-        <LaporanBoardView
-          board={board}
-          view={view}
-          date={date}
-          month={month}
-          year={year}
-          unitId={unit && visibleUnitIds.includes(unit) ? unit : null}
-          ownPerson={ownBoard?.people[0] ?? null}
-          ownHeading="Laporan individu"
-          ownDefaultOpen={false}
-        />
-      )}
-    </LaporanPrintProvider>
+      unitId={unit && visibleUnitIds.includes(unit) ? unit : null}
+      ownPerson={ownBoard?.people[0] ?? null}
+      ownHeading="Laporan individu"
+      ownDefaultOpen={false}
+    />
   );
 }
 
@@ -134,9 +128,16 @@ export default async function LaporanPage({
           }
         />
       </div>
-      <Suspense fallback={<ReportBodyFallback />}>
-        <LaporanBody view={view} date={date} month={month} year={year} unit={params.unit} />
-      </Suspense>
+      <LaporanPrintProvider view={view} date={date} month={month} year={year} unit={params.unit}>
+        <div className="space-y-6">
+          <div className="no-print">
+            <ReportFilters basePath="/laporan" view={view} date={date} month={month} year={year} unit={params.unit} />
+          </div>
+          <Suspense fallback={<ReportBodyFallback />}>
+            <LaporanBody view={view} date={date} month={month} year={year} unit={params.unit} />
+          </Suspense>
+        </div>
+      </LaporanPrintProvider>
     </PageMain>
   );
 }

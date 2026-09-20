@@ -1,11 +1,10 @@
 import { Role } from "@prisma/client";
 import { kinerjaHref } from "@/lib/laporan-url";
-import { getMonitorBoard } from "@/lib/monitor";
-import { personMatchesFocus, unitMatchesFocus } from "@/lib/monitor-types";
-import { getDbOrgUser, getDescendantUnitIds, getDirectReportIds, getNewTasksFromAtasan, isUnitLeader, type OrgUser } from "@/lib/org";
+import { MONITOR_IDLE_DAYS, MONITOR_REVIEW_SLA_HOURS } from "@/lib/monitor-types";
+import { getDbOrgUser, getDirectReportIds, getNewTasksFromAtasan, isUnitLeader, type OrgUser } from "@/lib/org";
 import type { NoticeSection, UserNotifications } from "@/lib/notification-types";
 import { prisma } from "@/lib/prisma";
-import { formatISODate } from "@/lib/utils";
+import { addDays, formatISODate } from "@/lib/utils";
 import { isAppAdmin, isSuperAdmin } from "@/lib/roles";
 
 function sectionTotal(sections: NoticeSection[]) {
@@ -78,51 +77,79 @@ async function getPerhatianSection(user: OrgUser): Promise<NoticeSection> {
   };
 
   if (!user.unitId) return empty;
+  const reportIds = await getDirectReportIds(user);
+  if (reportIds.length === 0) return empty;
 
-  const [visibleUnitIds, directReportIds] = await Promise.all([
-    getDescendantUnitIds(user.unitId),
-    getDirectReportIds(user),
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const idleCutoff = addDays(todayStart, -MONITOR_IDLE_DAYS);
+  const slaCutoff = new Date(now.getTime() - MONITOR_REVIEW_SLA_HOURS * 3_600_000);
+  const openStatuses = ["tersedia", "dikerjakan", "ditolak", "menunggu_approval"] as const;
+
+  const [people, openTasks, lastCompleted] = await Promise.all([
+    prisma.user.findMany({
+      where: { id: { in: reportIds } },
+      select: { id: true, name: true },
+    }),
+    prisma.task.findMany({
+      where: { assignedToId: { in: reportIds }, status: { in: [...openStatuses] } },
+      select: { assignedToId: true, status: true, deadline: true, completedAt: true },
+    }),
+    prisma.task.groupBy({
+      by: ["assignedToId"],
+      where: {
+        assignedToId: { in: reportIds },
+        completedAt: { not: null },
+        status: { not: "dibatalkan" },
+      },
+      _max: { completedAt: true },
+    }),
   ]);
-  const board = await getMonitorBoard({
-    viewerId: user.id,
-    rootUnitId: user.unitId,
-    visibleUnitIds,
-    directReportIds,
-  });
-  if (!board) return empty;
 
-  const perhatianPeople = board.people.filter((person) => personMatchesFocus(person, "all"));
-  const perhatianUnits = board.childUnits.filter((unit) => unitMatchesFocus(unit, "all"));
-  const items = [
-    ...perhatianUnits.map((unit) => ({
-      id: `unit-${unit.id}`,
-      title: unit.leaderName || unit.name,
-      subtitle: unit.insight,
-      href: kinerjaHref({
-        view: "unit",
-        month: now.getMonth() + 1,
-        year: now.getFullYear(),
-        date: formatISODate(now),
-        unit: unit.id,
-      }),
-      at: now.toISOString(),
-    })),
-    ...perhatianPeople.map((person) => ({
-      id: person.id,
-      title: person.name,
-      subtitle: person.kinds.includes("overdue")
-        ? `${person.overdueCount} terlambat`
-        : person.kinds.includes("rejected")
-          ? `${person.rejectedCount} ditolak`
-          : person.isIdle
-            ? "Idle"
-            : person.kinds.includes("review")
-              ? `${person.reviewStaleCount} menunggu review`
-              : person.unitName || "Perlu perhatian",
-      href,
-      at: now.toISOString(),
-    })),
-  ];
+  const lastByPerson = new Map(
+    lastCompleted
+      .filter((row) => row.assignedToId)
+      .map((row) => [row.assignedToId as string, row._max.completedAt]),
+  );
+  const tasksByPerson = new Map<string, typeof openTasks>();
+  for (const task of openTasks) {
+    if (!task.assignedToId) continue;
+    const list = tasksByPerson.get(task.assignedToId) ?? [];
+    list.push(task);
+    tasksByPerson.set(task.assignedToId, list);
+  }
+
+  const items = people.flatMap((person) => {
+    const tasks = tasksByPerson.get(person.id) ?? [];
+    const overdue = tasks.filter(
+      (task) =>
+        task.deadline &&
+        task.deadline < todayStart &&
+        (task.status === "tersedia" || task.status === "dikerjakan" || task.status === "ditolak"),
+    ).length;
+    const rejected = tasks.filter((task) => task.status === "ditolak").length;
+    const review = tasks.filter(
+      (task) => task.status === "menunggu_approval" && task.completedAt && task.completedAt < slaCutoff,
+    ).length;
+    const lastAt = lastByPerson.get(person.id) ?? null;
+    const hasLive = tasks.some((task) => task.status === "dikerjakan" || task.status === "menunggu_approval");
+    const idle = !hasLive && rejected === 0 && (lastAt == null || lastAt < idleCutoff);
+    if (!overdue && !rejected && !review && !idle) return [];
+    return [
+      {
+        id: person.id,
+        title: person.name,
+        subtitle: overdue
+          ? `${overdue} terlambat`
+          : rejected
+            ? `${rejected} ditolak`
+            : idle
+              ? "Idle"
+              : `${review} menunggu review`,
+        href,
+        at: now.toISOString(),
+      },
+    ];
+  });
 
   return {
     ...empty,

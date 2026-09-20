@@ -13,6 +13,7 @@ import { displayJabatan, jabatanRoleLabel } from "@/lib/jabatan-display";
 import type { SessionUser } from "@/lib/session";
 import type { AtasanTaskNotice } from "@/lib/notification-types";
 import { isPrivilegedRole, isSuperAdmin } from "@/lib/roles";
+import { cache } from "react";
 
 export { displayJabatan } from "@/lib/jabatan-display";
 
@@ -38,6 +39,7 @@ const pegawaiDisplaySelect = {
   golonganNama: true,
   jabatanNama: true,
   jenis: true,
+  nip: true,
 } as const;
 
 export type DirectReport = {
@@ -48,6 +50,7 @@ export type DirectReport = {
   unitId: string | null;
   unitName: string | null;
   golonganNama: string | null;
+  nip: string | null;
 };
 
 export type Atasan = DirectReport;
@@ -108,42 +111,44 @@ export function mustAssignNamed(user: OrgUser) {
   return user.unit?.type === "kantor" || user.unit?.type === "bidang";
 }
 
-export async function getDbOrgUser(userId: string) {
+export const getDbOrgUser = cache(async (userId: string) => {
   return prisma.user.findUnique({
     where: { id: userId },
     include: {
       unit: {
         select: { id: true, type: true, parentId: true, pimpinanId: true, name: true },
       },
-      pegawai: { select: { jenis: true, jabatanNama: true } },
+      pegawai: { select: { jenis: true, jabatanNama: true, nik: true, nip: true } },
     },
   });
-}
+});
 
-export async function getDescendantUnitIds(rootId: string): Promise<string[]> {
-  const units = await prisma.unit.findMany({ select: { id: true, parentId: true } });
-  const children = new Map<string, string[]>();
-  for (const unit of units) {
-    if (!unit.parentId) continue;
-    const list = children.get(unit.parentId);
-    if (list) list.push(unit.id);
-    else children.set(unit.parentId, [unit.id]);
-  }
-
+export const getDescendantUnitIds = cache(async (rootId: string): Promise<string[]> => {
   const ids = [rootId];
-  const stack = [rootId];
-  while (stack.length > 0) {
-    const current = stack.pop()!;
-    for (const child of children.get(current) ?? []) {
-      if (ids.includes(child)) continue;
-      ids.push(child);
-      stack.push(child);
+  const seen = new Set(ids);
+  let frontier = [rootId];
+  while (frontier.length > 0) {
+    const children = await prisma.unit.findMany({
+      where: { parentId: { in: frontier } },
+      select: { id: true },
+    });
+    frontier = [];
+    for (const child of children) {
+      if (seen.has(child.id)) continue;
+      seen.add(child.id);
+      ids.push(child.id);
+      frontier.push(child.id);
     }
   }
   return ids;
-}
+});
 
 export async function getOrgScope(user: Pick<SessionUser, "id" | "role" | "unitId" | "jabatan">) {
+  return loadOrgScope(user.id, user.role, user.unitId ?? "", user.jabatan ?? "");
+}
+
+const loadOrgScope = cache(async (userId: string, role: SessionUser["role"], unitId: string, jabatan: string) => {
+  const user = { id: userId, role, unitId: unitId || null, jabatan: (jabatan || null) as SessionUser["jabatan"] };
   const orgUser = await getDbOrgUser(user.id);
   const isLeader = Boolean(orgUser && (isSuperAdmin(user.role) || isUnitLeader(orgUser)));
 
@@ -165,7 +170,7 @@ export async function getOrgScope(user: Pick<SessionUser, "id" | "role" | "unitI
     isLeader,
     visibleUnitIds: isLeader ? await getDescendantUnitIds(user.unitId) : [user.unitId],
   };
-}
+});
 
 export async function getVisibleUnitIds(user: Pick<SessionUser, "id" | "role" | "unitId" | "jabatan">) {
   return (await getOrgScope(user)).visibleUnitIds;
@@ -176,8 +181,9 @@ function toDirectReport(person: {
   name: string;
   jabatan: Jabatan | null;
   unitId: string | null;
+  nip?: string | null;
   unit?: { name: string } | null;
-  pegawai?: { golonganNama: string | null; jabatanNama?: string | null; jenis?: string | null } | null;
+  pegawai?: { golonganNama: string | null; jabatanNama?: string | null; jenis?: string | null; nip?: string | null } | null;
 }): DirectReport {
   return {
     id: person.id,
@@ -187,56 +193,45 @@ function toDirectReport(person: {
     unitId: person.unitId,
     unitName: person.unit?.name ?? null,
     golonganNama: person.pegawai?.golonganNama ?? null,
+    nip: person.pegawai?.nip || person.nip || null,
   };
 }
 
 export async function getDirectReports(user: OrgUser): Promise<DirectReport[]> {
   if (isPrivilegedRole(user.role)) return [];
   if (!user.unitId || !isUnitLeader(user)) return [];
+  return loadDirectReports(user.id, user.unitId);
+}
+
+const loadDirectReports = cache(async (userId: string, unitId: string): Promise<DirectReport[]> => {
+  const personSelect = {
+    id: true,
+    name: true,
+    jabatan: true,
+    unitId: true,
+    pegawai: { select: pegawaiDisplaySelect },
+  } as const;
 
   const [sameUnit, childUnits] = await Promise.all([
     prisma.user.findMany({
       where: {
-        unitId: user.unitId,
-        id: { not: user.id },
+        unitId,
+        id: { not: userId },
         role: "personal",
       },
       select: {
-        id: true,
-        name: true,
-        jabatan: true,
-        unitId: true,
+        ...personSelect,
         unit: { select: { name: true } },
-        pegawai: { select: pegawaiDisplaySelect },
       },
       orderBy: { name: "asc" },
     }),
     prisma.unit.findMany({
-      where: { parentId: user.unitId },
+      where: { parentId: unitId },
       select: {
         id: true,
         name: true,
         pimpinanId: true,
-        pimpinan: {
-          select: {
-            id: true,
-            name: true,
-            jabatan: true,
-            unitId: true,
-            pegawai: { select: pegawaiDisplaySelect },
-          },
-        },
-        users: {
-          where: { role: "personal" },
-          select: {
-            id: true,
-            name: true,
-            jabatan: true,
-            unitId: true,
-            pegawai: { select: pegawaiDisplaySelect },
-          },
-          orderBy: { name: "asc" },
-        },
+        pimpinan: { select: personSelect },
       },
       orderBy: { name: "asc" },
     }),
@@ -247,44 +242,69 @@ export async function getDirectReports(user: OrgUser): Promise<DirectReport[]> {
     byId.set(person.id, toDirectReport(person));
   }
 
+  const unitsWithoutLeader = childUnits.filter((unit) => !unit.pimpinan);
+  const fallbackUsers =
+    unitsWithoutLeader.length === 0
+      ? []
+      : await prisma.user.findMany({
+          where: {
+            role: "personal",
+            unitId: { in: unitsWithoutLeader.map((unit) => unit.id) },
+          },
+          select: personSelect,
+        });
+  const fallbackByUnit = new Map<string, typeof fallbackUsers>();
+  for (const person of fallbackUsers) {
+    if (!person.unitId) continue;
+    const list = fallbackByUnit.get(person.unitId) ?? [];
+    list.push(person);
+    fallbackByUnit.set(person.unitId, list);
+  }
+
   for (const unit of childUnits) {
     if (unit.pimpinan) {
-      byId.set(
-        unit.pimpinan.id,
-        toDirectReport({ ...unit.pimpinan, unit: { name: unit.name } }),
-      );
+      byId.set(unit.pimpinan.id, toDirectReport({ ...unit.pimpinan, unit: { name: unit.name } }));
       continue;
     }
-    for (const person of unit.users) {
+    for (const person of fallbackByUnit.get(unit.id) ?? []) {
       byId.set(person.id, toDirectReport({ ...person, unit: { name: unit.name } }));
     }
   }
 
-  byId.delete(user.id);
+  byId.delete(userId);
   return Array.from(byId.values()).sort(compareByPangkatDesc);
-}
+});
 
 export async function getAtasan(user: OrgUser): Promise<Atasan | null> {
-  if (!user.unitId) return null;
+  return loadAtasan(user.id, user.unitId ?? "");
+}
 
+const atasanPersonSelect = {
+  id: true,
+  name: true,
+  jabatan: true,
+  unitId: true,
+  nip: true,
+  pegawai: { select: pegawaiDisplaySelect },
+} as const;
+
+const loadAtasan = cache(async (userId: string, unitId: string): Promise<Atasan | null> => {
+  if (!unitId) return null;
+  const orgUser = await getDbOrgUser(userId);
   const unit =
-    user.unit ??
+    orgUser?.unit ??
     (await prisma.unit.findUnique({
-      where: { id: user.unitId },
+      where: { id: unitId },
       select: { id: true, parentId: true, pimpinanId: true, type: true, name: true },
     }));
   if (!unit) return null;
 
-  if (unit.pimpinanId && unit.pimpinanId !== user.id) {
+  if (unit.pimpinanId && unit.pimpinanId !== userId) {
     const leader = await prisma.user.findUnique({
       where: { id: unit.pimpinanId },
       select: {
-        id: true,
-        name: true,
-        jabatan: true,
-        unitId: true,
+        ...atasanPersonSelect,
         unit: { select: { name: true } },
-        pegawai: { select: pegawaiDisplaySelect },
       },
     });
     if (leader) return toDirectReport(leader);
@@ -299,26 +319,18 @@ export async function getAtasan(user: OrgUser): Promise<Atasan | null> {
         parentId: true,
         pimpinanId: true,
         name: true,
-        pimpinan: {
-          select: {
-            id: true,
-            name: true,
-            jabatan: true,
-            unitId: true,
-            pegawai: { select: pegawaiDisplaySelect },
-          },
-        },
+        pimpinan: { select: atasanPersonSelect },
       },
     });
     if (!parent) break;
-    if (parent.pimpinan && parent.pimpinan.id !== user.id) {
+    if (parent.pimpinan && parent.pimpinan.id !== userId) {
       return toDirectReport({ ...parent.pimpinan, unit: { name: parent.name } });
     }
     parentId = parent.parentId;
   }
 
   return null;
-}
+});
 
 export async function getDirectReportIds(user: OrgUser) {
   const reports = await getDirectReports(user);

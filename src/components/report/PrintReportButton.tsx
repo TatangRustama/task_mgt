@@ -105,7 +105,6 @@ export function LaporanPrintProvider({
   month: number;
   year: number;
   unit?: string;
-  dailyTasks?: ReportTask[];
   children: React.ReactNode;
 }) {
   const [busy, setBusy] = useState(false);

@@ -10,7 +10,7 @@ import type {
   PrintUnitReviewRow,
 } from "@/lib/laporan-print-view";
 import { displayJabatan } from "@/lib/jabatan-display";
-import { getDirectReportIds, getOrgScope } from "@/lib/org";
+import { getOrgScope } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { getUnitMeta, mapTask } from "@/lib/reports";
 import type { ReportTask } from "@/lib/report-types";
@@ -87,14 +87,12 @@ export async function getLaporanPrintData(
   const year = Number(searchParams.get("year") || selected.getFullYear());
   const unit = searchParams.get("unit") || undefined;
 
-  const { orgUser, visibleUnitIds, isLeader } = await getOrgScope(user);
-  const reportIds = orgUser && isLeader ? await getDirectReportIds(orgUser) : [];
+  const { visibleUnitIds, isLeader } = await getOrgScope(user);
   const board = await getLaporanBoard({
     viewerId: user.id,
     rootUnitId: user.unitId,
     visibleUnitIds,
     isLeader,
-    directReportIds: reportIds,
     focusUnitId: unit,
     view,
     date,
@@ -117,64 +115,34 @@ export async function getLaporanPrintData(
       instansiName: meta.instansiName,
       agencyName: meta.agencyName,
     });
-    const [leaderTaskRows, lampiranTasks] = await Promise.all([
-      isLeader
-        ? prisma.task.findMany({
-            where: {
-              source: "mandiri",
-              status: { not: "dibatalkan" },
-              AND: [
-                { OR: [{ assignedToId: user.id }, { createdById: user.id }] },
-                periodWhere(start, end, view),
-              ],
-            },
-            include: taskPrintInclude,
-            orderBy: [{ assignedAt: "asc" }, { completedAt: "asc" }, { createdAt: "asc" }],
-          })
-        : Promise.resolve([]),
-      loadOwnPrintableTasks(user.id, start, end, view),
-    ]);
+    const ownTasks = await loadOwnPrintableTasks(user.id, start, end, view);
     return {
       view,
       date,
       print,
       isLeader,
       tasks: dailyPrintTasks(board.tasks, date),
-      leaderTasks: dailyPrintTasks(leaderTaskRows.map(mapTask), date),
-      lampiranTasks: dailyPrintTasks(lampiranTasks, date),
+      leaderTasks: isLeader ? dailyPrintTasks(ownTasks, date) : [],
+      lampiranTasks: dailyPrintTasks(ownTasks, date),
     };
   }
 
   const tasks = printableTasks(board.tasks);
-  const [print, leaderTaskRows, identities, lampiranTasks] = await Promise.all([
-    getLaporanPrintContext({
-      userId: user.id,
-      month,
-      year,
-      instansiName: meta.instansiName,
-      agencyName: meta.agencyName,
-      taskIds: tasks.map((task) => task.id),
-    }),
-    isLeader
-      ? prisma.task.findMany({
-          where: {
-            source: "mandiri",
-            status: { not: "dibatalkan" },
-            AND: [
-              { OR: [{ assignedToId: user.id }, { createdById: user.id }] },
-                periodWhere(start, end, view),
-            ],
-          },
-          include: taskPrintInclude,
-          orderBy: [{ assignedAt: "asc" }, { completedAt: "asc" }, { createdAt: "asc" }],
-        })
-      : Promise.resolve([]),
+  const [identities, ownTasks] = await Promise.all([
     loadIdentities([
       ...board.childUnits.map((row) => row.leaderId),
       ...board.people.map((person) => person.id),
     ]),
     loadOwnPrintableTasks(user.id, start, end, view),
   ]);
+  const print = await getLaporanPrintContext({
+    userId: user.id,
+    month,
+    year,
+    instansiName: meta.instansiName,
+    agencyName: meta.agencyName,
+    taskIds: [...new Set([...(isLeader ? ownTasks : []), ...tasks].map((task) => task.id))],
+  });
 
   const rows: PrintUnitReviewRow[] = [
     ...board.childUnits.map((unitRow) => {
@@ -217,8 +185,8 @@ export async function getLaporanPrintData(
     isLeader,
     tasks,
     rows,
-    leaderTasks: printableTasks(leaderTaskRows.map(mapTask)),
-    lampiranTasks,
+    leaderTasks: isLeader ? ownTasks : [],
+    lampiranTasks: ownTasks,
   };
 }
 

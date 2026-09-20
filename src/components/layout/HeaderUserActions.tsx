@@ -37,7 +37,7 @@ export function HeaderNotifications({ initial }: { initial: UserNotifications })
     return () => {
       cancelled = true;
     };
-  }, [pathname]);
+  }, []);
 
   useEffect(() => {
     if (!open) return;

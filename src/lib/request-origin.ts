@@ -24,10 +24,6 @@ export function publicOrigin(request: NextRequest) {
 
 export function redirectToPath(request: NextRequest, path: string) {
   const target = path.startsWith("/") ? path : `/${path}`;
-  const origin = publicOrigin(request);
-  if (origin) return NextResponse.redirect(new URL(target, origin));
-  return new NextResponse(null, {
-    status: 307,
-    headers: { Location: target },
-  });
+  const origin = publicOrigin(request) || request.nextUrl.origin;
+  return NextResponse.redirect(new URL(target, origin));
 }

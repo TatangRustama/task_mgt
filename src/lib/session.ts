@@ -1,4 +1,5 @@
 import { Jabatan, Role } from "@prisma/client";
+import { cache } from "react";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { defaultHomePath, hasAllowedRole, isSuperAdmin, coerceRole } from "@/lib/roles";
@@ -13,7 +14,7 @@ export type SessionUser = {
   nip: string;
 };
 
-export async function getCurrentUser(): Promise<SessionUser | null> {
+export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   const session = await auth();
   if (!session?.user) return null;
   const sessionUser = session.user as SessionUser;
@@ -22,7 +23,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     role: coerceRole(sessionUser.role),
     jabatan: sessionUser.jabatan ?? null,
   };
-}
+});
 
 export async function requireUser(roles?: Role[]) {
   const user = await getCurrentUser();

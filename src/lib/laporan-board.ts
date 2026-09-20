@@ -9,6 +9,7 @@ import {
   type LaporanUnit,
 } from "@/lib/laporan-board-types";
 import { MONITOR_OVERLOAD_MIN, MONITOR_REVIEW_SLA_HOURS } from "@/lib/monitor-types";
+import { getDbOrgUser, getDirectReportIds } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { mapTask } from "@/lib/reports";
 import type { DayRecap, LaporanView, ReportTask } from "@/lib/report-types";
@@ -20,7 +21,7 @@ type ScopedTask = ReportTask & { unitId: string };
 const taskUiInclude = {
   assignedTo: { select: { id: true, name: true } },
   createdBy: { select: { name: true } },
-  evidence: { select: { address: true, notes: true, photoUrls: true } },
+  evidence: { select: { address: true, notes: true } },
   review: { select: { score: true, reviewedAt: true, feedback: true } },
   rating: { select: { stars: true } },
 } as const;
@@ -317,7 +318,7 @@ function recapDays(tasks: ReportTask[], start: Date, end: Date, month: number, y
   return days;
 }
 
-export async function getLaporanBoard(options: {
+type LaporanBoardOptions = {
   viewerId: string;
   rootUnitId: string | null;
   visibleUnitIds: string[];
@@ -330,7 +331,9 @@ export async function getLaporanBoard(options: {
   year: number;
   detail?: "ui" | "print";
   ownAssignedOnly?: boolean;
-}): Promise<LaporanBoard | null> {
+};
+
+export async function getLaporanBoard(options: LaporanBoardOptions): Promise<LaporanBoard | null> {
   const start =
     options.view === "harian"
       ? parseISODate(options.date)
@@ -344,32 +347,35 @@ export async function getLaporanBoard(options: {
   const include = options.detail === "print" ? taskPrintInclude : taskUiInclude;
 
   if (!options.isLeader) {
-    const me = await prisma.user.findUnique({
-      where: { id: options.viewerId },
-      select: {
-        id: true,
-        name: true,
-        jabatan: true,
-        unitId: true,
-        unit: { select: { id: true, name: true } },
-        pegawai: { select: { golonganNama: true, jabatanNama: true, jenis: true } },
-      },
-    });
-    if (!me) return null;
+    const taskWhere = {
+      AND: [
+        options.ownAssignedOnly
+          ? { assignedToId: options.viewerId }
+          : { OR: [{ assignedToId: options.viewerId }, { createdById: options.viewerId }] },
+        periodWhere(start, end, options.view),
+        { status: { not: "dibatalkan" } },
+      ],
+    } satisfies Prisma.TaskWhereInput;
 
-    const tasks = await prisma.task.findMany({
-      where: {
-        AND: [
-          options.ownAssignedOnly
-            ? { assignedToId: me.id }
-            : { OR: [{ assignedToId: me.id }, { createdById: me.id }] },
-          periodWhere(start, end, options.view),
-          { status: { not: "dibatalkan" } },
-        ],
-      },
-      include,
-      orderBy: [{ completedAt: "desc" }, { updatedAt: "desc" }],
-    });
+    const [me, tasks] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: options.viewerId },
+        select: {
+          id: true,
+          name: true,
+          jabatan: true,
+          unitId: true,
+          unit: { select: { id: true, name: true } },
+          pegawai: { select: { golonganNama: true, jabatanNama: true, jenis: true } },
+        },
+      }),
+      prisma.task.findMany({
+        where: taskWhere,
+        include,
+        orderBy: [{ completedAt: "desc" }, { updatedAt: "desc" }],
+      }),
+    ]);
+    if (!me) return null;
 
     const mapped = tasks.map(mapTask);
     const person = toPerson(
@@ -411,23 +417,32 @@ export async function getLaporanBoard(options: {
   if (!options.visibleUnitIds.length) return null;
 
   const allowed = new Set(options.visibleUnitIds);
-  const directReportIds = new Set(options.directReportIds ?? []);
   const focusUnitId =
     options.focusUnitId && allowed.has(options.focusUnitId) ? options.focusUnitId : options.rootUnitId;
   const drilledIn = Boolean(focusUnitId && options.rootUnitId && focusUnitId !== options.rootUnitId);
 
-  const units = await prisma.unit.findMany({
-    where: { id: { in: options.visibleUnitIds } },
-    select: {
-      id: true,
-      name: true,
-      parentId: true,
-      type: true,
-      pimpinanId: true,
-      pimpinan: { select: { id: true, name: true } },
-    },
-    orderBy: { name: "asc" },
-  });
+  const [units, reportIdList] = await Promise.all([
+    prisma.unit.findMany({
+      where: { id: { in: options.visibleUnitIds } },
+      select: {
+        id: true,
+        name: true,
+        parentId: true,
+        type: true,
+        pimpinanId: true,
+        pimpinan: { select: { id: true, name: true } },
+      },
+      orderBy: { name: "asc" },
+    }),
+    (async () => {
+      if (options.directReportIds && options.directReportIds.length > 0) {
+        return options.directReportIds;
+      }
+      const orgUser = await getDbOrgUser(options.viewerId);
+      return orgUser ? getDirectReportIds(orgUser) : [];
+    })(),
+  ]);
+  const directReportIds = new Set(reportIdList);
   const leadsByUser = new Map(
     units.filter((unit) => unit.pimpinanId).map((unit) => [unit.pimpinanId as string, unit.id]),
   );
@@ -565,6 +580,12 @@ export async function getLaporanBoard(options: {
   const displayedSummary = rollupFromBoard(people, childUnits);
   const days = options.view === "bulanan" ? recapDays(mapped, start, end, options.month, options.year) : [];
   const rootName = units.find((unit) => unit.id === (focusUnitId ?? options.rootUnitId))?.name ?? "Unit";
+  const childLeaderTasks = allPeople
+    .filter(
+      (person) =>
+        childLeaderIds.has(person.id) && (directReportIds.size === 0 || directReportIds.has(person.id)),
+    )
+    .flatMap((person) => person.tasks);
 
   return {
     view: options.view,
@@ -578,6 +599,6 @@ export async function getLaporanBoard(options: {
     summary: displayedSummary,
     insight: summaryInsight(displayedSummary, options.view),
     days,
-    tasks: people.flatMap((person) => person.tasks),
+    tasks: [...people.flatMap((person) => person.tasks), ...childLeaderTasks],
   };
 }

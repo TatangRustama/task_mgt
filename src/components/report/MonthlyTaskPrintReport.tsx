@@ -24,7 +24,7 @@ export function MonthlyTaskPrintReport({
   lampiranTasks?: ReportTask[];
 }) {
   const groupedRows = groupTasksByPrintDate(tasks).flatMap((group) => group.tasks);
-  const mandiriRows = groupTasksByPrintDate(leaderTasks).flatMap((group) => group.tasks);
+  const individuRows = groupTasksByPrintDate(leaderTasks).flatMap((group) => group.tasks);
   const period = getMonthYearLabel(month, year).toUpperCase();
 
   return (
@@ -46,7 +46,7 @@ export function MonthlyTaskPrintReport({
         <>
           <p className="print-section-label">Rincian Tugas Individu</p>
           <PrintTaskTable
-            tasks={mandiriRows}
+            tasks={individuRows}
             authorName={print.author.name}
             empty="Tidak ada tugas individu pada periode ini."
           />

@@ -17,6 +17,8 @@ import { prisma } from "@/lib/prisma";
 import { mapTask } from "@/lib/reports";
 import type { ReportTask } from "@/lib/report-types";
 import { addDays, formatISODate, isCompletedOnTime } from "@/lib/utils";
+import { getDbOrgUser, getDirectReportIds } from "@/lib/org";
+import { cache } from "react";
 
 export {
   MONITOR_FOCUS_LABEL,
@@ -45,8 +47,6 @@ export type {
 
 const OPEN_STATUSES = ["tersedia", "dikerjakan", "ditolak", "menunggu_approval"] as const;
 const OVERDUE_STATUSES = new Set(["tersedia", "dikerjakan", "ditolak"]);
-
-type TaskRow = Parameters<typeof mapTask>[0] & { unitId: string };
 
 function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -166,13 +166,33 @@ export async function getMonitorBoard(options: {
   focusUnitId?: string | null;
   directReportIds?: string[];
 }): Promise<MonitorBoard | null> {
-  if (!options.visibleUnitIds.length) return null;
+  return loadMonitorBoard(
+    options.viewerId,
+    options.rootUnitId ?? "",
+    options.visibleUnitIds.join(","),
+    options.focusUnitId ?? "",
+    (options.directReportIds ?? []).join(","),
+  );
+}
 
+const loadMonitorBoard = cache(async (
+  viewerId: string,
+  rootUnitId: string,
+  visibleKey: string,
+  focusKey: string,
+  reportKey: string,
+): Promise<MonitorBoard | null> => {
+  const visibleUnitIds = visibleKey ? visibleKey.split(",") : [];
+  if (!visibleUnitIds.length) return null;
+
+  const options = {
+    viewerId,
+    rootUnitId: rootUnitId || null,
+    visibleUnitIds,
+    focusUnitId: focusKey || null,
+    directReportIds: reportKey ? reportKey.split(",") : [],
+  };
   const allowed = new Set(options.visibleUnitIds);
-  const directReportIds = new Set(options.directReportIds ?? []);
-  const focusUnitId =
-    options.focusUnitId && allowed.has(options.focusUnitId) ? options.focusUnitId : options.rootUnitId;
-  const drilledIn = Boolean(focusUnitId && options.rootUnitId && focusUnitId !== options.rootUnitId);
   const now = new Date();
   const todayStart = startOfDay(now);
   const asOf = formatISODate(now);
@@ -180,18 +200,30 @@ export async function getMonitorBoard(options: {
   const slaCutoff = new Date(now.getTime() - MONITOR_REVIEW_SLA_HOURS * 60 * 60 * 1000);
   const ratingCutoff = addDays(todayStart, -MONITOR_RATING_WINDOW_DAYS);
 
-  const units = await prisma.unit.findMany({
-    where: { id: { in: options.visibleUnitIds } },
-    select: {
-      id: true,
-      name: true,
-      parentId: true,
-      type: true,
-      pimpinanId: true,
-      pimpinan: { select: { id: true, name: true } },
-    },
-    orderBy: { name: "asc" },
-  });
+  const orgUser = await getDbOrgUser(options.viewerId);
+  const [units, reportIdList] = await Promise.all([
+    prisma.unit.findMany({
+      where: { id: { in: options.visibleUnitIds } },
+      select: {
+        id: true,
+        name: true,
+        parentId: true,
+        type: true,
+        pimpinanId: true,
+        pimpinan: { select: { id: true, name: true } },
+      },
+      orderBy: { name: "asc" },
+    }),
+    options.directReportIds.length > 0
+      ? Promise.resolve(options.directReportIds)
+      : orgUser
+        ? getDirectReportIds(orgUser)
+        : Promise.resolve([] as string[]),
+  ]);
+  const directReportIds = new Set(reportIdList);
+  const focusUnitId =
+    options.focusUnitId && allowed.has(options.focusUnitId) ? options.focusUnitId : options.rootUnitId;
+  const drilledIn = Boolean(focusUnitId && options.rootUnitId && focusUnitId !== options.rootUnitId);
   const leadsByUser = new Map(
     units.filter((unit) => unit.pimpinanId).map((unit) => [unit.pimpinanId as string, unit.id]),
   );
@@ -219,14 +251,25 @@ export async function getMonitorBoard(options: {
         status: { not: "dibatalkan" },
         OR: [{ status: { in: [...OPEN_STATUSES] } }, { completedAt: { gte: ratingCutoff } }],
       },
-      include: {
+      select: {
+        id: true,
+        unitId: true,
+        title: true,
+        description: true,
+        status: true,
+        source: true,
+        priority: true,
+        createdAt: true,
+        assignedAt: true,
+        completedAt: true,
+        deadline: true,
+        jumlahIntervensi: true,
+        satuan: true,
         assignedTo: { select: { id: true, name: true } },
         createdBy: { select: { name: true } },
-        evidence: { select: { address: true, notes: true, photoUrls: true } },
         review: { select: { score: true, reviewedAt: true, feedback: true } },
         rating: { select: { stars: true } },
       },
-      orderBy: [{ deadline: "asc" }, { updatedAt: "desc" }],
     }),
     prisma.task.groupBy({
       by: ["assignedToId"],
@@ -246,8 +289,8 @@ export async function getMonitorBoard(options: {
       .map((row) => [row.assignedToId as string, row._max.completedAt]),
   );
 
-  const monitorTasks: MonitorTask[] = (tasks as TaskRow[]).map((task) => {
-    const mapped = mapTask(task);
+  const monitorTasks: MonitorTask[] = tasks.map((task) => {
+    const mapped = mapTask({ ...task, evidence: null });
     return {
       ...mapped,
       unitId: task.unitId,
@@ -417,4 +460,4 @@ export async function getMonitorBoard(options: {
     summary,
     insight: insightText(summary),
   };
-}
+});
