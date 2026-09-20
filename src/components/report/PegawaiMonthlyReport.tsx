@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { ActivityCalendar } from "@/components/report/ActivityCalendar";
+import { PersonMonthTasks } from "@/components/report/PersonMonthTasks";
 import { ReportActionButtons } from "@/components/report/ReportActionButtons";
 import { ReportMonthNav } from "@/components/report/ReportMonthNav";
-import { TaskReportList } from "@/components/report/TaskReportList";
+import { Collapse } from "@/components/ui/collapse";
 import {
   groupKinerja,
   monthAsOfDate,
-  recapDaysForTasks,
   type EvaluatedPegawai,
   type KinerjaEval,
   type KinerjaLevel,
@@ -396,9 +396,6 @@ function PersonCard({
   year: number;
   showScore?: boolean;
 }) {
-  const personDays = recapDaysForTasks(person.tasks, month, year);
-  const hasMonthActivity = personDays.some((day) => day.posted > 0 || day.completed > 0);
-
   return (
     <div className={cn("overflow-hidden rounded-lg border card-shadow", CARD_BG[tone])}>
       <button
@@ -464,20 +461,23 @@ function PersonCard({
         </div>
         <ChevronDown
           className={cn(
-            "mt-1 h-4 w-4 shrink-0 transition",
+            "mt-1 h-4 w-4 shrink-0 transition-transform duration-300 ease-out motion-reduce:transition-none",
             tone === "kolam" ? "text-on-primary-container/70" : "text-outline",
             open && "rotate-180"
           )}
         />
       </button>
-      {open ? (
+      <Collapse open={open}>
         <div className={cn("space-y-3 border-t p-3", tone === "kolam" ? "border-on-primary-container/15" : "border-outline-variant")}>
-          {hasMonthActivity ? (
-            <ActivityCalendar month={month} year={year} days={personDays} compact />
-          ) : null}
-          <TaskReportList tasks={person.tasks} emptyText="Tidak ada tugas pada bulan ini." />
+          <PersonMonthTasks
+            tasks={person.tasks}
+            month={month}
+            year={year}
+            resetKey={`${person.id}-${month}-${year}`}
+            emptyText="Tidak ada tugas pada bulan ini."
+          />
         </div>
-      ) : null}
+      </Collapse>
     </div>
   );
 }

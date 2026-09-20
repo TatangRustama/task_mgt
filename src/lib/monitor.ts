@@ -4,6 +4,7 @@ import {
   MONITOR_OVERLOAD_MIN,
   MONITOR_RATING_WINDOW_DAYS,
   MONITOR_REVIEW_SLA_HOURS,
+  taskPriorityValue,
   unitLeadershipLine,
   type MonitorBoard,
   type MonitorExceptionKind,
@@ -302,6 +303,7 @@ const loadMonitorBoard = cache(async (
   const staffRows = peopleRows.filter((person) => person.id !== options.viewerId);
   const openByPerson = new Map<string, MonitorTask[]>();
   const exceptionByPerson = new Map<string, MonitorTask[]>();
+  const completedByPerson = new Map<string, MonitorTask[]>();
 
   for (const task of monitorTasks) {
     if (!task.assigneeId) continue;
@@ -315,6 +317,11 @@ const loadMonitorBoard = cache(async (
       list.push(task);
       exceptionByPerson.set(task.assigneeId, list);
     }
+    if (task.completedAt && new Date(task.completedAt) >= ratingCutoff) {
+      const list = completedByPerson.get(task.assigneeId) ?? [];
+      list.push(task);
+      completedByPerson.set(task.assigneeId, list);
+    }
   }
 
   const openCounts = staffRows.map((person) => (openByPerson.get(person.id) ?? []).length);
@@ -325,6 +332,10 @@ const loadMonitorBoard = cache(async (
     const isStaff = person.jabatan === "pelaksana" || person.jabatan == null;
     const openTasks = openByPerson.get(person.id) ?? [];
     const exceptionTasks = exceptionByPerson.get(person.id) ?? [];
+    const completedTasks = completedByPerson.get(person.id) ?? [];
+    const completedIds = new Set(completedTasks.map((task) => task.id));
+    const stackedOpenTasks = openTasks.filter((task) => !completedIds.has(task.id));
+    const workloadTasks = [...completedTasks, ...stackedOpenTasks];
     const lastAt = lastCompletedAt.get(person.id) ?? null;
     const lastCompletedIso = lastAt?.toISOString() ?? null;
     const idleDays = lastAt ? Math.max(0, Math.floor((todayStart.getTime() - startOfDay(lastAt).getTime()) / 86400000)) : null;
@@ -353,6 +364,9 @@ const loadMonitorBoard = cache(async (
       canReview: directReportIds.size === 0 || directReportIds.has(person.id),
       golonganNama: person.pegawai?.golonganNama ?? null,
       openCount: openTasks.length,
+      completedCount: completedTasks.length,
+      stackedOpenCount: stackedOpenTasks.length,
+      workloadScore: workloadTasks.reduce((sum, task) => sum + taskPriorityValue(task.priority), 0),
       overdueCount: exceptionTasks.filter((task) => task.kinds.includes("overdue")).length,
       rejectedCount: exceptionTasks.filter((task) => task.kinds.includes("rejected")).length,
       reviewStaleCount: exceptionTasks.filter((task) => task.kinds.includes("review")).length,

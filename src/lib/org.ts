@@ -151,6 +151,7 @@ const loadOrgScope = cache(async (userId: string, role: SessionUser["role"], uni
   const user = { id: userId, role, unitId: unitId || null, jabatan: (jabatan || null) as SessionUser["jabatan"] };
   const orgUser = await getDbOrgUser(user.id);
   const isLeader = Boolean(orgUser && (isSuperAdmin(user.role) || isUnitLeader(orgUser)));
+  const resolvedUnitId = orgUser?.unitId || user.unitId;
 
   if (isSuperAdmin(user.role)) {
     const units = await prisma.unit.findMany({ select: { id: true } });
@@ -161,14 +162,14 @@ const loadOrgScope = cache(async (userId: string, role: SessionUser["role"], uni
     };
   }
 
-  if (!user.unitId) {
+  if (!resolvedUnitId) {
     return { orgUser, isLeader, visibleUnitIds: [] as string[] };
   }
 
   return {
     orgUser,
     isLeader,
-    visibleUnitIds: isLeader ? await getDescendantUnitIds(user.unitId) : [user.unitId],
+    visibleUnitIds: isLeader ? await getDescendantUnitIds(resolvedUnitId) : [resolvedUnitId],
   };
 });
 

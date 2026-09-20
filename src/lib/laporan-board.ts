@@ -146,12 +146,8 @@ function personInsight(
     return view === "harian" ? "Tidak ada kerja dinilai hari ini" : "Tidak ada kerja dinilai bulan ini";
   }
   return [
-    person.completed ? `${person.completed} disetujui` : null,
-    person.rejected ? `${person.rejected} ditolak` : null,
-    person.waiting ? `${person.waiting} menunggu` : null,
     person.averageScore ? `nilai ${person.averageScore}/3` : null,
     person.completed ? `${person.onTimePercent}% tepat waktu` : null,
-    person.stars1 ? `${person.stars1} di bawah ekspektasi` : null,
   ]
     .filter(Boolean)
     .join(" · ");

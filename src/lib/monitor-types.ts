@@ -6,6 +6,16 @@ export const MONITOR_REVIEW_SLA_HOURS = 24;
 export const MONITOR_RATING_WINDOW_DAYS = 14;
 export const MONITOR_OVERLOAD_MIN = 4;
 
+export const TASK_PRIORITY_VALUE: Record<string, number> = {
+  rendah: 1,
+  sedang: 2,
+  tinggi: 3,
+};
+
+export function taskPriorityValue(priority: string) {
+  return TASK_PRIORITY_VALUE[priority] ?? 2;
+}
+
 export const MONITOR_FOCUSES = [
   "all",
   "overdue",
@@ -45,6 +55,9 @@ export type MonitorPerson = {
   canReview: boolean;
   golonganNama: string | null;
   openCount: number;
+  completedCount: number;
+  stackedOpenCount: number;
+  workloadScore: number;
   overdueCount: number;
   rejectedCount: number;
   reviewStaleCount: number;

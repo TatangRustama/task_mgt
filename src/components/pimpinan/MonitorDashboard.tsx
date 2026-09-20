@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { TaskReportList } from "@/components/report/TaskReportList";
 import { Badge } from "@/components/ui/badge";
+import { Collapse } from "@/components/ui/collapse";
 import {
   MONITOR_FOCUS_LABEL,
   MONITOR_IDLE_DAYS,
@@ -61,7 +62,6 @@ export function MonitorDashboard({
 }) {
   const query = { date, month, year, unit: unitId };
   const flagged = board.people.filter((person) => personMatchesFocus(person, focus));
-  const workload = board.people.filter((person) => person.openCount > 0 || person.isIdle || person.isUnderloaded);
   const [openId, setOpenId] = useState<string | null>(flagged[0]?.id ?? null);
   const visiblePool =
     focus === "pool" || focus === "all"
@@ -173,46 +173,99 @@ export function MonitorDashboard({
         </section>
       ) : null}
 
-      {focus === "all" && workload.length > 0 ? (
-        <section className="space-y-2">
+      {focus === "all" && board.people.length > 0 ? <WorkloadChart people={board.people} /> : null}
+    </div>
+  );
+}
+
+function sharePercent(value: number, total: number) {
+  if (total <= 0) return 0;
+  return Math.round((value / total) * 100);
+}
+
+function WorkloadChart({ people }: { people: MonitorPerson[] }) {
+  const ranked = [...people].sort((a, b) => {
+    if (b.completedCount !== a.completedCount) return b.completedCount - a.completedCount;
+    if (b.stackedOpenCount !== a.stackedOpenCount) return b.stackedOpenCount - a.stackedOpenCount;
+    return a.name.localeCompare(b.name, "id");
+  });
+  const openTotal = ranked.reduce((sum, person) => sum + person.stackedOpenCount, 0);
+  const completedTotal = ranked.reduce((sum, person) => sum + person.completedCount, 0);
+  const taskTotal = openTotal + completedTotal;
+  const barMax = Math.max(...ranked.map((person) => person.completedCount + person.stackedOpenCount), 0);
+
+  return (
+    <section className="space-y-2">
+      <div className="flex items-end justify-between gap-3">
+        <div>
           <h3 className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Beban kerja</h3>
-          <div className="overflow-hidden rounded-lg border border-outline bg-surface-container-lowest">
-            {workload.map((person, index) => (
+          <p className="mt-0.5 text-sm text-on-surface">
+            {completedTotal} selesai · {openTotal} terbuka
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-3 text-[11px] text-on-surface-variant">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-primary" />
+            Selesai
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-amber-600" />
+            Terbuka
+          </span>
+        </div>
+      </div>
+      <div className="overflow-hidden rounded-lg border border-outline bg-surface-container-lowest">
+        {ranked.map((person, index) => {
+          const personTasks = person.completedCount + person.stackedOpenCount;
+          const doneWidth = barMax > 0 ? `${(person.completedCount / barMax) * 100}%` : "0%";
+          const openWidth = barMax > 0 ? `${(person.stackedOpenCount / barMax) * 100}%` : "0%";
+          return (
+            <div
+              key={person.id}
+              className={cn("px-3 py-2.5", index !== ranked.length - 1 && "border-b border-outline-variant")}
+            >
+              <div className="flex min-w-0 items-baseline gap-2">
+                <p className="min-w-0 truncate text-sm font-semibold text-on-surface">{person.name}</p>
+                <span className="shrink-0 text-sm font-bold tabular-nums text-on-surface">
+                  {sharePercent(personTasks, taskTotal)}%
+                </span>
+                {person.isIdle ? (
+                  <span className="shrink-0 rounded-md bg-error-container px-1.5 py-0.5 text-[10px] font-semibold text-error">
+                    Idle
+                  </span>
+                ) : null}
+              </div>
               <div
-                key={person.id}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5",
-                  index !== workload.length - 1 && "border-b border-outline-variant",
-                )}
+                className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-surface-container-high"
+                role="img"
+                aria-label={`${person.name}, selesai ${person.completedCount}, terbuka ${person.stackedOpenCount}, ${person.workloadScore}`}
               >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary-container text-[10px] font-bold text-on-secondary-container">
-                  {initials(person.name)}
+                {person.completedCount > 0 ? (
+                  <span className="h-full bg-primary" style={{ width: doneWidth }} />
+                ) : null}
+                {person.stackedOpenCount > 0 ? (
+                  <span className="h-full bg-amber-600" style={{ width: openWidth }} />
+                ) : null}
+              </div>
+              <div className="mt-1.5 flex items-baseline justify-between gap-3">
+                <div className="flex flex-wrap gap-3 text-[11px] text-on-surface-variant">
+                  <span>
+                    Selesai <span className="font-semibold tabular-nums text-on-surface">{person.completedCount}</span>
+                  </span>
+                  <span>
+                    Terbuka <span className="font-semibold tabular-nums text-on-surface">{person.stackedOpenCount}</span>
+                  </span>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-on-surface">{person.name}</p>
-                  <p className="truncate text-[11px] text-on-surface-variant">
-                    {person.jabatanLabel || "Pegawai"}
-                    {person.unitName ? ` · ${person.unitName}` : ""}
-                  </p>
-                </div>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold",
-                    person.isOverloaded
-                      ? "bg-error-container text-error"
-                      : person.isIdle
-                        ? "bg-surface-container-high text-tertiary"
-                        : "bg-secondary-container text-on-secondary-container",
-                  )}
-                >
-                  {person.openCount} terbuka
+                <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold tabular-nums text-on-surface">
+                  <Star className="h-3 w-3 fill-amber-500 text-amber-500" aria-hidden="true" />
+                  {person.workloadScore}
                 </span>
               </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
-    </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -377,9 +430,9 @@ function PersonMonitorCard({
             {person.isOverloaded ? <Badge variant="warning">Beban tinggi</Badge> : null}
           </div>
         </div>
-        <ChevronDown className={cn("mt-1 h-4 w-4 shrink-0 text-outline transition", open && "rotate-180")} />
+        <ChevronDown className={cn("mt-1 h-4 w-4 shrink-0 text-outline transition-transform duration-300 ease-out motion-reduce:transition-none", open && "rotate-180")} />
       </button>
-      {open ? (
+      <Collapse open={open}>
         <div className="space-y-2 border-t border-outline-variant p-3">
           {person.reviewStaleCount > 0 && person.canReview ? (
             <Link href="/pimpinan/persetujuan" className="text-xs font-semibold text-secondary hover:underline">
@@ -388,6 +441,7 @@ function PersonMonitorCard({
           ) : null}
           <TaskReportList
             tasks={tasks}
+            showAssignee={false}
             emptyText={
               person.isIdle
                 ? `Tidak ada tugas berjalan. Idle ${person.idleDays ?? MONITOR_IDLE_DAYS} hari.`
@@ -395,7 +449,7 @@ function PersonMonitorCard({
             }
           />
         </div>
-      ) : null}
+      </Collapse>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Save } from "lucide-react";
+import { CheckCircle2, Loader2, Save } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -65,6 +65,7 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
   const [jumlah, setJumlah] = useState("");
   const [satuan, setSatuan] = useState("");
   const [org, setOrg] = useState<OrgContext | null>(null);
+  const [orgLoading, setOrgLoading] = useState(false);
   const evidence = useEvidenceCapture(open && showComplete);
 
   useEffect(() => {
@@ -75,6 +76,8 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
       setAssignedToId("");
       setJumlah("");
       setSatuan("");
+      setOrg(null);
+      setOrgLoading(false);
       evidence.reset();
       return;
     }
@@ -91,16 +94,29 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
       setSatuan(task.satuan ?? "");
       return;
     }
-    if (mode === "delegasi") {
-      fetch("/api/org/context")
-        .then(async (res) => {
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || "Gagal memuat daftar bawahan");
-          setOrg(data);
-          setAssignmentMode(data.mustAssignNamed || !data.canUsePool ? "ditunjuk" : "ditunjuk");
-        })
-        .catch((err) => setError(err instanceof Error ? err.message : "Gagal memuat daftar bawahan"));
-    }
+    if (mode !== "delegasi") return;
+
+    let cancelled = false;
+    setOrg(null);
+    setOrgLoading(true);
+    fetch("/api/org/context")
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Gagal memuat daftar bawahan");
+        if (cancelled) return;
+        setOrg(data);
+        setAssignmentMode(data.mustAssignNamed || !data.canUsePool ? "ditunjuk" : "ditunjuk");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Gagal memuat daftar bawahan");
+      })
+      .finally(() => {
+        if (!cancelled) setOrgLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [open, mode, task, evidence.reset]);
 
   async function saveTask(form: HTMLFormElement) {
@@ -247,6 +263,12 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
               : "Tunjuk bawahan langsung, atau lempar ke board staf jika Anda kepala sub bidang."}
           </p>
         </DialogHeader>
+        {mode === "delegasi" && orgLoading ? (
+          <div className="flex min-h-48 flex-col items-center justify-center gap-3 py-10">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
+            <p className="text-sm text-on-surface-variant">Memuat form delegasi...</p>
+          </div>
+        ) : (
         <form key={task?.id ?? mode} onSubmit={handleSubmit} className="min-w-0 max-w-full space-y-6">
           {mode === "delegasi" ? (
             <div className="min-w-0 space-y-3 rounded-lg border border-outline-variant bg-surface-container-low p-4">
@@ -430,12 +452,13 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
                   }}
                 >
                   <CheckCircle2 className="h-4 w-4" />
-                  Laporkan telah selesai
+                  Laporkan Selesai
                 </Button>
               )
             ) : null}
           </div>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   );

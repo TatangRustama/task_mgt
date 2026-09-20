@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { DailyDateNav } from "@/components/report/DailyDateNav";
 import { TaskReportList } from "@/components/report/TaskReportList";
+import { Collapse } from "@/components/ui/collapse";
 import { groupKinerjaHarian, type EvaluatedPegawai, type KinerjaEval, type KinerjaLevel } from "@/lib/kinerja";
 import type { PegawaiReportRow } from "@/lib/report-types";
 import { cn, formatLongDate } from "@/lib/utils";
@@ -319,17 +320,17 @@ function PersonRow({
         </div>
         <ChevronDown
           className={cn(
-            "mt-1 h-4 w-4 shrink-0 transition",
+            "mt-1 h-4 w-4 shrink-0 transition-transform duration-300 ease-out motion-reduce:transition-none",
             tone === "kolam" ? "text-on-primary-container/70" : "text-outline",
             open && "rotate-180"
           )}
         />
       </button>
-      {open ? (
+      <Collapse open={open}>
         <div className={cn("border-t p-3", tone === "kolam" ? "border-on-primary-container/15" : "border-outline-variant")}>
-          <TaskReportList tasks={tasks} emptyText="Tidak ada tugas pada hari ini." />
+          <TaskReportList tasks={tasks} showAssignee={false} emptyText="Tidak ada tugas pada hari ini." />
         </div>
-      ) : null}
+      </Collapse>
     </div>
   );
 }

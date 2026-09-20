@@ -21,6 +21,7 @@ export async function GET(
       createdBy: { select: { id: true, name: true } },
       evidence: true,
       review: { include: { reviewedBy: { select: { name: true } } } },
+      rating: true,
       unit: { select: { name: true, pimpinanId: true } },
     },
   });

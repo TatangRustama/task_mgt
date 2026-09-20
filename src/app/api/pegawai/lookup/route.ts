@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isSuperAdmin } from "@/lib/roles";
 import { getCurrentUser } from "@/lib/session";
 import { lookupOrSyncPegawaiByNip } from "@/lib/simpeg-sync";
 
@@ -6,6 +7,9 @@ export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!isSuperAdmin(user.role)) {
+    return NextResponse.json({ error: "Hanya super admin yang dapat mencari pegawai ASN" }, { status: 403 });
   }
 
   const nip = new URL(request.url).searchParams.get("nip")?.trim() || "";

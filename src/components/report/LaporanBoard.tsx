@@ -7,8 +7,10 @@ import { ActivityCalendar } from "@/components/report/ActivityCalendar";
 import { DailyDateNav } from "@/components/report/DailyDateNav";
 import { ReportActionButtons } from "@/components/report/ReportActionButtons";
 import { ReportMonthNav } from "@/components/report/ReportMonthNav";
+import { PersonMonthTasks } from "@/components/report/PersonMonthTasks";
 import { TaskReportList } from "@/components/report/TaskReportList";
 import { Badge } from "@/components/ui/badge";
+import { Collapse } from "@/components/ui/collapse";
 import { reportHref, type ReportBasePath } from "@/lib/laporan-url";
 import {
   laporanPersonLabel,
@@ -64,12 +66,17 @@ export function LaporanBoardView({
 }) {
   const query = { view, date, month, year, unit: unitId };
   const defaultOpen =
-    board.people.find((person) => person.tone === "alert")?.id ??
-    board.people.find((person) => person.completed > 0)?.id ??
-    board.people[0]?.id ??
-    null;
+    ownDefaultOpen && ownPerson
+      ? ownPerson.id
+      : board.people.find((person) => person.tone === "alert")?.id ??
+        board.people.find((person) => person.completed > 0)?.id ??
+        board.people[0]?.id ??
+        null;
   const [openId, setOpenId] = useState<string | null>(defaultOpen);
-  const [ownOpen, setOwnOpen] = useState(ownDefaultOpen);
+
+  function togglePerson(id: string) {
+    setOpenId((current) => (current === id ? null : id));
+  }
 
   function href(next: { unit?: string | null; view?: LaporanView }) {
     return reportHref(basePath, {
@@ -152,12 +159,11 @@ export function LaporanBoardView({
           <h3 className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">{ownHeading}</h3>
           <PersonCard
             person={ownPerson}
-            open={ownOpen}
-            onToggle={() => setOwnOpen((open) => !open)}
+            open={openId === ownPerson.id}
+            onToggle={() => togglePerson(ownPerson.id)}
             month={month}
             year={year}
             showCalendar={view === "bulanan"}
-            basePath={basePath}
           />
         </section>
       ) : null}
@@ -180,11 +186,10 @@ export function LaporanBoardView({
               key={person.id}
               person={person}
               open={openId === person.id}
-              onToggle={() => setOpenId(openId === person.id ? null : person.id)}
+              onToggle={() => togglePerson(person.id)}
               month={month}
               year={year}
               showCalendar={view === "bulanan"}
-              basePath={basePath}
             />
           ))
         )}
@@ -253,7 +258,6 @@ function PersonCard({
   month,
   year,
   showCalendar,
-  basePath,
 }: {
   person: LaporanPerson;
   open: boolean;
@@ -261,7 +265,6 @@ function PersonCard({
   month: number;
   year: number;
   showCalendar: boolean;
-  basePath: ReportBasePath;
 }) {
   return (
     <div className="overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest card-shadow">
@@ -286,7 +289,7 @@ function PersonCard({
             {person.jabatanLabel || "Pegawai"}
             {person.unitName ? ` · ${person.unitName}` : ""}
           </p>
-          <p className="mt-1 text-xs text-on-surface">{person.insight}</p>
+          {person.insight ? <p className="mt-1 text-xs text-on-surface">{person.insight}</p> : null}
           <div className="mt-1.5 flex flex-wrap gap-1">
             {person.completed > 0 ? <Badge variant="disetujui">{person.completed} disetujui</Badge> : null}
             {person.rejected > 0 ? <Badge variant="ditolak">{person.rejected} ditolak</Badge> : null}
@@ -294,46 +297,34 @@ function PersonCard({
             {person.waiting > 0 ? <Badge variant="menunggu_approval">{person.waiting} menunggu</Badge> : null}
           </div>
         </div>
-        <ChevronDown className={cn("mt-1 h-4 w-4 shrink-0 text-outline transition", open && "rotate-180")} />
+        <ChevronDown
+          className={cn(
+            "mt-1 h-4 w-4 shrink-0 text-outline transition-transform duration-300 ease-out motion-reduce:transition-none",
+            open && "rotate-180",
+          )}
+        />
       </button>
-      {open ? (
+      <Collapse open={open}>
         <div className="space-y-3 border-t border-outline-variant p-3">
-          {showCalendar && person.tasks.length > 0 ? (
-            <ActivityCalendar
-              basePath={basePath}
+          {showCalendar ? (
+            <PersonMonthTasks
+              tasks={person.tasks}
               month={month}
               year={year}
-              days={personDays(person, month, year)}
-              compact
+              resetKey={`${person.id}-${month}-${year}`}
+              emptyText="Tidak ada kerja dinilai bulan ini."
             />
-          ) : null}
-          <TaskReportList
-            tasks={person.tasks}
-            emptyText={showCalendar ? "Tidak ada kerja dinilai bulan ini." : "Tidak ada kerja dinilai hari ini."}
-          />
+          ) : (
+            <TaskReportList
+              tasks={person.tasks}
+              showAssignee={false}
+              emptyText="Tidak ada kerja dinilai hari ini."
+            />
+          )}
         </div>
-      ) : null}
+      </Collapse>
     </div>
   );
-}
-
-function personDays(person: LaporanPerson, month: number, year: number) {
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const recap = Array.from({ length: daysInMonth }, (_, index) => ({
-    date: `${year}-${String(month).padStart(2, "0")}-${String(index + 1).padStart(2, "0")}`,
-    posted: 0,
-    completed: 0,
-  }));
-  const byDate = new Map(recap.map((day) => [day.date, day]));
-  for (const task of person.tasks) {
-    const at = task.reviewedAt || task.completedAt || task.createdAt;
-    const key = at.slice(0, 10);
-    const day = byDate.get(key);
-    if (!day) continue;
-    if (task.status === "disetujui") day.completed += 1;
-    else day.posted += 1;
-  }
-  return recap;
 }
 
 function initials(name: string) {

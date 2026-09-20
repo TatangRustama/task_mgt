@@ -2,11 +2,9 @@ import { signOut } from "@/auth";
 import Link from "next/link";
 import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
 import { PageMain } from "@/components/layout/PageMain";
-import { kepegawaianStatus } from "@/lib/kepegawaian-status";
-import { getAtasan, getDbOrgUser, getDirectReports } from "@/lib/org";
+import { getAtasan, getDbOrgUser } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
-import { formatNip } from "@/lib/utils";
 import { ChevronRight, LogOut, Settings } from "lucide-react";
 
 export default async function ProfilPage() {
@@ -15,29 +13,6 @@ export default async function ProfilPage() {
   const orgUser = await getDbOrgUser(user.id);
   const unit = orgUser?.unit ?? (user.unitId ? await prisma.unit.findUnique({ where: { id: user.unitId } }) : null);
   const atasan = orgUser ? await getAtasan(orgUser) : null;
-  const bawahan = orgUser ? await getDirectReports(orgUser) : [];
-  const pegawaiRows = bawahan.length
-    ? await prisma.user.findMany({
-        where: { id: { in: bawahan.map((person) => person.id) } },
-        select: {
-          id: true,
-          nip: true,
-          pegawai: { select: { nip: true, nik: true, jenis: true, kedudukanHukum: true } },
-        },
-      })
-    : [];
-  const identityById = new Map(
-    pegawaiRows.map((row) => {
-      const isNonAsn = row.pegawai?.jenis === "non_asn";
-      const identity = isNonAsn
-        ? `NIK ${row.pegawai?.nik || "-"}`
-        : `NIP ${formatNip(row.pegawai?.nip || row.nip)}`;
-      const kedudukan =
-        row.pegawai?.kedudukanHukum?.trim() ||
-        kepegawaianStatus(row.pegawai?.jenis, row.pegawai?.kedudukanHukum);
-      return [row.id, { identity, kedudukan }] as const;
-    }),
-  );
 
   const initials = user.name
     .split(" ")
@@ -74,37 +49,6 @@ export default async function ProfilPage() {
             </p>
           </div>
         </div>
-
-        {bawahan.length > 0 ? (
-          <div className="overflow-hidden rounded-lg border border-surface-container-highest bg-surface-container-lowest card-shadow">
-            <h3 className="bg-surface px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">
-              Bawahan langsung ({bawahan.length})
-            </h3>
-            <ul className="divide-y divide-surface-container-highest text-sm">
-              {bawahan.slice(0, 12).map((person) => {
-                const identity = identityById.get(person.id);
-                return (
-                  <li key={person.id} className="px-4 py-3">
-                    <p className="font-medium text-on-surface">{person.name}</p>
-                    <p className="text-on-surface-variant">
-                      {person.jabatanLabel}
-                      {person.unitName ? ` · ${person.unitName}` : ""}
-                    </p>
-                    <p className="mt-0.5 text-xs text-on-surface-variant">
-                      {identity?.identity || `NIP ${formatNip(null)}`}
-                      {identity?.kedudukan ? ` · ${identity.kedudukan}` : ""}
-                    </p>
-                  </li>
-                );
-              })}
-            </ul>
-            {bawahan.length > 12 ? (
-              <p className="px-4 py-2 text-xs text-on-surface-variant">
-                dan {bawahan.length - 12} bawahan lainnya
-              </p>
-            ) : null}
-          </div>
-        ) : null}
 
         <ChangePasswordForm />
 

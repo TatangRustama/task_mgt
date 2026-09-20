@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { PegawaiJenis, Prisma } from "@prisma/client";
 import { orderByIds, pageIdsByPangkatDesc } from "@/lib/golongan";
-import { getDescendantUnitIds } from "@/lib/org";
+import { getOrgScope } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { pegawaiUnorAssignment } from "@/lib/admin-pegawai";
 import { canManageNonAsn, isSuperAdmin } from "@/lib/roles";
@@ -52,19 +52,19 @@ export async function GET(request: Request) {
 
   if (scope === "bawahan") {
     if (!isSuperAdmin(user.role)) {
-      if (!user.unitId) {
+      const { visibleUnitIds } = await getOrgScope(user);
+      if (visibleUnitIds.length === 0) {
         return emptyPage(page, pageSize);
       }
-      const unitIds = await getDescendantUnitIds(user.unitId);
-      if (unitIds.length === 0) {
-        return emptyPage(page, pageSize);
-      }
-      where.unitId = { in: unitIds };
-    }
-    if (user.nip) {
-      where.NOT = [
-        { nip: user.nip },
-        { nik: user.nip },
+      where.AND = [
+        {
+          OR: [
+            { unitId: { in: visibleUnitIds } },
+            { user: { unitId: { in: visibleUnitIds } } },
+          ],
+        },
+        { OR: [{ userId: null }, { userId: { not: user.id } }] },
+        ...(user.nip ? [{ OR: [{ nip: null }, { nip: { not: user.nip } }] }] : []),
       ];
     }
   }
@@ -115,6 +115,9 @@ export async function POST(request: Request) {
   }
 
   if (jenis === "asn") {
+    if (!isSuperAdmin(user.role)) {
+      return NextResponse.json({ error: "Hanya super admin yang dapat menambah pegawai ASN" }, { status: 403 });
+    }
     const nip = String(body.nip || "").trim();
     if (!nip) {
       return NextResponse.json({ error: "NIP wajib diisi" }, { status: 400 });
