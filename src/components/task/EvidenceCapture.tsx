@@ -331,7 +331,7 @@ function PendingPhotoList({ photos, onRemove }: { photos: File[]; onRemove: (ind
             <button
               type="button"
               onClick={() => onRemove(index)}
-              className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full bg-error text-on-error shadow-sm transition hover:opacity-90 active:scale-95"
+              className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full bg-error-container text-error shadow-sm transition hover:bg-error-container/80 active:scale-95"
               aria-label={`Hapus foto ${index + 1}`}
             >
               <Trash2 className="h-3.5 w-3.5" />
