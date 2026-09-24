@@ -11,29 +11,40 @@ type DescriptionFieldProps = {
   id?: string;
   name?: string;
   defaultValue?: string;
+  value?: string;
+  onChange?: (value: string) => void;
   placeholder?: string;
+  required?: boolean;
   className?: string;
 };
 
 function applyToTextarea(
   textarea: HTMLTextAreaElement,
   next: { value: string; start?: number; end?: number; caret?: number },
+  onChange?: (value: string) => void,
 ) {
   textarea.value = next.value;
+  onChange?.(next.value);
   const start = next.caret ?? next.start ?? 0;
   const end = next.caret ?? next.end ?? start;
-  textarea.setSelectionRange(start, end);
-  textarea.focus();
+  requestAnimationFrame(() => {
+    textarea.setSelectionRange(start, end);
+    textarea.focus();
+  });
 }
 
 export function DescriptionField({
   id = "description",
   name = "description",
   defaultValue,
+  value,
+  onChange,
   placeholder = "Detail tugas. Gunakan • atau 1. untuk daftar.",
+  required,
   className,
 }: DescriptionFieldProps) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const controlled = value !== undefined;
 
   function applyList(kind: "ul" | "ol") {
     const textarea = ref.current;
@@ -44,7 +55,7 @@ export function DescriptionField({
       textarea.selectionEnd,
       kind,
     );
-    applyToTextarea(textarea, next);
+    applyToTextarea(textarea, next, onChange);
   }
 
   return (
@@ -78,9 +89,12 @@ export function DescriptionField({
       <Textarea
         ref={ref}
         id={id}
-        name={name}
+        name={controlled ? undefined : name}
         placeholder={placeholder}
-        defaultValue={defaultValue}
+        required={required}
+        value={controlled ? value : undefined}
+        defaultValue={controlled ? undefined : defaultValue}
+        onChange={(event) => onChange?.(event.target.value)}
         onKeyDown={(event) => {
           if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
           const textarea = event.currentTarget;
@@ -88,7 +102,7 @@ export function DescriptionField({
           const next = continueListEnter(textarea.value, textarea.selectionStart);
           if (!next) return;
           event.preventDefault();
-          applyToTextarea(textarea, next);
+          applyToTextarea(textarea, next, onChange);
         }}
       />
     </div>

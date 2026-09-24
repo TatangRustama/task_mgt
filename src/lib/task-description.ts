@@ -102,6 +102,13 @@ export function toggleListOnRange(
   const { from, to } = expandToLineBounds(value, start, end);
   const lines = value.slice(from, to).split("\n");
   const typed = lines.filter((line) => line.trim());
+  if (typed.length === 0) {
+    const prefix = kind === "ul" ? "- " : "1. ";
+    return {
+      value: `${value.slice(0, from)}${prefix}${value.slice(to)}`,
+      caret: from + prefix.length,
+    };
+  }
   const remove = typed.length > 0 && typed.every((line) => lineListKind(line) === kind);
 
   let index = 1;

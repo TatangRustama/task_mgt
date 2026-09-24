@@ -90,6 +90,7 @@ export function CompleteTaskForm({
           if (photoError) setError(photoError);
           else setError("");
         }}
+        onRemovePhoto={evidence.removePhoto}
       />
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}

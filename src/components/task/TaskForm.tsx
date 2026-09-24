@@ -413,6 +413,7 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
                 if (photoError) setError(photoError);
                 else setError("");
               }}
+              onRemovePhoto={evidence.removePhoto}
             />
           ) : null}
 
