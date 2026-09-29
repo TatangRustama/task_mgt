@@ -97,7 +97,7 @@ export function EnablePushNotifications() {
   if (!visible) return null;
 
   return (
-    <div className="fixed left-3 right-3 top-[4.35rem] z-40 rounded-xl border border-outline-variant bg-surface-container-lowest p-3 text-sm text-on-surface card-shadow md:left-auto md:right-6 md:w-[22rem] print:hidden">
+    <div className="app-banner fixed top-[4.35rem] z-40 rounded-xl border border-outline-variant bg-surface-container-lowest p-3 text-sm text-on-surface card-shadow print:hidden">
       <div className="flex items-start gap-2">
         <Bell className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <div className="min-w-0 flex-1">

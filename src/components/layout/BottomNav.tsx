@@ -35,7 +35,7 @@ export function BottomNav({
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[70] w-full overflow-visible border-t border-outline-variant bg-surface-container-lowest pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_20px_rgba(27,33,86,0.12)] md:left-64">
+    <nav className="app-frame-bar app-bottom bottom-0 z-[70] overflow-visible border-t border-outline-variant bg-surface-container-lowest pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_20px_rgba(27,33,86,0.12)]">
       <div className="flex h-14 w-full items-center px-1">{items.map(renderItem)}</div>
     </nav>
   );

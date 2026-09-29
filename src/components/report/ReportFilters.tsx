@@ -8,17 +8,24 @@ function Segment({
   href,
   active,
   children,
+  framed = false,
 }: {
   href: string;
   active: boolean;
   children: ReactNode;
+  framed?: boolean;
 }) {
   return (
     <Link
       href={href}
       className={cn(
-        "rounded-lg px-3 py-2 text-center text-sm font-medium",
-        active ? "bg-primary text-white shadow-sm" : "text-secondary"
+        "inline-flex items-center justify-center text-center text-sm font-medium",
+        framed
+          ? cn(
+              "h-full rounded-md px-2 transition-all",
+              active ? "border border-accent bg-primary text-white" : "text-secondary",
+            )
+          : cn("rounded-lg px-3 py-2", active ? "bg-primary text-white shadow-sm" : "text-secondary"),
       )}
     >
       {children}
@@ -71,11 +78,11 @@ export function KinerjaViewTabs({
   year: number;
 }) {
   return (
-    <div className="no-print grid grid-cols-2 rounded-lg bg-surface-container p-1">
-      <Segment href={kinerjaHref({ view: "unit", date, month, year })} active={view === "unit"}>
+    <div className="no-print grid h-11 grid-cols-2 items-stretch rounded-lg border border-outline bg-surface-container p-1 text-secondary">
+      <Segment href={kinerjaHref({ view: "unit", date, month, year })} active={view === "unit"} framed>
         Unit
       </Segment>
-      <Segment href={kinerjaHref({ view: "individu", date, month, year })} active={view === "individu"}>
+      <Segment href={kinerjaHref({ view: "individu", date, month, year })} active={view === "individu"} framed>
         Individu
       </Segment>
     </div>

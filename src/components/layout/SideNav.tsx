@@ -17,7 +17,7 @@ export function SideNav({
   const groups = getNavGroups(role, { isLeader });
 
   return (
-    <aside className="fixed top-16 left-0 z-40 hidden h-[calc(100vh-64px)] w-64 flex-col border-r border-outline-variant bg-surface-container-lowest p-4 md:flex">
+    <aside className="app-side fixed top-16 z-40 hidden h-[calc(100vh-64px)] w-64 flex-col border-r border-outline-variant bg-surface-container-lowest p-4 md:flex">
       <nav className="mt-4 space-y-6">
         {groups.map((group) => (
           <div key={group.id} className="space-y-2">

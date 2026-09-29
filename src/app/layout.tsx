@@ -1,11 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Open_Sans, Roboto } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const openSans = Open_Sans({
+  variable: "--font-open-sans",
   subsets: ["latin"],
+  display: "swap",
+});
+
+const roboto = Roboto({
+  variable: "--font-roboto",
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -28,9 +35,9 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="id" className={`${inter.variable} h-full`} suppressHydrationWarning>
+    <html lang="id" className={`${openSans.variable} ${roboto.variable} h-full`} suppressHydrationWarning>
       <body
-        className={`${inter.className} min-h-full bg-background font-sans text-on-background antialiased`}
+        className={`${openSans.className} min-h-full bg-background font-sans text-on-background antialiased`}
         suppressHydrationWarning
       >
         <Providers>{children}</Providers>

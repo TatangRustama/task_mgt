@@ -28,6 +28,7 @@
   --tertiary: #7a8199;
   --brand-from: #5468c2;
   --brand-to: #5468c2;
+  --app-frame: 80rem;
 }
 
 @theme inline {
@@ -63,13 +64,85 @@
   --color-tertiary-container: #cfd3e6;
   --color-brand-from: var(--brand-from);
   --color-brand-to: var(--brand-to);
-  --font-sans: var(--font-inter);
+  --font-sans: var(--font-open-sans);
+  --font-heading: var(--font-roboto);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   -webkit-tap-highlight-color: transparent;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-roboto), sans-serif;
+}
+
+.print-root :is(h1, h2, h3, h4, h5, h6) {
+  font-family: "Times New Roman", Times, serif;
+}
+
+.app-frame {
+  width: 100%;
+  max-width: var(--app-frame);
+  margin-inline: auto;
+}
+
+.app-frame-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-width: var(--app-frame);
+  margin-inline: auto;
+}
+
+.app-side {
+  left: max(0px, calc((100% - var(--app-frame)) / 2));
+}
+
+.app-fab {
+  right: 1rem;
+}
+
+.app-banner {
+  left: 0.75rem;
+  right: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .app-bottom {
+    left: max(16rem, calc((100% - var(--app-frame)) / 2 + 16rem));
+    right: max(0px, calc((100% - var(--app-frame)) / 2));
+    width: auto;
+    max-width: none;
+    margin-inline: 0;
+  }
+
+  .app-fab {
+    right: max(1.5rem, calc((100% - var(--app-frame)) / 2 + 1.5rem));
+  }
+
+  .app-banner {
+    left: auto;
+    width: 22rem;
+    right: max(1.5rem, calc((100% - var(--app-frame)) / 2 + 1.5rem));
+  }
+}
+
+@media print {
+  .app-frame {
+    max-width: none;
+    margin: 0;
+    padding: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
 }
 
 input[type="date"],

@@ -247,7 +247,7 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
       <DialogContent
         className={cn(
           "box-border content-start min-w-0 gap-2 overflow-x-hidden overflow-y-auto",
-          "left-[max(0.5rem,env(safe-area-inset-left))] right-[max(0.5rem,env(safe-area-inset-right))] top-16 bottom-[max(0.5rem,env(safe-area-inset-bottom))] h-auto w-auto max-h-none max-w-none translate-x-0 translate-y-0",
+          "left-[max(0.5rem,env(safe-area-inset-left))] right-[max(0.5rem,env(safe-area-inset-right))] top-18 bottom-[max(0.5rem,env(safe-area-inset-bottom))] h-auto w-auto max-h-none max-w-none translate-x-0 translate-y-0",
           "sm:left-1/2 sm:right-auto sm:top-20 sm:bottom-auto sm:max-h-[calc(100vh-6rem)] sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:translate-y-0",
         )}
       >
@@ -348,7 +348,7 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
               defaultValue={mode === "edit" ? task?.description ?? "" : ""}
             />
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid min-w-0 grid-cols-2 items-end gap-3">
             <div className="min-w-0 space-y-2">
               <Label htmlFor="assignedAt">Tanggal ditugaskan</Label>
               <Input
@@ -372,20 +372,20 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
                 onChange={(event) => setDeadline(event.target.value)}
               />
             </div>
-            <div className="min-w-0 space-y-2 sm:col-span-2">
-              <Label htmlFor="priority">Prioritas</Label>
-              <select
-                id="priority"
-                name="priority"
-                className={selectClassName}
-                value={priority}
-                onChange={(event) => setPriority(event.target.value)}
-              >
-                <option value="rendah">Rendah</option>
-                <option value="sedang">Sedang</option>
-                <option value="tinggi">Tinggi</option>
-              </select>
-            </div>
+          </div>
+          <div className="min-w-0 space-y-2">
+            <Label htmlFor="priority">Prioritas</Label>
+            <select
+              id="priority"
+              name="priority"
+              className={selectClassName}
+              value={priority}
+              onChange={(event) => setPriority(event.target.value)}
+            >
+              <option value="rendah">Rendah</option>
+              <option value="sedang">Sedang</option>
+              <option value="tinggi">Tinggi</option>
+            </select>
           </div>
 
           <InterventionFields

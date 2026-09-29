@@ -23,10 +23,12 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       : `NIP ${pegawai?.nip || user.nip}`;
 
   return (
-    <div className="min-h-screen bg-background print:bg-white">
+    <div className="min-h-screen bg-surface-container-high print:bg-white">
       <Header userName={user.name} identity={identity} />
       <SideNav role={user.role} isLeader={isLeader} />
-      <div className="pt-16 pb-24 md:ml-64 print:m-0 print:p-0">{children}</div>
+      <div className="app-frame min-h-screen bg-background pt-16 pb-24 shadow-[0_0_40px_rgba(27,33,86,0.06)] md:pl-64 print:m-0 print:bg-white print:p-0 print:shadow-none">
+        {children}
+      </div>
       <BottomNav role={user.role} isLeader={isLeader} />
       {canCreateMandiri ? <MandiriCreateControl /> : null}
       {canCreateMandiri ? <EnablePushNotifications /> : null}

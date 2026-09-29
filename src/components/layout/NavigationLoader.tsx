@@ -100,7 +100,7 @@ function RouteChangeListener({ onChange }: { onChange: () => void }) {
 function NavigationProgress() {
   return (
     <div
-      className="pointer-events-none fixed top-0 left-0 right-0 z-[90] h-0.5 overflow-hidden no-print"
+      className="app-frame-bar pointer-events-none top-0 z-[90] h-0.5 overflow-hidden no-print"
       role="status"
       aria-live="polite"
       aria-label="Memuat halaman"
