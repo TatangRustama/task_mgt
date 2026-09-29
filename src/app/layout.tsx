@@ -1,16 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Open_Sans, Roboto } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
-const openSans = Open_Sans({
-  variable: "--font-open-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
   display: "swap",
 });
 
-const roboto = Roboto({
-  variable: "--font-roboto",
+const plusJakarta = Plus_Jakarta_Sans({
+  variable: "--font-plus-jakarta",
   subsets: ["latin"],
   display: "swap",
 });
@@ -35,9 +35,9 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="id" className={`${openSans.variable} ${roboto.variable} h-full`} suppressHydrationWarning>
+    <html lang="id" className={`${inter.variable} ${plusJakarta.variable} h-full`} suppressHydrationWarning>
       <body
-        className={`${openSans.className} min-h-full bg-background font-sans text-on-background antialiased`}
+        className={`${inter.className} min-h-full bg-background font-sans text-on-background antialiased`}
         suppressHydrationWarning
       >
         <Providers>{children}</Providers>

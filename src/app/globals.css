@@ -64,8 +64,8 @@
   --color-tertiary-container: #cfd3e6;
   --color-brand-from: var(--brand-from);
   --color-brand-to: var(--brand-to);
-  --font-sans: var(--font-open-sans);
-  --font-heading: var(--font-roboto);
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-plus-jakarta);
 }
 
 body {
@@ -80,7 +80,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-roboto), sans-serif;
+  font-family: var(--font-plus-jakarta), sans-serif;
 }
 
 .print-root :is(h1, h2, h3, h4, h5, h6) {
