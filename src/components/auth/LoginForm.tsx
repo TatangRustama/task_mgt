@@ -97,9 +97,6 @@ export function LoginForm() {
             {loading ? "Masuk..." : "Masuk"}
           </Button>
         </form>
-        <p className="mt-4 text-center text-xs text-tertiary">
-          Pegawai: NIP atau NIK. Super Admin: superadmin / password123
-        </p>
       </CardContent>
     </Card>
   );
