@@ -35,6 +35,13 @@ export async function GET(request: Request) {
       : Math.min(50, Math.max(1, requestedSize));
   const jenis = url.searchParams.get("jenis");
 
+  if (scope !== "bawahan" && !isSuperAdmin(user.role) && !canManageNonAsn(user.role)) {
+    return NextResponse.json(
+      { error: "Anda tidak berwenang melihat seluruh data pegawai" },
+      { status: 403 },
+    );
+  }
+
   const where: Prisma.PegawaiWhereInput = {};
   if (jenis === "asn" || jenis === "non_asn") {
     where.jenis = jenis;
