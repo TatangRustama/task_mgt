@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parseJumlahSatuan } from "@/lib/satuan";
 import { getCurrentUser } from "@/lib/session";
+import { mergedCoordinate, mergedEvidencePhotoUrls } from "@/lib/task-evidence";
 import { saveUploadedFile } from "@/lib/upload";
+
+const COMPLETABLE_STATUSES = ["dikerjakan", "ditolak"] as const;
 
 export async function POST(
   request: Request,
@@ -21,7 +24,7 @@ export async function POST(
     return NextResponse.json({ error: "Anda bukan penanggung jawab tugas ini" }, { status: 403 });
   }
 
-  if (!["dikerjakan", "ditolak"].includes(task.status)) {
+  if (!COMPLETABLE_STATUSES.includes(task.status as (typeof COMPLETABLE_STATUSES)[number])) {
     return NextResponse.json({ error: "Tugas tidak dapat diselesaikan" }, { status: 400 });
   }
 
@@ -30,7 +33,7 @@ export async function POST(
   const address = String(formData.get("address") || "").trim();
   const latitudeRaw = formData.get("latitude");
   const longitudeRaw = formData.get("longitude");
-  const photos = formData.getAll("photos").filter((f): f is File => f instanceof File);
+  const photos = formData.getAll("photos").filter((file): file is File => file instanceof File && file.size > 0);
   const parsedJumlah = parseJumlahSatuan(
     formData.get("jumlahIntervensi"),
     formData.get("satuan"),
@@ -51,30 +54,42 @@ export async function POST(
   }
 
   try {
-    const photoUrls = await Promise.all(photos.map((photo) => saveUploadedFile(photo)));
+    const uploadedPhotoUrls = await Promise.all(photos.map((photo) => saveUploadedFile(photo)));
 
     const updated = await prisma.$transaction(async (tx) => {
+      const existing = await tx.taskEvidence.findUnique({
+        where: { taskId: id },
+        select: { photoUrls: true, latitude: true, longitude: true },
+      });
+      const photoUrls = mergedEvidencePhotoUrls(uploadedPhotoUrls, existing?.photoUrls);
+      const latitude = mergedCoordinate(latitudeRaw, existing?.latitude);
+      const longitude = mergedCoordinate(longitudeRaw, existing?.longitude);
+
       await tx.taskEvidence.upsert({
         where: { taskId: id },
         create: {
           taskId: id,
           photoUrls,
-          latitude: latitudeRaw ? Number(latitudeRaw) : null,
-          longitude: longitudeRaw ? Number(longitudeRaw) : null,
+          latitude,
+          longitude,
           address,
           notes,
         },
         update: {
           photoUrls,
-          latitude: latitudeRaw ? Number(latitudeRaw) : null,
-          longitude: longitudeRaw ? Number(longitudeRaw) : null,
+          latitude,
+          longitude,
           address,
           notes,
         },
       });
 
-      return tx.task.update({
-        where: { id },
+      const completed = await tx.task.updateMany({
+        where: {
+          id,
+          assignedToId: user.id,
+          status: { in: [...COMPLETABLE_STATUSES] },
+        },
         data: {
           status: "menunggu_approval",
           completedAt: new Date(),
@@ -82,6 +97,11 @@ export async function POST(
           satuan: parsedJumlah.satuan,
         },
       });
+      if (completed.count !== 1) {
+        throw new Error("Tugas tidak dapat diselesaikan");
+      }
+
+      return tx.task.findUnique({ where: { id } });
     });
 
     return NextResponse.json(updated);
