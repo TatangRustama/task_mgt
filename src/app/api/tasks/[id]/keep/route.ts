@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { canPickupPoolTask } from "@/lib/org";
+import { effectiveJabatan } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 
@@ -11,16 +11,21 @@ export async function POST(
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const task = await prisma.task.findUnique({ where: { id } });
-  if (!task || !canPickupPoolTask(user, task)) {
+  if (effectiveJabatan(user) !== "pelaksana" || !user.unitId) {
     return NextResponse.json(
       { error: "Kartu ini hanya bisa diambil staf sub bidang terkait" },
-      { status: 403 }
+      { status: 403 },
     );
   }
 
-  const updated = await prisma.task.update({
-    where: { id },
+  const claimed = await prisma.task.updateMany({
+    where: {
+      id,
+      source: "delegasi",
+      assignmentMode: "kolam",
+      status: "tersedia",
+      unitId: user.unitId,
+    },
     data: {
       status: "dikerjakan",
       assignedToId: user.id,
@@ -28,5 +33,13 @@ export async function POST(
     },
   });
 
-  return NextResponse.json(updated);
+  if (claimed.count !== 1) {
+    return NextResponse.json(
+      { error: "Kartu ini sudah diambil atau tidak lagi tersedia" },
+      { status: 409 },
+    );
+  }
+
+  const task = await prisma.task.findUnique({ where: { id } });
+  return NextResponse.json(task);
 }
