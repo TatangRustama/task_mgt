@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
 import { PegawaiDetailDialog } from "@/components/admin/PegawaiDetailDialog";
 import { TambahPegawaiDialog } from "@/components/admin/TambahPegawaiDialog";
 import { PageHeader } from "@/components/layout/PageMain";
@@ -89,6 +89,7 @@ export function SuperAdminPegawaiList() {
     filters: AppliedFilters,
     collapseFilter: boolean,
   ) => {
+    const startedAt = Date.now();
     setLoading(true);
     const params = new URLSearchParams({
       page: String(nextPage),
@@ -108,6 +109,10 @@ export function SuperAdminPegawaiList() {
       if (typeof data.page === "number") setPage(data.page);
       if (typeof data.pageSize === "number") setPageSize(data.pageSize);
       if (collapseFilter) setFilterOpen(false);
+    }
+    const elapsed = Date.now() - startedAt;
+    if (elapsed < 400) {
+      await new Promise((resolve) => window.setTimeout(resolve, 400 - elapsed));
     }
     setLoading(false);
   }, []);
@@ -387,7 +392,24 @@ export function SuperAdminPegawaiList() {
           void loadData(1, pageSize, filters, true);
         }}
       />
+      {loading ? <DataLoadingOverlay /> : null}
     </>
+  );
+}
+
+function DataLoadingOverlay() {
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 no-print"
+      role="status"
+      aria-live="polite"
+      aria-label="Memuat data"
+    >
+      <div className="flex flex-col items-center gap-3 rounded-lg border border-outline bg-surface-container-lowest px-6 py-5 shadow-lg">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
+        <p className="text-sm font-medium text-on-surface">Memuat data...</p>
+      </div>
+    </div>
   );
 }
 
