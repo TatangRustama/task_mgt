@@ -2,8 +2,9 @@ import { Prisma } from "@prisma/client";
 import { getLaporanBoard } from "@/lib/laporan-board";
 import { laporanPersonLabel } from "@/lib/laporan-board-types";
 import { golonganSortKey } from "@/lib/golongan";
-import { getDailyLaporanPrintContext, getLaporanPrintContext, printableTasks } from "@/lib/laporan-print";
-import { dailyPrintTasks } from "@/lib/laporan-print-view";
+import { getDailyLaporanPrintContext, getLaporanPrintContext } from "@/lib/laporan-print";
+import { isDrilledInReportUnit, monthlyValidationTaskIds } from "@/lib/laporan-report-ids";
+import { dailyPrintTasks, printableTasks } from "@/lib/laporan-print-view";
 import type {
   DailyLaporanPrintContext,
   LaporanPrintContext,
@@ -128,20 +129,41 @@ export async function getLaporanPrintData(
   }
 
   const tasks = printableTasks(board.tasks);
-  const [identities, ownTasks] = await Promise.all([
+  const drilledIn = isDrilledInReportUnit(unit, user.unitId, visibleUnitIds);
+  const [identities, ownTasks, rootBoard] = await Promise.all([
     loadIdentities([
       ...board.childUnits.map((row) => row.leaderId),
       ...board.people.map((person) => person.id),
     ]),
     loadOwnPrintableTasks(user.id, start, end, view),
+    drilledIn
+      ? getLaporanBoard({
+          viewerId: user.id,
+          rootUnitId: user.unitId,
+          visibleUnitIds,
+          isLeader,
+          view,
+          date,
+          month,
+          year,
+          detail: "ui",
+        })
+      : Promise.resolve(null),
   ]);
+  const rootTasks = rootBoard ? printableTasks(rootBoard.tasks) : null;
   const print = await getLaporanPrintContext({
     userId: user.id,
     month,
     year,
     instansiName: meta.instansiName,
     agencyName: meta.agencyName,
-    taskIds: [...new Set([...(isLeader ? ownTasks : []), ...tasks].map((task) => task.id))],
+    taskIds: monthlyValidationTaskIds({
+      drilledIn: Boolean(rootTasks),
+      focusedTaskIds: tasks.map((task) => task.id),
+      rootTaskIds: rootTasks?.map((task) => task.id) ?? [],
+      ownTaskIds: ownTasks.map((task) => task.id),
+      includeOwn: isLeader,
+    }),
   });
 
   const rows: PrintUnitReviewRow[] = [
