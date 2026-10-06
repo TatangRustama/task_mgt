@@ -217,7 +217,7 @@ model MonthlyTaskReport {
   taskIds   String[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user      User     @relation("ReportAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation("ReportAuthor", fields: [userId], references: [id], onDelete: Restrict)
   atasan    User?    @relation("ReportAtasan", fields: [atasanId], references: [id], onDelete: SetNull)
 
   @@unique([userId, month, year])
