@@ -3,6 +3,11 @@ import { Prisma, Role } from "@prisma/client";
 import { credentialsForRole, userDetailSelect } from "@/lib/admin-users";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import {
+  ACCOUNT_LINKED_TO_TASKS_ERROR,
+  AccountDeletionBlockedError,
+  userDeletionBlocked,
+} from "@/lib/user-deletion";
 
 async function loadUser(id: string) {
   return prisma.user.findUnique({
@@ -109,25 +114,36 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     }
   }
 
-  const [createdTasks, reviews, ratings] = await Promise.all([
-    prisma.task.count({ where: { createdById: id } }),
-    prisma.taskReview.count({ where: { reviewedById: id } }),
-    prisma.taskRating.count({ where: { ratedById: id } }),
-  ]);
-  if (createdTasks > 0 || reviews > 0 || ratings > 0) {
-    return NextResponse.json(
-      { error: "Akun tidak dapat dihapus karena masih terhubung dengan data tugas" },
-      { status: 409 },
-    );
-  }
+  try {
+    await prisma.$transaction(async (tx) => {
+      const [createdTasks, assignedTasks, reviews, ratings, authoredReports] = await Promise.all([
+        tx.task.count({ where: { createdById: id } }),
+        tx.task.count({ where: { assignedToId: id } }),
+        tx.taskReview.count({ where: { reviewedById: id } }),
+        tx.taskRating.count({ where: { ratedById: id } }),
+        tx.monthlyTaskReport.count({ where: { userId: id } }),
+      ]);
+      if (userDeletionBlocked({ createdTasks, assignedTasks, reviews, ratings, authoredReports })) {
+        throw new AccountDeletionBlockedError();
+      }
 
-  await prisma.$transaction([
-    prisma.unit.updateMany({ where: { pimpinanId: id }, data: { pimpinanId: null } }),
-    prisma.task.updateMany({ where: { assignedToId: id }, data: { assignedToId: null } }),
-    prisma.pegawai.updateMany({ where: { userId: id }, data: { userId: null } }),
-    prisma.monthlyTaskReport.updateMany({ where: { atasanId: id }, data: { atasanId: null } }),
-    prisma.user.delete({ where: { id } }),
-  ]);
+      await tx.unit.updateMany({ where: { pimpinanId: id }, data: { pimpinanId: null } });
+      await tx.pegawai.updateMany({ where: { userId: id }, data: { userId: null } });
+      await tx.monthlyTaskReport.updateMany({ where: { atasanId: id }, data: { atasanId: null } });
+      await tx.user.delete({ where: { id } });
+    });
+  } catch (error) {
+    if (
+      error instanceof AccountDeletionBlockedError ||
+      (error instanceof Error && error.message === ACCOUNT_LINKED_TO_TASKS_ERROR)
+    ) {
+      return NextResponse.json({ error: ACCOUNT_LINKED_TO_TASKS_ERROR }, { status: 409 });
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2003" || error.code === "P2014")) {
+      return NextResponse.json({ error: ACCOUNT_LINKED_TO_TASKS_ERROR }, { status: 409 });
+    }
+    throw error;
+  }
 
   return NextResponse.json({ ok: true });
 }
