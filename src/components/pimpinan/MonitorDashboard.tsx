@@ -19,6 +19,7 @@ import { Collapse } from "@/components/ui/collapse";
 import {
   MONITOR_FOCUS_LABEL,
   MONITOR_IDLE_DAYS,
+  MONITOR_RATING_WINDOW_DAYS,
   MONITOR_REVIEW_SLA_HOURS,
   MONITOR_UNIT_TYPE_LABEL,
   monitorHref,
@@ -79,7 +80,7 @@ export function MonitorDashboard({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <section className="overflow-hidden rounded-lg border border-accent bg-primary p-3 text-white md:p-4">
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/75">Papan pemantauan</p>
         <h3 className="mt-0.5 text-lg font-bold leading-6 tracking-tight md:text-xl">{board.unitName}</h3>
@@ -107,7 +108,7 @@ export function MonitorDashboard({
         </nav>
       ) : null}
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex w-full min-w-0 gap-2 overflow-x-auto pb-1">
         <FocusChip href={href({ focus: "all" })} active={focus === "all"} label="Semua" count={exceptionCount(board)} />
         {FOCUS_CHIPS.map(({ id, icon: Icon }) => {
           const count = summaryCount(board, id);
@@ -127,9 +128,9 @@ export function MonitorDashboard({
       </div>
 
       {board.childUnits.length > 0 ? (
-        <section className="space-y-2">
+        <section className="min-w-0 space-y-2">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Unit di bawah Anda</h3>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-2 sm:grid-cols-[repeat(2,minmax(0,1fr))]">
             {board.childUnits.map((unit) => (
               <UnitHeatCard key={unit.id} unit={unit} href={href({ unit: unit.id, focus })} />
             ))}
@@ -205,7 +206,9 @@ function WorkloadChart({ people }: { people: MonitorPerson[] }) {
     <section className="space-y-2">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Beban kerja</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+            Beban kerja <span className="normal-case">({MONITOR_RATING_WINDOW_DAYS} hari terakhir)</span>
+          </h3>
           <p className="mt-0.5 text-sm text-on-surface">
             {completedTotal} selesai · {openTotal} terbuka
           </p>
@@ -334,16 +337,16 @@ function UnitHeatCard({ unit, href }: { unit: MonitorUnitHeat; href: string }) {
     <Link
       href={href}
       className={cn(
-        "rounded-lg border p-3 transition hover:shadow-md",
+        "block min-w-0 overflow-hidden rounded-lg border p-3 transition hover:shadow-md",
         unit.tone === "alert" && "border-error/40 bg-error-container/40",
         unit.tone === "watch" && "border-amber-200 bg-amber-50",
         unit.tone === "good" && "border-outline bg-surface-container-lowest",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex min-w-0 items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-on-surface">{unit.name}</p>
-          <p className="mt-0.5 text-[11px] text-on-surface-variant">
+          <p className="mt-0.5 truncate text-[11px] text-on-surface-variant">
             {unit.leaderName || MONITOR_UNIT_TYPE_LABEL[unit.type]} · {unit.staffCount} pegawai
           </p>
         </div>
@@ -358,7 +361,7 @@ function UnitHeatCard({ unit, href }: { unit: MonitorUnitHeat; href: string }) {
           {unit.tone === "alert" ? "Perlu tindakan" : unit.tone === "watch" ? "Waspada" : "Lancar"}
         </span>
       </div>
-      <p className="mt-2 text-xs text-on-surface">{unit.insight}</p>
+      <p className="mt-2 break-words text-xs text-on-surface">{unit.insight}</p>
       {reviewSlow ? (
         <span className="mt-2 inline-flex rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
           Review lambat

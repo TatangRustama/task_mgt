@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Role } from "@prisma/client";
 import { cn } from "@/lib/utils";
-import { getNavGroups, isNavActive } from "@/lib/nav";
+import { getNavGroups, isNavActive, usesSidebarNav } from "@/lib/nav";
 
 export function SideNav({
   role,
@@ -14,6 +14,7 @@ export function SideNav({
   isLeader?: boolean;
 }) {
   const pathname = usePathname();
+  if (!usesSidebarNav(role)) return null;
   const groups = getNavGroups(role, { isLeader });
 
   return (

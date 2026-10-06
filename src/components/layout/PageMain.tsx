@@ -1,3 +1,4 @@
+import { PageBackLink } from "@/components/layout/PageBackLink";
 import { cn } from "@/lib/utils";
 
 export function PageMain({
@@ -46,6 +47,7 @@ export function PageHeader({
 
   return (
     <section className="mb-3 md:mb-4">
+      <PageBackLink />
       {title || action ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
           {title ? (

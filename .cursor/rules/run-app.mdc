@@ -1,0 +1,19 @@
+---
+description: How to start the local Kinerja app
+alwaysApply: true
+---
+
+# Run the app
+
+Start from the repo root. Use these values; do not rediscover the script, port, or hostname.
+
+- Command: `npm run dev`
+- That runs `next dev --hostname 0.0.0.0 --port 3000`
+- App: http://localhost:3000
+- Login: http://localhost:3000/login
+- On this Windows machine, run the shell with full permissions (`all`). The sandbox cannot start the server.
+- If port 3000 is already accepting connections, leave that server running.
+- Ready when the log prints `Ready`. The first `/login` compile can take more than 30 seconds.
+- Skip `npm install` when `node_modules/next` exists.
+- Secrets are already in `.env` and `.env.local`. Do not print or recreate them.
+- Same startup is declared in `.cursor/environment.json` for Cloud Agents.

@@ -130,7 +130,6 @@ export function PerformanceBanner({
   const percent = activeTotal === 0 ? 0 : Math.round((completedTotal / activeTotal) * 100);
   const doneShare = activeTotal === 0 ? 0 : (completedTotal / activeTotal) * 100;
   const today = new Date();
-  const leaderQueue = awaitingMyReview + staleReview + reportOverdue + unpickedPool;
 
   const staffStats = [
     { label: "Minggu ini", value: completedWeek, icon: CalendarDays },
@@ -178,14 +177,7 @@ export function PerformanceBanner({
             </div>
           ) : null}
         </div>
-        {isLeader ? (
-          <div className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-full border-4 border-white/30 text-center">
-            <span className="text-lg font-bold leading-none tracking-tight text-white">{leaderQueue}</span>
-            <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/80">Antrian</span>
-          </div>
-        ) : (
-          <CapaianRing percent={percent} />
-        )}
+        <CapaianRing percent={percent} />
       </div>
 
       <div className="relative z-10 mt-3 grid grid-cols-3 gap-1.5">

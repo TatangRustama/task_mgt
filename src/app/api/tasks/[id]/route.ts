@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { TaskPriority } from "@prisma/client";
 import { canDeletePostedTask, canManagePostedTask, canSeeTask } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
+import { isSuperAdmin } from "@/lib/roles";
 import { parseJumlahSatuan } from "@/lib/satuan";
-import { getCurrentUser } from "@/lib/session";
-import { parseAssignedAt, parseFormDateInput } from "@/lib/utils";
+import { getCurrentUser, type SessionUser } from "@/lib/session";
+import { parseAssignedAt, parseDateTimeLocal, parseFormDateInput } from "@/lib/utils";
 
 export async function GET(
   _request: Request,
@@ -35,12 +36,12 @@ export async function GET(
 
 const PRIORITIES = new Set<TaskPriority>(["rendah", "sedang", "tinggi"]);
 
-async function getEditablePostedTask(userId: string, taskId: string) {
+async function getEditablePostedTask(user: SessionUser, taskId: string) {
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) {
     return { error: NextResponse.json({ error: "Tugas tidak ditemukan" }, { status: 404 }) };
   }
-  if (!canManagePostedTask({ id: userId }, task)) {
+  if (!isSuperAdmin(user.role) && !canManagePostedTask(user, task)) {
     return {
       error: NextResponse.json(
         { error: "Hanya pembuat tugas yang dapat mengubah tugas tersedia atau dikerjakan" },
@@ -59,7 +60,7 @@ export async function PATCH(
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const loaded = await getEditablePostedTask(user.id, id);
+  const loaded = await getEditablePostedTask(user, id);
   if ("error" in loaded) return loaded.error;
 
   const body = await request.json();
@@ -80,6 +81,18 @@ export async function PATCH(
     return NextResponse.json({ error: parsedJumlah.error }, { status: 400 });
   }
 
+  let completedAt: Date | null | undefined;
+  if (isSuperAdmin(user.role) && "completedAt" in body) {
+    if (body.completedAt) {
+      completedAt = parseDateTimeLocal(body.completedAt);
+      if (!completedAt) {
+        return NextResponse.json({ error: "Tanggal selesai tidak valid" }, { status: 400 });
+      }
+    } else {
+      completedAt = null;
+    }
+  }
+
   const updated = await prisma.task.update({
     where: { id },
     data: {
@@ -90,6 +103,7 @@ export async function PATCH(
       priority,
       jumlahIntervensi: parsedJumlah.jumlahIntervensi,
       satuan: parsedJumlah.satuan,
+      ...(completedAt !== undefined ? { completedAt } : {}),
     },
   });
 
@@ -108,7 +122,7 @@ export async function DELETE(
   if (!task) {
     return NextResponse.json({ error: "Tugas tidak ditemukan" }, { status: 404 });
   }
-  if (!canDeletePostedTask(user, task)) {
+  if (!isSuperAdmin(user.role) && !canDeletePostedTask(user, task)) {
     return NextResponse.json(
       { error: "Hanya pembuat tugas yang dapat menghapus tugas tersedia atau dikerjakan" },
       { status: 403 },

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Settings, UserPlus, Users } from "lucide-react";
+import { ListChecks, Settings, UserPlus, Users } from "lucide-react";
 import { SuperAdminMockCard, SuperAdminMockNotice } from "@/components/admin/SuperAdminMock";
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/session";
 
 const shortcuts = [
   { href: "/admin/pegawai", title: "Pegawai", desc: "Data pegawai, tambah ASN dan Non-ASN", icon: Users },
+  { href: "/admin/monitoring", title: "Monitoring tugas", desc: "Daftar tugas seluruh perangkat daerah", icon: ListChecks },
   { href: "/admin", title: "Manajemen pengguna", desc: "Tambah user dan pilih role", icon: UserPlus },
   { href: "/setting", title: "Setting", desc: "Pengaturan aplikasi", icon: Settings },
 ];
@@ -20,7 +21,7 @@ export default async function SuperAdminDashboardPage() {
         title="Dashboard"
         subtitle={`Selamat datang, ${user.name}. Ringkasan super admin akan tampil di sini.`}
       />
-      <SuperAdminMockNotice text="Dashboard ini masih mockup. Menu Pegawai dan Manajemen pengguna sudah aktif." />
+      <SuperAdminMockNotice text="Dashboard ini masih mockup. Menu Pegawai, Monitoring tugas, dan Manajemen pengguna sudah aktif." />
 
       <div className="grid gap-3 sm:grid-cols-3">
         <SuperAdminMockCard title="Pegawai" value="—" hint="Total data pegawai" />

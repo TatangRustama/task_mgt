@@ -5,6 +5,7 @@ import {
   BarChart3,
   UserPlus,
   Settings,
+  ListChecks,
   type LucideIcon,
 } from "lucide-react";
 import { Role } from "@prisma/client";
@@ -46,6 +47,7 @@ const adminNavItems: AppNavItem[] = [
 const superAdminNavItems: AppNavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/admin/pegawai", label: "Pegawai", icon: Users },
+  { href: "/admin/monitoring", label: "Monitoring", icon: ListChecks },
   { href: "/admin", label: "Pengguna", icon: UserPlus },
   { href: "/setting", label: "Setting", icon: Settings },
 ];
@@ -69,6 +71,12 @@ export function getNavGroups(role: Role, options?: NavOptions): AppNavGroup[] {
 
 export function getNavItems(role: Role, options?: NavOptions) {
   return getNavGroups(role, options).flatMap((group) => group.items);
+}
+
+/** Super Admin and Admin OPD use the sidebar. Personal uses the footer bar. */
+export function usesSidebarNav(role: Role) {
+  const resolved = coerceRole(role);
+  return resolved === "super_admin" || resolved === "admin";
 }
 
 export function isNavActive(pathname: string, href: string) {

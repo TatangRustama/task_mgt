@@ -116,14 +116,6 @@ h6 {
 }
 
 @media (min-width: 768px) {
-  .app-bottom {
-    left: max(16rem, calc((100% - var(--app-frame)) / 2 + 16rem));
-    right: max(0px, calc((100% - var(--app-frame)) / 2));
-    width: auto;
-    max-width: none;
-    margin-inline: 0;
-  }
-
   .app-fab {
     right: max(1.5rem, calc((100% - var(--app-frame)) / 2 + 1.5rem));
   }
@@ -448,7 +440,19 @@ select {
   }
 
   .print-table td.center[rowspan] {
-    vertical-align: middle;
+    vertical-align: top;
+  }
+
+  .print-table tr,
+  .print-id,
+  .print-desc-p,
+  .print-desc-item,
+  .print-bukti-open,
+  .print-section-label,
+  .print-title,
+  .print-subtitle {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .print-empty {

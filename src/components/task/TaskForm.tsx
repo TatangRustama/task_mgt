@@ -16,7 +16,7 @@ import { DescriptionField } from "@/components/task/DescriptionField";
 import { EvidenceFields, useEvidenceCapture } from "@/components/task/EvidenceCapture";
 import { InterventionFields } from "@/components/task/InterventionFields";
 import { parseJumlahSatuan } from "@/lib/satuan";
-import { cn, formatISODate } from "@/lib/utils";
+import { cn, formatDateTimeLocal, formatISODate } from "@/lib/utils";
 
 type EditableTask = {
   id: string;
@@ -24,6 +24,7 @@ type EditableTask = {
   description: string | null;
   deadline: Date | string | null;
   assignedAt?: Date | string | null;
+  completedAt?: Date | string | null;
   priority: string;
   jumlahIntervensi?: number | null;
   satuan?: string | null;
@@ -34,6 +35,8 @@ type TaskFormDialogProps = {
   onOpenChange: (open: boolean) => void;
   mode: "mandiri" | "delegasi" | "edit";
   task?: EditableTask | null;
+  description?: string;
+  canEditCompletedAt?: boolean;
 };
 
 type OrgContext = {
@@ -52,13 +55,21 @@ type OrgContext = {
 const selectClassName =
   "box-border flex h-9 w-full min-w-0 max-w-full rounded-lg border border-outline bg-surface-container-lowest px-3 text-sm text-on-surface focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary";
 
-export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialogProps) {
+export function TaskFormDialog({
+  open,
+  onOpenChange,
+  mode,
+  task,
+  description,
+  canEditCompletedAt = false,
+}: TaskFormDialogProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showComplete, setShowComplete] = useState(false);
   const [deadline, setDeadline] = useState("");
   const [assignedAt, setAssignedAt] = useState(formatISODate(new Date()));
+  const [completedAt, setCompletedAt] = useState("");
   const [priority, setPriority] = useState("sedang");
   const [assignmentMode, setAssignmentMode] = useState<"ditunjuk" | "kolam">("ditunjuk");
   const [assignedToId, setAssignedToId] = useState("");
@@ -76,6 +87,7 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
       setAssignedToId("");
       setJumlah("");
       setSatuan("");
+      setCompletedAt("");
       setOrg(null);
       setOrgLoading(false);
       evidence.reset();
@@ -90,6 +102,7 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
       setPriority(task.priority || "sedang");
       setAssignedAt(task.assignedAt ? formatISODate(new Date(task.assignedAt)) : formatISODate(new Date()));
       setDeadline(task.deadline ? formatISODate(new Date(task.deadline)) : "");
+      setCompletedAt(canEditCompletedAt ? formatDateTimeLocal(task.completedAt) : "");
       setJumlah(task.jumlahIntervensi != null ? String(task.jumlahIntervensi) : "");
       setSatuan(task.satuan ?? "");
       return;
@@ -117,7 +130,7 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
     return () => {
       cancelled = true;
     };
-  }, [open, mode, task, evidence.reset]);
+  }, [open, mode, task, canEditCompletedAt, evidence.reset]);
 
   async function saveTask(form: HTMLFormElement) {
     const formData = new FormData(form);
@@ -146,6 +159,7 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
           priority: payload.priority,
           jumlahIntervensi: payload.jumlahIntervensi,
           satuan: payload.satuan,
+          ...(canEditCompletedAt ? { completedAt: completedAt || null } : {}),
         }),
       });
       const data = await res.json();
@@ -256,7 +270,9 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
             {mode === "edit" ? "Edit Tugas" : mode === "mandiri" ? "Tambah Tugas" : "Delegasi Tugas"}
           </DialogTitle>
           <p className="text-sm text-on-surface-variant">
-            {mode === "edit"
+            {description
+              ? description
+              : mode === "edit"
               ? "Perbarui detail tugas yang Anda posting. Hanya tugas tersedia atau dikerjakan yang dapat diubah."
               : mode === "mandiri"
               ? "Isi detail tugas baru yang akan dilaporkan."
@@ -373,6 +389,19 @@ export function TaskFormDialog({ open, onOpenChange, mode, task }: TaskFormDialo
               />
             </div>
           </div>
+          {mode === "edit" && canEditCompletedAt ? (
+            <div className="min-w-0 space-y-2">
+              <Label htmlFor="completedAt">Selesai</Label>
+              <Input
+                id="completedAt"
+                name="completedAt"
+                type="datetime-local"
+                className="min-w-0 max-w-full"
+                value={completedAt}
+                onChange={(event) => setCompletedAt(event.target.value)}
+              />
+            </div>
+          ) : null}
           <div className="min-w-0 space-y-2">
             <Label htmlFor="priority">Prioritas</Label>
             <select

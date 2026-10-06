@@ -22,10 +22,10 @@ export function MonthlyTaskDayRows({
       <tr key={task.id} className={rowClassName}>
         {index === 0 ? (
           <>
-            <td className={`center align-middle ${cellClassName}`.trim()} rowSpan={rowCount}>
+            <td className={`center ${cellClassName}`.trim()} rowSpan={rowCount}>
               {group.no}
             </td>
-            <td className={`center align-middle ${cellClassName}`.trim()} rowSpan={rowCount}>
+            <td className={`center ${cellClassName}`.trim()} rowSpan={rowCount}>
               {group.date}
             </td>
           </>

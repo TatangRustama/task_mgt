@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Role } from "@prisma/client";
 import { cn } from "@/lib/utils";
-import { getNavItems, isNavActive, type AppNavItem } from "@/lib/nav";
+import { getNavItems, isNavActive, usesSidebarNav, type AppNavItem } from "@/lib/nav";
 
 export function BottomNav({
   role,
@@ -14,6 +14,7 @@ export function BottomNav({
   isLeader?: boolean;
 }) {
   const pathname = usePathname();
+  if (usesSidebarNav(role)) return null;
   const items = getNavItems(role, { isLeader });
 
   function renderItem({ href, label, icon: Icon }: AppNavItem) {
@@ -35,7 +36,7 @@ export function BottomNav({
   }
 
   return (
-    <nav className="app-frame-bar app-bottom bottom-0 z-[70] overflow-visible border-t border-outline-variant bg-surface-container-lowest pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_20px_rgba(27,33,86,0.12)]">
+    <nav className="app-frame-bar app-bottom bottom-0 z-[70] overflow-visible border-t border-outline-variant bg-surface-container-lowest pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_20px_rgba(27,33,86,0.12)] print:hidden">
       <div className="flex h-14 w-full items-center px-1">{items.map(renderItem)}</div>
     </nav>
   );

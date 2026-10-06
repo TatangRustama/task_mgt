@@ -146,7 +146,7 @@ export function LaporanBoardView({
           <h3 className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
             Unit di bawah Anda
           </h3>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-2 sm:grid-cols-[repeat(2,minmax(0,1fr))]">
             {board.childUnits.map((unit) => (
               <UnitCard key={unit.id} unit={unit} href={href({ unit: unit.id })} />
             ))}
@@ -214,17 +214,17 @@ function UnitCard({ unit, href }: { unit: LaporanUnit; href: string }) {
     <Link
       href={href}
       className={cn(
-        "rounded-lg border p-3 transition hover:shadow-md",
+        "block min-w-0 overflow-hidden rounded-lg border p-3 transition hover:shadow-md",
         unit.tone === "alert" && "border-error/40 bg-error-container/40",
         unit.tone === "watch" && "border-amber-200 bg-amber-50",
         unit.tone === "idle" && "border-outline bg-surface-container",
         unit.tone === "good" && "border-outline bg-surface-container-lowest",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex min-w-0 items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-on-surface">{unit.name}</p>
-          <p className="mt-0.5 text-[11px] text-on-surface-variant">
+          <p className="mt-0.5 truncate text-[11px] text-on-surface-variant">
             {unit.leaderName || MONITOR_UNIT_TYPE_LABEL[unit.type]} · {unit.staffCount} pegawai
           </p>
         </div>
@@ -232,7 +232,7 @@ function UnitCard({ unit, href }: { unit: LaporanUnit; href: string }) {
           {unit.tone === "alert" ? "Perlu perhatian" : unit.tone === "watch" ? "Waspada" : unit.tone === "idle" ? "Tidak aktif" : "Lancar"}
         </span>
       </div>
-      <p className="mt-2 text-xs text-on-surface">{unit.insight}</p>
+      <p className="mt-2 break-words text-xs text-on-surface">{unit.insight}</p>
       <div className="mt-2 grid grid-cols-3 gap-2 text-center">
         <MiniStat label="Selesai" value={unit.completed} />
         <MiniStat label="Nilai" value={unit.averageScore ? `${unit.averageScore}/3` : "-"} />

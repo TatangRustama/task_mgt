@@ -51,35 +51,136 @@ function applyPrintCloneStyles(el: HTMLElement) {
   el.style.setProperty("pointer-events", "none");
 }
 
-function collectAvoidRanges(root: HTMLElement, canvas: HTMLCanvasElement) {
+const KEEP_TOGETHER_SELECTOR = [
+  ".print-kop",
+  ".print-title",
+  ".print-subtitle",
+  ".print-section-label",
+  ".print-id",
+  ".print-sign",
+  ".print-wfh-sign",
+  ".print-printed-on",
+  ".print-bukti-open",
+  ".print-bukti-title",
+  ".print-empty",
+  "tr",
+  ".print-desc-p",
+  ".print-desc-item",
+  ".print-uraian-title",
+  ".print-uraian-extra",
+  ".print-place-line",
+  ".print-hasil-paraf > div",
+  ".print-daily-keterangan-value",
+].join(",");
+
+type CanvasBox = { top: number; bottom: number };
+
+function canvasScale(root: HTMLElement, canvas: HTMLCanvasElement) {
   const rootRect = root.getBoundingClientRect();
-  const scale = canvas.height / Math.max(root.scrollHeight, rootRect.height, 1);
-  return [...root.querySelectorAll<HTMLElement>(".print-sign, .print-wfh-sign")].map((el) => {
-    const rect = el.getBoundingClientRect();
-    return {
-      top: Math.max(0, (rect.top - rootRect.top) * scale),
-      bottom: Math.max(0, (rect.bottom - rootRect.top) * scale),
-    };
-  });
+  return canvas.height / Math.max(root.scrollHeight, rootRect.height, 1);
 }
 
-function sliceHeightForPage(
+function toCanvasBox(
+  rect: { top: number; bottom: number },
+  rootTop: number,
+  scale: number,
+): CanvasBox {
+  return {
+    top: Math.max(0, (rect.top - rootTop) * scale),
+    bottom: Math.max(0, (rect.bottom - rootTop) * scale),
+  };
+}
+
+function collectPageBreakLayout(root: HTMLElement, canvas: HTMLCanvasElement) {
+  const scale = canvasScale(root, canvas);
+  const rootTop = root.getBoundingClientRect().top;
+  const blocks = [...root.querySelectorAll<HTMLElement>(KEEP_TOGETHER_SELECTOR)]
+    .map((el) => toCanvasBox(el.getBoundingClientRect(), rootTop, scale))
+    .filter((box) => box.bottom - box.top > 1);
+
+  const lines: CanvasBox[] = [];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let node = walker.nextNode();
+  while (node) {
+    if (node.textContent?.trim()) {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      for (const rect of range.getClientRects()) {
+        if (rect.width < 1 || rect.height < 1) continue;
+        lines.push(toCanvasBox(rect, rootTop, scale));
+      }
+    }
+    node = walker.nextNode();
+  }
+
+  return { blocks, lines, scale };
+}
+
+function cutsThroughText(y: number, lines: CanvasBox[]) {
+  return lines.some((line) => line.top < y - 0.75 && line.bottom > y + 0.75);
+}
+
+function withInkPad(y: number, lines: CanvasBox[], idealEnd: number, scale: number) {
+  const pad = Math.max(1, scale * 0.75);
+  const nextTop = lines
+    .map((line) => line.top)
+    .filter((top) => top >= y - 0.5)
+    .sort((a, b) => a - b)[0];
+  const limit = nextTop == null ? y + pad : nextTop;
+  return Math.min(idealEnd, Math.max(y, Math.min(y + pad, limit)));
+}
+
+export function chooseSliceHeight(
   sourceY: number,
   pageHeightPx: number,
   canvasHeight: number,
-  avoidRanges: Array<{ top: number; bottom: number }>,
+  blocks: CanvasBox[],
+  lines: CanvasBox[],
+  scale = 2,
 ) {
   const remaining = canvasHeight - sourceY;
   if (remaining <= pageHeightPx) return remaining;
 
   const idealEnd = sourceY + pageHeightPx;
-  for (const range of avoidRanges) {
-    if (range.bottom - range.top <= 0) continue;
-    if (range.top < idealEnd && range.bottom > idealEnd) {
-      if (range.top > sourceY + 24) return range.top - sourceY;
-      return Math.min(remaining, range.bottom - sourceY);
-    }
+  const minSlice = Math.min(pageHeightPx * 0.2, Math.max(24, scale * 16));
+
+  const movable = blocks
+    .filter((block) => {
+      const height = block.bottom - block.top;
+      return (
+        height > 1 &&
+        height <= pageHeightPx &&
+        block.top < idealEnd - 1 &&
+        block.bottom > idealEnd + 1 &&
+        block.top >= sourceY + minSlice
+      );
+    })
+    .sort((a, b) => b.bottom - b.top - (a.bottom - a.top));
+
+  for (const block of movable) {
+    if (!cutsThroughText(block.top, lines)) return block.top - sourceY;
   }
+
+  const lineCandidates = lines
+    .flatMap((line) => [line.top, line.bottom])
+    .filter((y) => y > sourceY + minSlice && y <= idealEnd)
+    .sort((a, b) => b - a);
+
+  for (const y of lineCandidates) {
+    const end = withInkPad(y, lines, idealEnd, scale);
+    if (end <= sourceY + minSlice) continue;
+    if (!cutsThroughText(end, lines)) return end - sourceY;
+  }
+
+  const blockEnds = blocks
+    .map((block) => block.bottom)
+    .filter((bottom) => bottom > sourceY + minSlice && bottom <= idealEnd)
+    .sort((a, b) => b - a);
+
+  for (const bottom of blockEnds) {
+    if (!cutsThroughText(bottom, lines)) return bottom - sourceY;
+  }
+
   return pageHeightPx;
 }
 
@@ -97,12 +198,21 @@ function addCanvasPages(
 
   const pxPerMm = canvas.width / usableWidth;
   const pageHeightPx = Math.max(1, Math.floor(usableHeight * pxPerMm));
-  const avoidRanges = root ? collectAvoidRanges(root, canvas) : [];
+  const layout = root ? collectPageBreakLayout(root, canvas) : { blocks: [], lines: [], scale: 2 };
   let sourceY = 0;
   let pageIndex = 0;
 
   while (sourceY < canvas.height - 0.5) {
-    const sliceHeight = sliceHeightForPage(sourceY, pageHeightPx, canvas.height, avoidRanges);
+    const rawHeight = chooseSliceHeight(
+      sourceY,
+      pageHeightPx,
+      canvas.height,
+      layout.blocks,
+      layout.lines,
+      layout.scale,
+    );
+    const end = Math.min(canvas.height, Math.max(sourceY + 1, Math.round(sourceY + rawHeight)));
+    const sliceHeight = end - sourceY;
     if (sliceHeight <= 0) break;
     const slice = document.createElement("canvas");
     slice.width = canvas.width;
@@ -123,7 +233,7 @@ function addCanvasPages(
       sliceHeight / pxPerMm,
     );
 
-    sourceY += sliceHeight;
+    sourceY = end;
     pageIndex += 1;
   }
 }
@@ -192,7 +302,7 @@ export async function downloadPrintPdf(filename: string) {
     const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
     addCanvasPages(pdf, mainCanvas, false, clone);
     if (lampiranCanvas && lampiranCanvas.width && lampiranCanvas.height) {
-      addCanvasPages(pdf, lampiranCanvas, true);
+      addCanvasPages(pdf, lampiranCanvas, true, lampiranRoot);
     }
     pdf.save(filename);
   } finally {

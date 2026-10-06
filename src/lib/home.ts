@@ -76,7 +76,7 @@ export async function getHomeDashboard(user: SessionUser): Promise<HomeDashboard
 
   const mineWhere = isSuperAdmin(user.role) ? {} : personalScope(user.id);
 
-  const [staff, leader, atasanBlock] = await Promise.all([
+  const [staff, leader, unitCapaian, atasanBlock] = await Promise.all([
     isLeader
       ? Promise.resolve({
           completedWeek: 0,
@@ -89,6 +89,7 @@ export async function getHomeDashboard(user: SessionUser): Promise<HomeDashboard
         })
       : loadStaffStats(mineWhere, weekAgo, startOfToday, endOfToday),
     isLeader && orgUser ? loadLeaderQueue(orgUser, user, slaCutoff, startOfToday) : Promise.resolve(emptyLeaderQueue()),
+    isLeader ? loadUnitCapaian(user) : Promise.resolve({ pending: 0, completedTotal: 0 }),
     loadAtasanBlock(orgUser, user.id),
   ]);
 
@@ -97,8 +98,8 @@ export async function getHomeDashboard(user: SessionUser): Promise<HomeDashboard
     unitName: orgUser?.unit?.name ?? null,
     isLeader,
     completedWeek: staff.completedWeek,
-    pending: staff.pending,
-    completedTotal: staff.completedTotal,
+    pending: isLeader ? unitCapaian.pending : staff.pending,
+    completedTotal: isLeader ? unitCapaian.completedTotal : staff.completedTotal,
     overdue: staff.overdue,
     dueToday: staff.dueToday,
     awaitingReview: staff.awaitingReview,
@@ -184,6 +185,22 @@ async function loadStaffStats(
       assignedToName: task.assignedTo?.name ?? null,
     })),
   };
+}
+
+async function loadUnitCapaian(user: SessionUser) {
+  const { visibleUnitIds } = await getOrgScope(user);
+  if (!visibleUnitIds.length) return { pending: 0, completedTotal: 0 };
+
+  const [pending, completedTotal] = await Promise.all([
+    prisma.task.count({
+      where: { unitId: { in: visibleUnitIds }, status: { in: OPEN_STATUSES } },
+    }),
+    prisma.task.count({
+      where: { unitId: { in: visibleUnitIds }, status: { in: DONE_STATUSES } },
+    }),
+  ]);
+
+  return { pending, completedTotal };
 }
 
 async function loadLeaderQueue(

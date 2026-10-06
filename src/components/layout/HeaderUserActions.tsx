@@ -23,19 +23,32 @@ export function HeaderNotifications({ initial }: { initial: UserNotifications })
   useEffect(() => {
     let cancelled = false;
 
-    fetch("/api/notifications")
-      .then(async (res) => {
-        if (!res.ok) return null;
-        return res.json() as Promise<UserNotifications>;
-      })
-      .then((next) => {
-        if (cancelled || !next) return;
-        setData(next);
-      })
-      .catch(() => {});
+    async function load() {
+      if (document.hidden) return;
+      try {
+        const res = await fetch("/api/notifications", { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const next = (await res.json()) as UserNotifications;
+        if (!cancelled) setData(next);
+      } catch {
+        // Keep the last successful payload when the request fails.
+      }
+    }
 
+    void load();
+    const interval = window.setInterval(() => {
+      void load();
+    }, 20_000);
+
+    function onVisibility() {
+      if (!document.hidden) void load();
+    }
+
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
 
@@ -83,7 +96,7 @@ export function HeaderNotifications({ initial }: { initial: UserNotifications })
         <div
           role="dialog"
           aria-label="Notifikasi"
-          className="fixed left-3 right-3 top-[4.25rem] z-50 max-h-[min(24rem,calc(100dvh-5.5rem))] overflow-y-auto rounded-xl border border-outline-variant bg-surface-container-lowest p-4 text-on-surface card-shadow md:absolute md:left-0 md:right-auto md:top-[calc(100%+8px)] md:w-[22rem]"
+          className="fixed left-3 right-3 top-[4.25rem] z-50 max-h-[min(24rem,calc(100dvh-5.5rem))] overflow-y-auto rounded-xl border border-outline-variant bg-surface-container-lowest p-4 text-on-surface card-shadow md:absolute md:left-auto md:right-0 md:top-[calc(100%+8px)] md:w-[22rem]"
         >
           <p className="text-sm font-semibold text-on-surface">Notifikasi</p>
           {data.sections.length === 0 || data.count === 0 ? (

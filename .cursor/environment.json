@@ -1,0 +1,18 @@
+{
+  "name": "kinerja",
+  "install": "npm install && npx prisma generate",
+  "start": "echo kinerja environment ready",
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "npm run dev",
+      "description": "Next.js 16 dev server on http://localhost:3000 (next dev --hostname 0.0.0.0 --port 3000). Login is /login. Ready when the log prints Ready. Do not start a second server if port 3000 is already in use."
+    }
+  ],
+  "ports": [
+    {
+      "name": "web",
+      "port": 3000
+    }
+  ]
+}
