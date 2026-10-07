@@ -152,6 +152,9 @@ export function MonitorDashboard({
           <h3 className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
             {focus === "all" ? "Bawahan langsung" : MONITOR_FOCUS_LABEL[focus]}
           </h3>
+          {focus === "idle" || (flagged.length > 0 && flagged.every((person) => person.isIdle)) ? (
+            <p className="text-sm text-on-surface">Tidak ada tugas berjalan (idle).</p>
+          ) : null}
           {flagged.length === 0 ? (
             <p className="rounded-lg border border-dashed border-outline-variant bg-surface-container-lowest p-6 text-center text-sm text-on-surface-variant">
               {focus === "all"

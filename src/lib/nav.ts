@@ -73,12 +73,6 @@ export function getNavItems(role: Role, options?: NavOptions) {
   return getNavGroups(role, options).flatMap((group) => group.items);
 }
 
-/** Super Admin and Admin OPD use the sidebar. Personal uses the footer bar. */
-export function usesSidebarNav(role: Role) {
-  const resolved = coerceRole(role);
-  return resolved === "super_admin" || resolved === "admin";
-}
-
 export function isNavActive(pathname: string, href: string) {
   if (href === "/admin") return pathname === "/admin";
   if (href === "/dashboard") return pathname === "/dashboard";

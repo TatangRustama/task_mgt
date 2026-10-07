@@ -3,12 +3,31 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell } from "lucide-react";
+import { Bell, Menu, X } from "lucide-react";
+import { useSidebar } from "@/components/layout/SidebarState";
 import type { UserNotifications } from "@/lib/notification-types";
 import { cn, formatRelativeTime } from "@/lib/utils";
 
 const iconBtnClass =
   "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-on-secondary transition hover:bg-white/10 active:scale-95";
+
+export function HeaderMenuButton() {
+  const { collapsed, drawer, isDesktop, toggle } = useSidebar();
+  const expanded = isDesktop ? !collapsed : drawer;
+
+  return (
+    <button
+      type="button"
+      className={cn(iconBtnClass, drawer && "bg-white/15")}
+      aria-label={expanded ? "Tutup menu" : "Buka menu"}
+      aria-expanded={expanded}
+      aria-controls="app-sidebar"
+      onClick={toggle}
+    >
+      {drawer ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" strokeWidth={2.4} />}
+    </button>
+  );
+}
 
 export function HeaderNotifications({ initial }: { initial: UserNotifications }) {
   const pathname = usePathname();
@@ -73,6 +92,7 @@ export function HeaderNotifications({ initial }: { initial: UserNotifications })
     };
   }, [open]);
 
+  const { collapsed } = useSidebar();
   const badgeLabel = data.count > 9 ? "9+" : String(data.count);
 
   return (
@@ -96,7 +116,12 @@ export function HeaderNotifications({ initial }: { initial: UserNotifications })
         <div
           role="dialog"
           aria-label="Notifikasi"
-          className="fixed left-3 right-3 top-[4.25rem] z-50 max-h-[min(24rem,calc(100dvh-5.5rem))] overflow-y-auto rounded-xl border border-outline-variant bg-surface-container-lowest p-4 text-on-surface card-shadow md:absolute md:left-auto md:right-0 md:top-[calc(100%+8px)] md:w-[22rem]"
+          className={cn(
+            "fixed left-3 right-3 top-[4.25rem] z-[60] max-h-[min(24rem,calc(100dvh-5.5rem))] overflow-y-auto rounded-xl border-2 border-secondary-navy bg-surface-container-lowest p-4 text-on-surface shadow-[0_0_0_2px_#fff] md:right-auto md:top-[4.5rem] md:w-[22rem]",
+            collapsed
+              ? "md:left-[max(0px,calc((100%-80rem)/2))]"
+              : "md:left-[max(16rem,calc((100%-80rem)/2+16rem))]",
+          )}
         >
           <p className="text-sm font-semibold text-on-surface">Notifikasi</p>
           {data.sections.length === 0 || data.count === 0 ? (

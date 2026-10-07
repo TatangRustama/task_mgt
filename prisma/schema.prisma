@@ -60,6 +60,11 @@ enum PegawaiJenis {
   non_asn
 }
 
+enum PenugasanJenis {
+  plt
+  plh
+}
+
 model Instansi {
   id        String   @id @default(cuid())
   name      String
@@ -90,6 +95,7 @@ model Unit {
   users               User[]    @relation("UnitMembers")
   tasks               Task[]
   pegawai             Pegawai[]
+  penugasanSementara  PenugasanSementara[]
 
   @@index([instansiId])
   @@index([parentId])
@@ -117,9 +123,28 @@ model User {
   authoredReports MonthlyTaskReport[] @relation("ReportAuthor")
   knownReports    MonthlyTaskReport[] @relation("ReportAtasan")
   pushSubscriptions PushSubscription[]
+  penugasanSementara PenugasanSementara[]
 
   @@index([unitId])
   @@index([jabatan])
+}
+
+model PenugasanSementara {
+  id        String         @id @default(cuid())
+  userId    String
+  unitId    String
+  jenis     PenugasanJenis
+  mulai     DateTime       @default(now())
+  selesai   DateTime?
+  surat     String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  unit      Unit           @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([unitId])
+  @@index([selesai])
 }
 
 model PushSubscription {

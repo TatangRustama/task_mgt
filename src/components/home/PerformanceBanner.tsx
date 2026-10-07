@@ -7,8 +7,9 @@ import {
   ClipboardCheck,
   Clock3,
   Inbox,
+  type LucideIcon,
 } from "lucide-react";
-import { formatLongDate } from "@/lib/utils";
+import { cn, formatLongDate } from "@/lib/utils";
 
 type PerformanceBannerProps = {
   firstName: string;
@@ -67,6 +68,14 @@ function leaderInsight({
   if (parts.length === 0) return "Antrian Anda kosong. Unit berjalan lancar.";
   return parts.join(" · ");
 }
+
+type BannerStat = {
+  label: string;
+  value: number;
+  icon: LucideIcon;
+  card?: string;
+  href?: string;
+};
 
 function CapaianRing({ percent }: { percent: number }) {
   const size = 80;
@@ -131,22 +140,33 @@ export function PerformanceBanner({
   const doneShare = activeTotal === 0 ? 0 : (completedTotal / activeTotal) * 100;
   const today = new Date();
 
-  const staffStats = [
+  const staffStats: BannerStat[] = [
     { label: "Minggu ini", value: completedWeek, icon: CalendarDays },
     { label: "Pending", value: pending, icon: Clock3 },
     { label: "Selesai", value: completedTotal, icon: CheckCircle2 },
   ];
-  const leaderStats = [
-    { label: "Persetujuan", value: awaitingMyReview, icon: ClipboardCheck },
-    { label: "Terlambat", value: reportOverdue, icon: CalendarClock },
-    { label: "Kolam", value: unpickedPool, icon: Inbox },
+  const leaderStats: BannerStat[] = [
+    {
+      label: "Persetujuan",
+      value: awaitingMyReview,
+      icon: ClipboardCheck,
+      href: "/pimpinan/persetujuan",
+      card: "border-emerald-200/20 bg-emerald-800/25 text-emerald-50",
+    },
+    {
+      label: "Terlambat",
+      value: reportOverdue,
+      icon: CalendarClock,
+      href: "/pimpinan/terlambat",
+      card: "border-orange-200/20 bg-orange-600/25 text-orange-50",
+    },
+    { label: "Kolam", value: unpickedPool, icon: Inbox, href: "/pimpinan/kolam" },
   ];
   const stats = isLeader ? leaderStats : staffStats;
 
   const chips = isLeader
     ? ([
         staleReview > 0 && { icon: Clock3, label: `${staleReview} review lambat` },
-        awaitingMyReview > 0 && { icon: ClipboardCheck, label: `${awaitingMyReview} antrian` },
       ].filter(Boolean) as { icon: typeof CalendarClock; label: string }[])
     : ([
         dueToday > 0 && { icon: CalendarClock, label: `${dueToday} tempo hari ini` },
@@ -181,22 +201,33 @@ export function PerformanceBanner({
       </div>
 
       <div className="relative z-10 mt-3 grid grid-cols-3 gap-1.5">
-        {stats.map(({ label, value, icon: Icon }) => (
-          <div
-            key={label}
-            className="rounded-md border border-white/35 bg-white/10 px-2 py-2 md:px-2.5"
-          >
-            <div className="mb-1 flex items-center gap-1 text-white/80">
-              <Icon className="h-3 w-3 shrink-0" />
-              <p className="truncate text-[9px] font-semibold uppercase tracking-wider md:text-[10px]">
-                {label}
-              </p>
+        {stats.map(({ label, value, icon: Icon, card, href }) => {
+          const className = cn(
+            "rounded-md border px-2 py-2 md:px-2.5",
+            card ?? "border-white/35 bg-white/10 text-white",
+            href && "transition hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white active:scale-[0.98]",
+          );
+          const body = (
+            <>
+              <div className={cn("mb-1 flex items-center gap-1", card ? "opacity-80" : "text-white/80")}>
+                <Icon className="h-3 w-3 shrink-0" />
+                <p className="truncate text-[9px] font-semibold uppercase tracking-wider md:text-[10px]">
+                  {label}
+                </p>
+              </div>
+              <p className="text-xl font-bold leading-6 tracking-tight md:text-2xl">{value}</p>
+            </>
+          );
+          return href ? (
+            <Link key={label} href={href} className={className} aria-label={`${label}, ${value} tugas`}>
+              {body}
+            </Link>
+          ) : (
+            <div key={label} className={className}>
+              {body}
             </div>
-            <p className="text-xl font-bold leading-6 tracking-tight text-white md:text-2xl">
-              {value}
-            </p>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="relative z-10 mt-2">

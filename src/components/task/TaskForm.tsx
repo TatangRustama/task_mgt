@@ -43,6 +43,8 @@ type OrgContext = {
   canUsePool: boolean;
   mustAssignNamed: boolean;
   jabatanLabel: string;
+  poolUnitName: string | null;
+  penugasan: Array<{ jenis: string; label: string }>;
   unit: { name: string; typeLabel: string } | null;
   subordinates: Array<{
     id: string;
@@ -293,6 +295,11 @@ export function TaskFormDialog({
                   {org.jabatanLabel} · {org.unit.name} ({org.unit.typeLabel})
                 </p>
               ) : null}
+              {org?.penugasan?.length ? (
+                <p className="text-xs text-on-surface-variant">
+                  {org.penugasan.map((item) => item.label).join(" · ")}
+                </p>
+              ) : null}
               {org?.canUsePool ? (
                 <div className="grid grid-cols-2 gap-2">
                   <Button
@@ -340,8 +347,8 @@ export function TaskFormDialog({
                 </div>
               ) : (
                 <p className="text-xs text-on-surface-variant">
-                  Kartu akan muncul di board sub bidang Anda. Hanya staf di bawah sub bidang ini yang
-                  dapat mengambilnya.
+                  Kartu akan muncul di board {org?.poolUnitName || "sub bidang"}. Hanya staf di bawah
+                  sub bidang ini yang dapat mengambilnya.
                 </p>
               )}
             </div>

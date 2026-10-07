@@ -8,6 +8,7 @@ import {
   getDirectReports,
   getOrgScope,
   mustAssignNamed,
+  poolUnitFor,
 } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { parseJumlahSatuan } from "@/lib/satuan";
@@ -106,7 +107,8 @@ export async function POST(request: Request) {
   }
 
   if (assignmentMode === "kolam") {
-    if (!canUsePoolAssignment(user) || user.unit.type !== "sub_bidang") {
+    const poolUnit = poolUnitFor(user);
+    if (!canUsePoolAssignment(user) || !poolUnit) {
       return NextResponse.json(
         { error: "Hanya kepala sub bidang yang dapat melempar tugas ke board staf" },
         { status: 403 }
@@ -122,7 +124,7 @@ export async function POST(request: Request) {
         priority,
         source,
         assignmentMode: "kolam",
-        unitId: user.unitId,
+        unitId: poolUnit.id,
         createdById: user.id,
         status: "tersedia",
         assignedToId: null,

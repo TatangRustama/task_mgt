@@ -2,8 +2,8 @@ import { Prisma } from "@prisma/client";
 import { getLaporanBoard } from "@/lib/laporan-board";
 import { laporanPersonLabel } from "@/lib/laporan-board-types";
 import { golonganSortKey } from "@/lib/golongan";
-import { getDailyLaporanPrintContext, getLaporanPrintContext, printableTasks } from "@/lib/laporan-print";
-import { dailyPrintTasks } from "@/lib/laporan-print-view";
+import { getDailyLaporanPrintContext, getLaporanPrintContext } from "@/lib/laporan-print";
+import { toMonthlyPrintTasks } from "@/lib/laporan-print-view";
 import type {
   DailyLaporanPrintContext,
   LaporanPrintContext,
@@ -25,29 +25,24 @@ const taskPrintInclude = {
   rating: { select: { stars: true } },
 } as const;
 
-function periodWhere(start: Date, end: Date, view: "harian" | "bulanan"): Prisma.TaskWhereInput {
-  const inPeriod: Prisma.TaskWhereInput[] = [
-    { assignedAt: { gte: start, lt: end } },
-    { completedAt: { gte: start, lt: end } },
-    { review: { is: { reviewedAt: { gte: start, lt: end } } } },
-    { status: "ditolak", updatedAt: { gte: start, lt: end } },
-  ];
-  if (view === "bulanan") inPeriod.push({ status: "menunggu_approval" });
-  else inPeriod.push({ status: "menunggu_approval", completedAt: { gte: start, lt: end } });
-  return { OR: inPeriod };
-}
-
-async function loadOwnPrintableTasks(userId: string, start: Date, end: Date, view: "harian" | "bulanan") {
+async function loadMonthlyPrintTasks(where: Prisma.TaskWhereInput, start: Date, end: Date) {
   const rows = await prisma.task.findMany({
     where: {
-      assignedToId: userId,
-      status: { not: "dibatalkan" },
-      AND: [periodWhere(start, end, view)],
+      AND: [
+        where,
+        { status: { not: "dibatalkan" } },
+        {
+          OR: [
+            { completedAt: { gte: start, lt: end } },
+            { assignedAt: { gte: start, lt: end }, completedAt: { gte: end } },
+          ],
+        },
+      ],
     },
     include: taskPrintInclude,
-    orderBy: [{ assignedAt: "asc" }, { completedAt: "asc" }, { createdAt: "asc" }],
+    orderBy: [{ completedAt: "asc" }, { assignedAt: "asc" }],
   });
-  return printableTasks(rows.map(mapTask));
+  return toMonthlyPrintTasks(rows.map(mapTask), start, end);
 }
 
 export type HarianPrintData = {
@@ -109,31 +104,49 @@ export async function getLaporanPrintData(
       ? new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1)
       : new Date(year, month, 1);
 
+  const unitAssigneeIds = [
+    ...new Set(
+      [
+        ...board.people.map((person) => person.id),
+        ...board.childUnits.map((unitRow) => unitRow.leaderId),
+      ].filter((id): id is string => Boolean(id) && id !== user.id),
+    ),
+  ];
+  const [leaderTasks, tasks] = await Promise.all([
+    isLeader ? loadMonthlyPrintTasks({ assignedToId: user.id }, start, end) : Promise.resolve([]),
+    isLeader
+      ? unitAssigneeIds.length
+        ? loadMonthlyPrintTasks({ assignedToId: { in: unitAssigneeIds } }, start, end)
+        : Promise.resolve([])
+      : loadMonthlyPrintTasks(
+          { OR: [{ assignedToId: user.id }, { createdById: user.id }] },
+          start,
+          end,
+        ),
+  ]);
+  const ownPrinted = isLeader ? leaderTasks : tasks.filter((task) => task.assigneeId === user.id);
+  const lampiranTasks = ownPrinted.filter((task) => task.printRole !== "dikerjakan");
+
   if (view === "harian") {
     const print = await getDailyLaporanPrintContext({
       userId: user.id,
       instansiName: meta.instansiName,
       agencyName: meta.agencyName,
     });
-    const ownTasks = await loadOwnPrintableTasks(user.id, start, end, view);
     return {
       view,
       date,
       print,
       isLeader,
-      tasks: dailyPrintTasks(board.tasks, date),
-      leaderTasks: isLeader ? dailyPrintTasks(ownTasks, date) : [],
-      lampiranTasks: dailyPrintTasks(ownTasks, date),
+      tasks,
+      leaderTasks,
+      lampiranTasks,
     };
   }
 
-  const tasks = printableTasks(board.tasks);
-  const [identities, ownTasks] = await Promise.all([
-    loadIdentities([
-      ...board.childUnits.map((row) => row.leaderId),
-      ...board.people.map((person) => person.id),
-    ]),
-    loadOwnPrintableTasks(user.id, start, end, view),
+  const identities = await loadIdentities([
+    ...board.childUnits.map((row) => row.leaderId),
+    ...board.people.map((person) => person.id),
   ]);
   const print = await getLaporanPrintContext({
     userId: user.id,
@@ -141,7 +154,7 @@ export async function getLaporanPrintData(
     year,
     instansiName: meta.instansiName,
     agencyName: meta.agencyName,
-    taskIds: [...new Set([...(isLeader ? ownTasks : []), ...tasks].map((task) => task.id))],
+    taskIds: [...new Set([...leaderTasks, ...tasks].map((task) => task.id))],
   });
 
   const rows: PrintUnitReviewRow[] = [
@@ -177,12 +190,6 @@ export async function getLaporanPrintData(
     .sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name, "id"))
     .map(({ rank: _rank, ...row }) => row);
 
-  // Pelaksana: lampiran follows the printed uraian. `ownTasks` also matches
-  // assignedAt/completedAt, so photos of a task assessed in another month
-  // would otherwise appear here while the uraian stays empty.
-  const printedTaskIds = new Set(tasks.map((task) => task.id));
-  const lampiranTasks = isLeader ? ownTasks : ownTasks.filter((task) => printedTaskIds.has(task.id));
-
   return {
     view,
     month,
@@ -191,7 +198,7 @@ export async function getLaporanPrintData(
     isLeader,
     tasks,
     rows,
-    leaderTasks: isLeader ? ownTasks : [],
+    leaderTasks,
     lampiranTasks,
   };
 }

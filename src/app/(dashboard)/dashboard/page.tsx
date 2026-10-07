@@ -1,51 +1,69 @@
-import Link from "next/link";
-import { ListChecks, Settings, UserPlus, Users } from "lucide-react";
-import { SuperAdminMockCard, SuperAdminMockNotice } from "@/components/admin/SuperAdminMock";
+import { DashboardMonthSelect } from "@/components/admin/DashboardMonthSelect";
+import { DashboardTabs } from "@/components/admin/DashboardTabs";
+import { TaskConditionCharts } from "@/components/admin/TaskConditionCharts";
+import { PerangkatDaerahRecapTable } from "@/components/admin/PerangkatDaerahRecapTable";
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  DASHBOARD_STATUSES,
+  dashboardPeriodCaption,
+  getPerangkatDaerahTaskRecap,
+  getTaskConditionTrend,
+  listDashboardMonthChoices,
+  resolveDashboardMonth,
+} from "@/lib/admin-dashboard";
 import { requireUser } from "@/lib/session";
+import { statusLabel } from "@/lib/utils";
 
-const shortcuts = [
-  { href: "/admin/pegawai", title: "Pegawai", desc: "Data pegawai, tambah ASN dan Non-ASN", icon: Users },
-  { href: "/admin/monitoring", title: "Monitoring tugas", desc: "Daftar tugas seluruh perangkat daerah", icon: ListChecks },
-  { href: "/admin", title: "Manajemen pengguna", desc: "Tambah user dan pilih role", icon: UserPlus },
-  { href: "/setting", title: "Setting", desc: "Pengaturan aplikasi", icon: Settings },
-];
-
-export default async function SuperAdminDashboardPage() {
-  const user = await requireUser(["super_admin"]);
+export default async function SuperAdminDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ bulan?: string }>;
+}) {
+  await requireUser(["super_admin"]);
+  const params = await searchParams;
+  const monthChoices = await listDashboardMonthChoices();
+  const month = resolveDashboardMonth(params.bulan, monthChoices);
+  const period = dashboardPeriodCaption(month);
+  const [trend, perangkatDaerah] = await Promise.all([
+    getTaskConditionTrend(month),
+    getPerangkatDaerahTaskRecap(month),
+  ]);
 
   return (
     <PageMain className="max-w-5xl space-y-4">
       <PageHeader
         title="Dashboard"
-        subtitle={`Selamat datang, ${user.name}. Ringkasan super admin akan tampil di sini.`}
+        subtitle={month ? `Kondisi ${period}` : "Kondisi 3 Bulan terakhir"}
+        action={<DashboardMonthSelect value={month ? params.bulan ?? "" : ""} options={monthChoices} />}
       />
-      <SuperAdminMockNotice text="Dashboard ini masih mockup. Menu Pegawai, Monitoring tugas, dan Manajemen pengguna sudah aktif." />
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <SuperAdminMockCard title="Pegawai" value="—" hint="Total data pegawai" />
-        <SuperAdminMockCard title="Unit organisasi" value="—" hint="Struktur instansi" />
-        <SuperAdminMockCard title="Akun sistem" value="—" hint="Super admin dan admin" />
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        {shortcuts.map(({ href, title, desc, icon: Icon }) => (
-          <Link key={href} href={href}>
-            <Card className="h-full transition hover:bg-surface-container-low">
-              <CardHeader className="flex flex-row items-start gap-3 space-y-0 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary-container text-on-secondary-container">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <CardTitle className="text-base">{title}</CardTitle>
-                  <p className="mt-1 text-sm text-on-surface-variant">{desc}</p>
-                </div>
-              </CardHeader>
+      <DashboardTabs
+        recap={
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            <Card>
+              <CardContent className="space-y-1 p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">Total</p>
+                <p className="text-2xl font-bold tabular-nums text-on-surface">{trend.total}</p>
+                <p className="text-xs text-on-surface-variant">{period}</p>
+              </CardContent>
             </Card>
-          </Link>
-        ))}
-      </div>
+            {DASHBOARD_STATUSES.map((status) => (
+              <Card key={status}>
+                <CardContent className="space-y-1 p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">
+                    {statusLabel(status)}
+                  </p>
+                  <p className="text-2xl font-bold tabular-nums text-on-surface">{trend.totals[status]}</p>
+                  <p className="text-xs text-on-surface-variant">Kondisi saat ini</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        }
+        charts={<TaskConditionCharts trend={trend} />}
+        perangkat={<PerangkatDaerahRecapTable rows={perangkatDaerah} />}
+      />
     </PageMain>
   );
 }

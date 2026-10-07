@@ -13,6 +13,12 @@ import { displayJabatan, jabatanRoleLabel } from "@/lib/jabatan-display";
 import type { SessionUser } from "@/lib/session";
 import type { AtasanTaskNotice } from "@/lib/notification-types";
 import { isPrivilegedRole, isSuperAdmin } from "@/lib/roles";
+import {
+  activePenugasanWhere,
+  listActivePenugasanForUnits,
+  penugasanLabel,
+  type ActingAssignment,
+} from "@/lib/penugasan";
 import { cache } from "react";
 
 export { displayJabatan } from "@/lib/jabatan-display";
@@ -33,6 +39,14 @@ export type OrgUser = Pick<User, "id" | "role" | "jabatan" | "unitId"> & {
     pimpinanId: string | null;
     name?: string;
   } | null;
+  penugasanSementara?: Array<{
+    id: string;
+    jenis: ActingAssignment["jenis"];
+    unitId: string;
+    unitName?: string;
+    unitType?: UnitType;
+    unit?: { name: string; type: UnitType } | null;
+  }>;
 };
 
 const pegawaiDisplaySelect = {
@@ -79,7 +93,7 @@ export function mapPegawaiJabatan(
   return "kepala_bidang";
 }
 
-export function isUnitLeader(user: OrgUser) {
+export function isDefinitiveLeader(user: OrgUser) {
   if (isSuperAdmin(user.role)) return true;
   if (user.unit?.pimpinanId && user.unit.pimpinanId === user.id) return true;
   const jabatan = effectiveJabatan(user);
@@ -88,6 +102,26 @@ export function isUnitLeader(user: OrgUser) {
     jabatan === "kepala_bidang" ||
     jabatan === "kepala_sub_bidang"
   );
+}
+
+export function isUnitLeader(user: OrgUser) {
+  return isDefinitiveLeader(user) || (user.penugasanSementara?.length ?? 0) > 0;
+}
+
+function actingUnitType(item: NonNullable<OrgUser["penugasanSementara"]>[number]) {
+  return item.unitType ?? item.unit?.type ?? null;
+}
+
+function actingUnitName(item: NonNullable<OrgUser["penugasanSementara"]>[number]) {
+  return item.unitName ?? item.unit?.name ?? "Unit";
+}
+
+export function poolUnitFor(user: OrgUser): { id: string; name: string } | null {
+  if (isDefinitiveLeader(user) && user.unit?.type === "sub_bidang" && user.unitId) {
+    return { id: user.unitId, name: user.unit.name ?? "Sub Bidang" };
+  }
+  const acting = user.penugasanSementara?.find((item) => actingUnitType(item) === "sub_bidang");
+  return acting ? { id: acting.unitId, name: actingUnitName(acting) } : null;
 }
 
 export function effectiveJabatan(user: Pick<OrgUser, "role" | "jabatan">): Jabatan | null {
@@ -103,7 +137,7 @@ export function canDelegate(user: OrgUser) {
 }
 
 export function canUsePoolAssignment(user: OrgUser) {
-  return isUnitLeader(user) && user.unit?.type === "sub_bidang";
+  return poolUnitFor(user) !== null;
 }
 
 export function mustAssignNamed(user: OrgUser) {
@@ -119,6 +153,16 @@ export const getDbOrgUser = cache(async (userId: string) => {
         select: { id: true, type: true, parentId: true, pimpinanId: true, name: true },
       },
       pegawai: { select: { jenis: true, jabatanNama: true, nik: true, nip: true } },
+      penugasanSementara: {
+        where: activePenugasanWhere(),
+        select: {
+          id: true,
+          jenis: true,
+          unitId: true,
+          unit: { select: { name: true, type: true } },
+        },
+        orderBy: { mulai: "desc" },
+      },
     },
   });
 });
@@ -162,14 +206,24 @@ const loadOrgScope = cache(async (userId: string, role: SessionUser["role"], uni
     };
   }
 
-  if (!resolvedUnitId) {
-    return { orgUser, isLeader, visibleUnitIds: [] as string[] };
+  const ids = new Set<string>();
+  const definitive = Boolean(orgUser && isDefinitiveLeader(orgUser));
+  if (resolvedUnitId) {
+    const homeIds = definitive
+      ? await getDescendantUnitIds(resolvedUnitId)
+      : isLeader
+        ? []
+        : [resolvedUnitId];
+    for (const id of homeIds) ids.add(id);
+  }
+  for (const item of orgUser?.penugasanSementara ?? []) {
+    for (const id of await getDescendantUnitIds(item.unitId)) ids.add(id);
   }
 
   return {
     orgUser,
     isLeader,
-    visibleUnitIds: isLeader ? await getDescendantUnitIds(resolvedUnitId) : [resolvedUnitId],
+    visibleUnitIds: [...ids],
   };
 });
 
@@ -185,12 +239,13 @@ function toDirectReport(person: {
   nip?: string | null;
   unit?: { name: string } | null;
   pegawai?: { golonganNama: string | null; jabatanNama?: string | null; jenis?: string | null; nip?: string | null } | null;
+  jabatanLabel?: string;
 }): DirectReport {
   return {
     id: person.id,
     name: person.name,
     jabatan: person.jabatan,
-    jabatanLabel: displayJabatan(person.pegawai, person.jabatan),
+    jabatanLabel: person.jabatanLabel || displayJabatan(person.pegawai, person.jabatan),
     unitId: person.unitId,
     unitName: person.unit?.name ?? null,
     golonganNama: person.pegawai?.golonganNama ?? null,
@@ -200,8 +255,15 @@ function toDirectReport(person: {
 
 export async function getDirectReports(user: OrgUser): Promise<DirectReport[]> {
   if (isPrivilegedRole(user.role)) return [];
-  if (!user.unitId || !isUnitLeader(user)) return [];
-  return loadDirectReports(user.id, user.unitId);
+  const unitIds = new Set<string>();
+  if (user.unitId && isDefinitiveLeader(user)) unitIds.add(user.unitId);
+  for (const item of user.penugasanSementara ?? []) unitIds.add(item.unitId);
+  if (!unitIds.size) return [];
+  const lists = await Promise.all([...unitIds].map((unitId) => loadDirectReports(user.id, unitId)));
+  const byId = new Map<string, DirectReport>();
+  for (const person of lists.flat()) byId.set(person.id, person);
+  byId.delete(user.id);
+  return Array.from(byId.values()).sort(compareByPangkatDesc);
 }
 
 const loadDirectReports = cache(async (userId: string, unitId: string): Promise<DirectReport[]> => {
@@ -243,7 +305,14 @@ const loadDirectReports = cache(async (userId: string, unitId: string): Promise<
     byId.set(person.id, toDirectReport(person));
   }
 
-  const unitsWithoutLeader = childUnits.filter((unit) => !unit.pimpinan);
+  const vacantChildIds = childUnits.filter((unit) => !unit.pimpinan).map((unit) => unit.id);
+  const actingRows = await listActivePenugasanForUnits(vacantChildIds);
+  const actingByUnit = new Map<string, (typeof actingRows)[number]>();
+  for (const row of actingRows) {
+    if (!actingByUnit.has(row.unitId)) actingByUnit.set(row.unitId, row);
+  }
+
+  const unitsWithoutLeader = childUnits.filter((unit) => !unit.pimpinan && !actingByUnit.has(unit.id));
   const fallbackUsers =
     unitsWithoutLeader.length === 0
       ? []
@@ -265,6 +334,18 @@ const loadDirectReports = cache(async (userId: string, unitId: string): Promise<
   for (const unit of childUnits) {
     if (unit.pimpinan) {
       byId.set(unit.pimpinan.id, toDirectReport({ ...unit.pimpinan, unit: { name: unit.name } }));
+      continue;
+    }
+    const acting = actingByUnit.get(unit.id);
+    if (acting) {
+      byId.set(
+        acting.user.id,
+        toDirectReport({
+          ...acting.user,
+          unit: { name: unit.name },
+          jabatanLabel: penugasanLabel(acting.jenis, unit.name),
+        }),
+      );
       continue;
     }
     for (const person of fallbackByUnit.get(unit.id) ?? []) {
@@ -289,6 +370,28 @@ const atasanPersonSelect = {
   pegawai: { select: pegawaiDisplaySelect },
 } as const;
 
+async function atasanFromPimpinan(pimpinanId: string | null, userId: string) {
+  if (!pimpinanId || pimpinanId === userId) return null;
+  const leader = await prisma.user.findUnique({
+    where: { id: pimpinanId },
+    select: {
+      ...atasanPersonSelect,
+      unit: { select: { name: true } },
+    },
+  });
+  return leader ? toDirectReport(leader) : null;
+}
+
+async function atasanFromPenugasan(unitId: string, unitName: string, userId: string) {
+  const [acting] = await listActivePenugasanForUnits([unitId]);
+  if (!acting || acting.userId === userId) return null;
+  return toDirectReport({
+    ...acting.user,
+    unit: { name: unitName },
+    jabatanLabel: penugasanLabel(acting.jenis, unitName),
+  });
+}
+
 const loadAtasan = cache(async (userId: string, unitId: string): Promise<Atasan | null> => {
   if (!unitId) return null;
   const orgUser = await getDbOrgUser(userId);
@@ -300,16 +403,10 @@ const loadAtasan = cache(async (userId: string, unitId: string): Promise<Atasan 
     }));
   if (!unit) return null;
 
-  if (unit.pimpinanId && unit.pimpinanId !== userId) {
-    const leader = await prisma.user.findUnique({
-      where: { id: unit.pimpinanId },
-      select: {
-        ...atasanPersonSelect,
-        unit: { select: { name: true } },
-      },
-    });
-    if (leader) return toDirectReport(leader);
-  }
+  const definitive = await atasanFromPimpinan(unit.pimpinanId, userId);
+  if (definitive) return definitive;
+  const acting = await atasanFromPenugasan(unit.id, unit.name, userId);
+  if (acting) return acting;
 
   let parentId = unit.parentId;
   while (parentId) {
@@ -327,6 +424,8 @@ const loadAtasan = cache(async (userId: string, unitId: string): Promise<Atasan 
     if (parent.pimpinan && parent.pimpinan.id !== userId) {
       return toDirectReport({ ...parent.pimpinan, unit: { name: parent.name } });
     }
+    const parentActing = await atasanFromPenugasan(parent.id, parent.name, userId);
+    if (parentActing) return parentActing;
     parentId = parent.parentId;
   }
 
@@ -363,6 +462,9 @@ export function canSeeTaskWithScope(
 ) {
   if (isSuperAdmin(user.role)) return true;
   if (task.assignedToId === user.id || task.createdById === user.id) return true;
+  if (task.assignmentMode === "kolam" && task.status === "tersedia" && task.unitId === user.unitId) {
+    return true;
+  }
   if (!scope.visibleUnitIds.includes(task.unitId)) return false;
   if (scope.isLeader) return true;
 

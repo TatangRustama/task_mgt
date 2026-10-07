@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PenugasanPanel } from "@/components/admin/PenugasanPanel";
 import { formatGolonganPangkat } from "@/lib/golongan";
 import { displayJabatan } from "@/lib/jabatan-display";
 import { kepegawaianStatus } from "@/lib/kepegawaian-status";
@@ -34,6 +35,7 @@ type PegawaiDetail = {
   unorId: string | null;
   unorNama: string | null;
   perangkatDaerahNama: string | null;
+  userId: string | null;
 };
 
 function Field({ label, value }: { label: string; value?: string | null }) {
@@ -174,6 +176,11 @@ export function PegawaiDetailDialog({
               <Field label="Pendidikan" value={detail.tingkatPendidikan} />
               <Field label="Alamat" value={detail.address} />
             </div>
+            {detail.userId ? <PenugasanPanel userId={detail.userId} /> : (
+              <p className="text-sm text-on-surface-variant">
+                Pegawai ini belum punya akun, sehingga belum dapat ditunjuk sebagai Plt atau Plh.
+              </p>
+            )}
             <div className="flex flex-wrap gap-2 pb-4">
               <Button type="button" variant="outline" className="flex-1" onClick={startEdit}>
                 <Pencil className="h-4 w-4" />

@@ -47,6 +47,9 @@ export async function getBoardPageData(user: SessionUser) {
           { assignedToId: user.id },
           { createdById: user.id },
           ...(visibleUnitIds.length ? [{ unitId: { in: visibleUnitIds } }] : []),
+          ...(user.unitId
+            ? [{ assignmentMode: "kolam" as const, status: "tersedia" as const, unitId: user.unitId }]
+            : []),
         ],
       }
     : {

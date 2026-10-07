@@ -8,6 +8,64 @@ import type { SessionUser } from "@/lib/session";
 const OPEN_STATUSES: TaskStatus[] = ["dikerjakan", "ditolak", "tersedia"];
 const DONE_STATUSES: TaskStatus[] = ["menunggu_approval", "disetujui"];
 
+function startOfLocalDay(date = new Date()) {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+export function unpickedPoolWhere(unitIds: string[]): Prisma.TaskWhereInput {
+  return { unitId: { in: unitIds }, status: "tersedia", assignedToId: null };
+}
+
+export function overdueReportWhere(reportIds: string[], startOfToday = startOfLocalDay()): Prisma.TaskWhereInput {
+  return {
+    assignedToId: { in: reportIds },
+    status: { in: OPEN_STATUSES },
+    deadline: { lt: startOfToday },
+  };
+}
+
+const leaderQueueSelect = {
+  id: true,
+  title: true,
+  status: true,
+  deadline: true,
+  updatedAt: true,
+  assignedTo: { select: { name: true } },
+  unit: { select: { name: true } },
+} satisfies Prisma.TaskSelect;
+
+export type LeaderQueueTask = {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  deadline: Date | null;
+  updatedAt: Date;
+  assignedToName: string | null;
+  unitName: string;
+};
+
+function mapLeaderQueueTask(task: {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  deadline: Date | null;
+  updatedAt: Date;
+  assignedTo: { name: string } | null;
+  unit: { name: string };
+}): LeaderQueueTask {
+  return {
+    id: task.id,
+    title: task.title,
+    status: task.status,
+    deadline: task.deadline,
+    updatedAt: task.updatedAt,
+    assignedToName: task.assignedTo?.name ?? null,
+    unitName: task.unit.name,
+  };
+}
+
 export type HomeActivity = {
   id: string;
   title: string;
@@ -213,9 +271,7 @@ async function loadLeaderQueue(
     (async () => {
       const { visibleUnitIds } = await getOrgScope(user);
       if (!visibleUnitIds.length) return 0;
-      return prisma.task.count({
-        where: { unitId: { in: visibleUnitIds }, status: "tersedia", assignedToId: null },
-      });
+      return prisma.task.count({ where: unpickedPoolWhere(visibleUnitIds) });
     })(),
     (async () => {
       const reportIds = await getDirectReportIds(orgUser);
@@ -226,9 +282,7 @@ async function loadLeaderQueue(
       const [awaitingMyReview, staleReview, reportOverdue, queueRecent] = await Promise.all([
         prisma.task.count({ where: queueWhere }),
         prisma.task.count({ where: { ...queueWhere, completedAt: { lt: slaCutoff } } }),
-        prisma.task.count({
-          where: { assignedToId: { in: reportIds }, status: { in: OPEN_STATUSES }, deadline: { lt: startOfToday } },
-        }),
+        prisma.task.count({ where: overdueReportWhere(reportIds, startOfToday) }),
         prisma.task.findMany({
           where: queueWhere,
           select: {
@@ -277,7 +331,8 @@ async function loadAtasanBlock(
     where: {
       createdById: atasan.id,
       assignedToId: userId,
-      status: { notIn: ["dibatalkan"] },
+      source: "delegasi",
+      status: "dikerjakan",
     },
     orderBy: { updatedAt: "desc" },
     take: 6,
@@ -293,4 +348,28 @@ async function loadAtasanBlock(
     },
     fromAtasan,
   };
+}
+
+export async function getLeaderOverdueTasks(user: SessionUser): Promise<LeaderQueueTask[]> {
+  const orgUser = await getDbOrgUser(user.id);
+  if (!orgUser) return [];
+  const reportIds = await getDirectReportIds(orgUser);
+  if (!reportIds.length) return [];
+  const tasks = await prisma.task.findMany({
+    where: overdueReportWhere(reportIds),
+    select: leaderQueueSelect,
+    orderBy: [{ deadline: "asc" }, { updatedAt: "desc" }],
+  });
+  return tasks.map(mapLeaderQueueTask);
+}
+
+export async function getLeaderPoolTasks(user: SessionUser): Promise<LeaderQueueTask[]> {
+  const { visibleUnitIds } = await getOrgScope(user);
+  if (!visibleUnitIds.length) return [];
+  const tasks = await prisma.task.findMany({
+    where: unpickedPoolWhere(visibleUnitIds),
+    select: leaderQueueSelect,
+    orderBy: [{ deadline: "asc" }, { updatedAt: "desc" }],
+  });
+  return tasks.map(mapLeaderQueueTask);
 }

@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Role } from "@prisma/client";
+import { useSidebar } from "@/components/layout/SidebarState";
 import { cn } from "@/lib/utils";
-import { getNavGroups, isNavActive, usesSidebarNav } from "@/lib/nav";
+import { getNavGroups, isNavActive } from "@/lib/nav";
 
 export function SideNav({
   role,
@@ -14,12 +15,36 @@ export function SideNav({
   isLeader?: boolean;
 }) {
   const pathname = usePathname();
-  if (!usesSidebarNav(role)) return null;
+  const { collapsed, drawer, isDesktop, closeDrawer } = useSidebar();
   const groups = getNavGroups(role, { isLeader });
+  const shown = isDesktop ? !collapsed : drawer;
 
   return (
-    <aside className="app-side fixed top-16 z-40 hidden h-[calc(100vh-64px)] w-64 flex-col border-r border-outline-variant bg-surface-container-lowest p-4 md:flex">
-      <nav className="mt-4 space-y-6">
+    <>
+      <button
+        type="button"
+        className={cn(
+          "fixed inset-x-0 bottom-0 top-16 z-[75] bg-black/40 transition-opacity duration-300 ease-out md:hidden print:hidden motion-reduce:transition-none",
+          drawer ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+        aria-hidden={!drawer}
+        aria-label="Tutup menu"
+        tabIndex={drawer ? 0 : -1}
+        onClick={closeDrawer}
+      />
+    <aside
+      id="app-sidebar"
+      aria-hidden={!shown}
+      inert={!shown}
+      className={cn(
+        "app-side fixed top-16 z-[80] flex h-[calc(100dvh-4rem)] w-64 flex-col border-r border-outline-variant bg-surface-container-lowest p-4 transition-transform duration-300 ease-out print:hidden motion-reduce:transition-none",
+        drawer ? "translate-x-0" : "pointer-events-none -translate-x-full",
+        collapsed
+          ? "md:pointer-events-none md:-translate-x-[calc(100%+max(0px,(100vw-var(--app-frame))/2))]"
+          : "md:pointer-events-auto md:translate-x-0",
+      )}
+    >
+      <nav className="mt-2 min-h-0 flex-1 space-y-6 overflow-y-auto">
         {groups.map((group) => (
           <div key={group.id} className="space-y-2">
             {group.label ? (
@@ -50,5 +75,6 @@ export function SideNav({
         ))}
       </nav>
     </aside>
+    </>
   );
 }

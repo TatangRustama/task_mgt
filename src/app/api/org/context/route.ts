@@ -8,8 +8,10 @@ import {
   getDirectReports,
   jabatanLabel,
   mustAssignNamed,
+  poolUnitFor,
   unitTypeLabel,
 } from "@/lib/org";
+import { penugasanLabel } from "@/lib/penugasan";
 import { getCurrentUser } from "@/lib/session";
 
 export async function GET() {
@@ -50,6 +52,11 @@ export async function GET() {
     canDelegate: canDelegate(user),
     canUsePool: canUsePoolAssignment(user),
     mustAssignNamed: mustAssignNamed(user),
+    poolUnitName: poolUnitFor(user)?.name ?? null,
+    penugasan: (user.penugasanSementara ?? []).map((item) => ({
+      jenis: item.jenis,
+      label: penugasanLabel(item.jenis, item.unit.name),
+    })),
     atasan,
     subordinates,
   });

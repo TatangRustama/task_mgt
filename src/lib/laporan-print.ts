@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { mapTask } from "@/lib/reports";
 import { formatNip } from "@/lib/utils";
 import {
-  isPrintableTask,
+  toMonthlyPrintTasks,
   type DailyLaporanPrintContext,
   type LaporanPrintContext,
   type PrintPerson,
@@ -186,8 +186,21 @@ export async function getValidasiLaporan(id: string) {
   });
   if (!report) return null;
 
+  const start = new Date(report.year, report.month - 1, 1);
+  const end = new Date(report.year, report.month, 1);
   const tasks = await prisma.task.findMany({
-    where: { id: { in: report.taskIds } },
+    where: {
+      status: { not: "dibatalkan" },
+      AND: [
+        { OR: [{ id: { in: report.taskIds } }, { assignedToId: report.userId }] },
+        {
+          OR: [
+            { completedAt: { gte: start, lt: end } },
+            { assignedAt: { gte: start, lt: end }, completedAt: { gte: end } },
+          ],
+        },
+      ],
+    },
     include: {
       assignedTo: { select: { id: true, name: true } },
       createdBy: { select: { name: true } },
@@ -197,12 +210,7 @@ export async function getValidasiLaporan(id: string) {
     },
   });
 
-  const byId = new Map(tasks.map((task) => [task.id, task]));
-  const ordered = report.taskIds
-    .map((taskId) => byId.get(taskId))
-    .filter((task): task is (typeof tasks)[number] => Boolean(task))
-    .filter((task) => isPrintableTask(task))
-    .map((task) => mapTask(task));
+  const ordered = toMonthlyPrintTasks(tasks.map((task) => mapTask(task)), start, end);
 
   const [author, atasan] = await Promise.all([
     personFromUser(report.userId),

@@ -77,7 +77,7 @@ export function LoginForm() {
               name="username"
               type="text"
               required
-              placeholder="NIP, NIK, atau username superadmin"
+              placeholder="NIP, NIK, atau username"
               autoComplete="username"
             />
           </div>

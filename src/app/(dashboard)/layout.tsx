@@ -1,21 +1,18 @@
 import { ReactNode } from "react";
 import { Header } from "@/components/layout/Header";
-import { MobileNav } from "@/components/layout/MobileNav";
+import { AppContent, SidebarStateProvider } from "@/components/layout/SidebarState";
 import { SideNav } from "@/components/layout/SideNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { MandiriCreateControl } from "@/components/layout/CreateTaskFab";
 import { EnablePushNotifications } from "@/components/layout/EnablePushNotifications";
 import { getDbOrgUser, isUnitLeader } from "@/lib/org";
-import { usesSidebarNav } from "@/lib/nav";
 import { canUseEmployeeApp, isSuperAdmin } from "@/lib/roles";
-import { cn } from "@/lib/utils";
 import { requireUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
-  const sidebarNav = usesSidebarNav(user.role);
   const canCreateMandiri = canUseEmployeeApp(user.role);
   const orgUser = await getDbOrgUser(user.id);
   const pegawai = orgUser?.pegawai;
@@ -27,22 +24,15 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       : `NIP ${pegawai?.nip || user.nip}`;
 
   return (
-    <MobileNav role={user.role} isLeader={isLeader}>
-      <div className="min-h-screen bg-surface-container-high print:bg-white">
-        <Header userName={user.name} identity={identity} reserveMenu={sidebarNav} />
-        <SideNav role={user.role} isLeader={isLeader} />
-        <div
-          className={cn(
-            "app-frame min-h-screen bg-background pt-16 shadow-[0_0_40px_rgba(27,33,86,0.06)] print:m-0 print:bg-white print:p-0 print:shadow-none",
-            sidebarNav ? "pb-8 md:pl-64" : "pb-24",
-          )}
-        >
-          {children}
-        </div>
-        <BottomNav role={user.role} isLeader={isLeader} />
-        {canCreateMandiri ? <MandiriCreateControl /> : null}
-        {canCreateMandiri ? <EnablePushNotifications /> : null}
-      </div>
-    </MobileNav>
+    <SidebarStateProvider>
+    <div className="min-h-screen bg-surface-container-high print:bg-white">
+      <Header userName={user.name} identity={identity} />
+      <SideNav role={user.role} isLeader={isLeader} />
+      <AppContent>{children}</AppContent>
+      <BottomNav role={user.role} isLeader={isLeader} />
+      {canCreateMandiri ? <MandiriCreateControl /> : null}
+      {canCreateMandiri ? <EnablePushNotifications /> : null}
+    </div>
+    </SidebarStateProvider>
   );
 }

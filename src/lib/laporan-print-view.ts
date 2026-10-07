@@ -1,6 +1,6 @@
 import { starLabel } from "@/lib/rating";
 import type { ReportTask } from "@/lib/report-types";
-import { calendarDay, isMultiDayDeadline, statusLabel } from "@/lib/utils";
+import { isMultiDayDeadline, parseISODate, statusLabel } from "@/lib/utils";
 import { formatJumlahSatuan } from "@/lib/satuan";
 
 export const PRINT_TASK_STATUSES = ["dikerjakan", "menunggu_approval", "disetujui"] as const;
@@ -84,27 +84,68 @@ export function printableTasks<T extends {
   return tasks.filter((task) => isPrintableTask(task));
 }
 
-export function belongsToDailyPrintDate(
+export function isMonthlyPrintTask(
   task: {
+    status: string;
+    completedAt?: string | Date | null;
     assignedAt?: string | Date | null;
     createdAt?: string | Date | null;
-    completedAt?: string | Date | null;
+    deadline?: string | Date | null;
   },
-  date: string,
+  start: Date,
+  end: Date,
 ) {
-  const completed = calendarDay(task.completedAt);
-  if (completed) return completed === date;
-  return calendarDay(task.assignedAt || task.createdAt) === date;
+  if (!task.completedAt || !isPrintableTask(task)) return false;
+  const completed = new Date(task.completedAt);
+  if (Number.isNaN(completed.getTime())) return false;
+  return completed >= start && completed < end;
 }
 
-export function dailyPrintTasks<T extends {
-  status: string;
-  assignedAt?: string | Date | null;
-  createdAt?: string | Date | null;
-  completedAt?: string | Date | null;
-  deadline?: string | Date | null;
-}>(tasks: T[], date: string): T[] {
-  return printableTasks(tasks).filter((task) => belongsToDailyPrintDate(task, date));
+export function isCarryoverMonthlyPrintTask(
+  task: {
+    status: string;
+    completedAt?: string | Date | null;
+    assignedAt?: string | Date | null;
+    createdAt?: string | Date | null;
+    deadline?: string | Date | null;
+  },
+  start: Date,
+  end: Date,
+) {
+  if (!task.completedAt || !isPrintableTask(task)) return false;
+  const assigned = new Date(task.assignedAt || task.createdAt || "");
+  const completed = new Date(task.completedAt);
+  if (Number.isNaN(assigned.getTime()) || Number.isNaN(completed.getTime())) return false;
+  return assigned >= start && assigned < end && completed >= end;
+}
+
+export function toMonthlyPrintTasks<T extends ReportTask>(tasks: T[], start: Date, end: Date): T[] {
+  const selesai = tasks
+    .filter((task) => isMonthlyPrintTask(task, start, end))
+    .map((task) => ({ ...task, printRole: "selesai" as const }));
+  const selesaiIds = new Set(selesai.map((task) => task.id));
+  const dikerjakan = tasks
+    .filter((task) => !selesaiIds.has(task.id) && isCarryoverMonthlyPrintTask(task, start, end))
+    .map((task) => ({
+      ...task,
+      printRole: "dikerjakan" as const,
+      status: "dikerjakan",
+      score: null,
+      reviewedAt: null,
+      feedback: null,
+    }));
+  return [...dikerjakan, ...selesai].sort((a, b) => monthlyPrintSortTime(a) - monthlyPrintSortTime(b));
+}
+
+function monthlyPrintSortTime(task: Pick<ReportTask, "printRole" | "assignedAt" | "createdAt" | "completedAt">) {
+  const value = task.printRole === "dikerjakan" ? task.assignedAt || task.createdAt : task.completedAt;
+  return value ? new Date(value).getTime() : Number.POSITIVE_INFINITY;
+}
+
+export function dailyPrintTasks<T extends ReportTask>(tasks: T[], date: string): T[] {
+  const start = parseISODate(date);
+  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1);
+  return toMonthlyPrintTasks(tasks, start, end);
 }
 
 export function taskWfhUraian(task: Pick<ReportTask, "title" | "description" | "assignedAt" | "createdAt" | "deadline">) {
@@ -263,16 +304,15 @@ export function printPhotoSrc(url: string) {
   return `/api/reports/evidence-image?url=${encodeURIComponent(url)}`;
 }
 
-export function printTaskDate(task: Pick<ReportTask, "assignedAt" | "completedAt" | "createdAt">) {
-  return formatPrintDate(task.assignedAt || task.completedAt || task.createdAt);
+export function printTaskDate(task: Pick<ReportTask, "printRole" | "assignedAt" | "createdAt" | "completedAt">) {
+  if (task.printRole === "dikerjakan") return formatPrintDate(task.assignedAt || task.createdAt);
+  return formatPrintDate(task.completedAt);
 }
 
 export function groupTasksByPrintDate(tasks: ReportTask[]) {
-  const sorted = [...tasks].sort((a, b) => {
-    const aTime = new Date(a.assignedAt || a.completedAt || a.createdAt).getTime();
-    const bTime = new Date(b.assignedAt || b.completedAt || b.createdAt).getTime();
-    return aTime - bTime;
-  });
+  const sorted = tasks
+    .filter((task) => (task.printRole === "dikerjakan" ? task.assignedAt || task.createdAt : task.completedAt))
+    .sort((a, b) => monthlyPrintSortTime(a) - monthlyPrintSortTime(b));
 
   const groups: Array<{ no: number; date: string; tasks: ReportTask[] }> = [];
   for (const task of sorted) {
@@ -289,7 +329,7 @@ export function groupTasksByPrintDate(tasks: ReportTask[]) {
 
 export function evidenceRows(tasks: ReportTask[]) {
   return tasks
-    .filter((task) => task.photoUrls.length > 0)
+    .filter((task) => task.photoUrls.length > 0 && task.printRole !== "dikerjakan")
     .map((task) => ({
       date: printTaskDate(task),
       photos: task.photoUrls,

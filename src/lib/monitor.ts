@@ -207,25 +207,24 @@ const loadMonitorBoard = cache(async (
   const ratingCutoff = addDays(todayStart, -MONITOR_RATING_WINDOW_DAYS);
 
   const orgUser = await getDbOrgUser(options.viewerId);
-  const [units, reportIdList] = await Promise.all([
-    prisma.unit.findMany({
-      where: { id: { in: options.visibleUnitIds } },
-      select: {
-        id: true,
-        name: true,
-        parentId: true,
-        type: true,
-        pimpinanId: true,
-        pimpinan: { select: { id: true, name: true } },
-      },
-      orderBy: { name: "asc" },
-    }),
+  const reportIdList =
     options.directReportIds.length > 0
-      ? Promise.resolve(options.directReportIds)
+      ? options.directReportIds
       : orgUser
-        ? getDirectReportIds(orgUser)
-        : Promise.resolve([] as string[]),
-  ]);
+        ? await getDirectReportIds(orgUser)
+        : [];
+  const units = await prisma.unit.findMany({
+    where: { id: { in: options.visibleUnitIds } },
+    select: {
+      id: true,
+      name: true,
+      parentId: true,
+      type: true,
+      pimpinanId: true,
+      pimpinan: { select: { id: true, name: true } },
+    },
+    orderBy: { name: "asc" },
+  });
   const directReportIds = new Set(reportIdList);
   const focusUnitId =
     options.focusUnitId && allowed.has(options.focusUnitId) ? options.focusUnitId : options.rootUnitId;
@@ -240,7 +239,13 @@ const loadMonitorBoard = cache(async (
 
   const [peopleRows, tasks, lastCompleted] = await Promise.all([
     prisma.user.findMany({
-      where: { role: "personal", unitId: { in: scopeIds } },
+      where: {
+        role: "personal",
+        OR: [
+          { unitId: { in: scopeIds } },
+          ...(reportIdList.length ? [{ id: { in: reportIdList } }] : []),
+        ],
+      },
       select: {
         id: true,
         name: true,

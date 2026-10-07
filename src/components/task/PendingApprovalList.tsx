@@ -6,6 +6,7 @@ import { ChevronDown } from "lucide-react";
 import { EvidencePhotoGrid } from "@/components/task/EvidencePhotoGrid";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Collapse } from "@/components/ui/collapse";
 import { LocationMapView } from "@/components/map/LocationMapView";
 import { ReviewForm } from "@/components/task/ReviewForm";
 import { cn, formatDateTime } from "@/lib/utils";
@@ -35,7 +36,7 @@ export function PendingApprovalList({ tasks }: { tasks: PendingApprovalTask[] })
       setOpenId(null);
       return;
     }
-    if (!openId || !tasks.some((task) => task.id === openId)) {
+    if (openId && !tasks.some((task) => task.id === openId)) {
       setOpenId(tasks[0].id);
     }
   }, [openId, tasks]);
@@ -49,6 +50,7 @@ export function PendingApprovalList({ tasks }: { tasks: PendingApprovalTask[] })
             <div className="h-1.5 bg-primary-container" />
             <button
               type="button"
+              aria-expanded={open}
               onClick={() => setOpenId(open ? null : task.id)}
               className="flex w-full items-start justify-between gap-3 px-4 py-4 text-left"
             >
@@ -59,7 +61,7 @@ export function PendingApprovalList({ tasks }: { tasks: PendingApprovalTask[] })
                     review
                   </Badge>
                 </div>
-                <p className="text-sm text-on-surface-variant">{task.assignedToName}</p>
+                <p className="text-xs text-on-surface-variant">{task.assignedToName}</p>
                 {formatJumlahSatuan(task.jumlahIntervensi, task.satuan) ? (
                   <p className="text-xs text-secondary">
                     {formatJumlahSatuan(task.jumlahIntervensi, task.satuan)}
@@ -68,11 +70,14 @@ export function PendingApprovalList({ tasks }: { tasks: PendingApprovalTask[] })
                 <p className="text-xs text-tertiary">Selesai: {formatDateTime(task.completedAt)}</p>
               </div>
               <ChevronDown
-                className={cn("mt-1 h-5 w-5 shrink-0 text-outline transition", open && "rotate-180")}
+                className={cn(
+                  "mt-1 h-5 w-5 shrink-0 text-outline transition-transform duration-300 ease-out motion-reduce:transition-none",
+                  open && "rotate-180",
+                )}
               />
             </button>
 
-            {open ? (
+            <Collapse open={open}>
               <CardContent className="space-y-4 border-t border-outline-variant pt-4">
                 {task.evidence ? (
                   <div className="space-y-3">
@@ -103,7 +108,7 @@ export function PendingApprovalList({ tasks }: { tasks: PendingApprovalTask[] })
                   </Link>
                 </p>
               </CardContent>
-            ) : null}
+            </Collapse>
           </Card>
         );
       })}

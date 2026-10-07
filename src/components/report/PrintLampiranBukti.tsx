@@ -24,7 +24,7 @@ export function PrintLampiranBukti({
         <thead>
           <tr>
             <th className="col-no">No.</th>
-            {showDate ? <th className="col-date">Hari/Tgl</th> : null}
+            {showDate ? <th className="col-date">Tgl selesai</th> : null}
             <th>Bukti Visual</th>
           </tr>
         </thead>

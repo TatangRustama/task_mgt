@@ -134,7 +134,7 @@ function reviewUnitRows(rows: PrintUnitReviewRow[]) {
 function lampiranRows(tasks: ReportTask[], showDate = true) {
   const rows = evidenceRows(tasks);
   if (rows.length === 0) return [];
-  const header = showDate ? ["No.", "Hari/Tgl", "Bukti Visual"] : ["No.", "Bukti Visual"];
+  const header = showDate ? ["No.", "Tgl selesai", "Bukti Visual"] : ["No.", "Bukti Visual"];
   const lines = [csvRow([]), csvRow(["Lampiran"]), csvRow(["Bukti Dokumen"]), csvRow(header)];
   rows.forEach((row, index) => {
     const visual = [row.title, ...row.photos].join("\n");
