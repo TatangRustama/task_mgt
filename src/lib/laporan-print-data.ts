@@ -177,6 +177,12 @@ export async function getLaporanPrintData(
     .sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name, "id"))
     .map(({ rank: _rank, ...row }) => row);
 
+  // Pelaksana: lampiran follows the printed uraian. `ownTasks` also matches
+  // assignedAt/completedAt, so photos of a task assessed in another month
+  // would otherwise appear here while the uraian stays empty.
+  const printedTaskIds = new Set(tasks.map((task) => task.id));
+  const lampiranTasks = isLeader ? ownTasks : ownTasks.filter((task) => printedTaskIds.has(task.id));
+
   return {
     view,
     month,
@@ -186,7 +192,7 @@ export async function getLaporanPrintData(
     tasks,
     rows,
     leaderTasks: isLeader ? ownTasks : [],
-    lampiranTasks: ownTasks,
+    lampiranTasks,
   };
 }
 
