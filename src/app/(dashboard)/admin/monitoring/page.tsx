@@ -7,7 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/session";
 import { getTaskMonitor, parseTaskMonitorFilters, taskMonitorDetailHref, taskMonitorHref } from "@/lib/task-monitor";
-import { cn, formatDateTime, statusLabel } from "@/lib/utils";
+import { cn, formatDate, formatDateTime, statusLabel } from "@/lib/utils";
 
 const sourceLabel = {
   delegasi: "Delegasi",
@@ -88,7 +88,7 @@ export default async function TaskMonitorPage({
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <Badge variant={row.source}>{sourceLabel[row.source]}</Badge>
                       <span className="text-xs text-on-surface-variant">
-                        Ditugaskan {formatDateTime(row.assignedAt)}
+                        Ditugaskan {formatDate(row.assignedAt)}
                         {row.completedAt ? ` · Selesai ${formatDateTime(row.completedAt)}` : ""}
                       </span>
                     </div>
