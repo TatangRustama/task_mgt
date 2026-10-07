@@ -22,6 +22,9 @@ export function formatDate(date: Date | string | null | undefined) {
   }).format(new Date(date));
 }
 
+/** BKD Papua Barat. Production runs in UTC, so civil times must not follow the server zone. */
+const APP_TIME_ZONE = "Asia/Jayapura";
+
 export function formatDateTime(date: Date | string | null | undefined) {
   if (!date) return "-";
   return new Intl.DateTimeFormat("id-ID", {
@@ -30,6 +33,7 @@ export function formatDateTime(date: Date | string | null | undefined) {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: APP_TIME_ZONE,
   }).format(new Date(date));
 }
 
@@ -90,26 +94,71 @@ export function isISODate(value: string | undefined): value is string {
   return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
 }
 
+function zonedParts(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(date);
+  const read = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value || "0");
+  const hour = read("hour");
+  return {
+    year: read("year"),
+    month: read("month"),
+    day: read("day"),
+    hour: hour === 24 ? 0 : hour,
+    minute: read("minute"),
+    second: read("second"),
+  };
+}
+
+function timeZoneOffsetMs(instant: Date, timeZone: string) {
+  const parts = zonedParts(instant, timeZone);
+  const asUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  return asUtc - instant.getTime();
+}
+
 export function formatDateTimeLocal(value: Date | string | null | undefined) {
   if (!value) return "";
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) return "";
+  const parts = zonedParts(date, APP_TIME_ZONE);
   const pad = (part: number) => String(part).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}T${pad(parts.hour)}:${pad(parts.minute)}`;
 }
 
 export function parseDateTimeLocal(value: unknown): Date | null {
   const raw = String(value ?? "").trim();
   const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
   if (!match) return null;
-  const date = new Date(
-    Number(match[1]),
-    Number(match[2]) - 1,
-    Number(match[3]),
-    Number(match[4]),
-    Number(match[5]),
-  );
-  return Number.isNaN(date.getTime()) ? null : date;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59) return null;
+
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute));
+  let result = new Date(utcGuess.getTime() - timeZoneOffsetMs(utcGuess, APP_TIME_ZONE));
+  result = new Date(utcGuess.getTime() - timeZoneOffsetMs(result, APP_TIME_ZONE));
+
+  const check = zonedParts(result, APP_TIME_ZONE);
+  if (
+    check.year !== year ||
+    check.month !== month ||
+    check.day !== day ||
+    check.hour !== hour ||
+    check.minute !== minute
+  ) {
+    return null;
+  }
+  return result;
 }
 
 export function parseFormDateInput(value: unknown): Date | null {
