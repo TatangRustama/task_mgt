@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { mapTask } from "@/lib/reports";
 import { formatNip } from "@/lib/utils";
 import {
-  toMonthlyPrintTasks,
+  tasksForValidationSnapshot,
   type DailyLaporanPrintContext,
   type LaporanPrintContext,
   type PrintPerson,
@@ -188,29 +188,20 @@ export async function getValidasiLaporan(id: string) {
 
   const start = new Date(report.year, report.month - 1, 1);
   const end = new Date(report.year, report.month, 1);
-  const tasks = await prisma.task.findMany({
-    where: {
-      status: { not: "dibatalkan" },
-      AND: [
-        { OR: [{ id: { in: report.taskIds } }, { assignedToId: report.userId }] },
-        {
-          OR: [
-            { completedAt: { gte: start, lt: end } },
-            { assignedAt: { gte: start, lt: end }, completedAt: { gte: end } },
-          ],
+  const tasks = report.taskIds.length
+    ? await prisma.task.findMany({
+        where: { id: { in: report.taskIds } },
+        include: {
+          assignedTo: { select: { id: true, name: true } },
+          createdBy: { select: { name: true } },
+          evidence: { select: { address: true, notes: true, photoUrls: true } },
+          review: { select: { score: true, reviewedAt: true, feedback: true } },
+          rating: { select: { stars: true } },
         },
-      ],
-    },
-    include: {
-      assignedTo: { select: { id: true, name: true } },
-      createdBy: { select: { name: true } },
-      evidence: { select: { address: true, notes: true, photoUrls: true } },
-      review: { select: { score: true, reviewedAt: true, feedback: true } },
-      rating: { select: { stars: true } },
-    },
-  });
+      })
+    : [];
 
-  const ordered = toMonthlyPrintTasks(tasks.map((task) => mapTask(task)), start, end);
+  const ordered = tasksForValidationSnapshot(report.taskIds, tasks.map((task) => mapTask(task)), start, end);
 
   const [author, atasan] = await Promise.all([
     personFromUser(report.userId),
