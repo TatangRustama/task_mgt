@@ -137,6 +137,28 @@ export function toMonthlyPrintTasks<T extends ReportTask>(tasks: T[], start: Dat
   return [...dikerjakan, ...selesai].sort((a, b) => monthlyPrintSortTime(a) - monthlyPrintSortTime(b));
 }
 
+/** Public QR validation shows the stored snapshot, not a live re-query of the author. */
+export function tasksForValidationSnapshot<T extends ReportTask>(
+  taskIds: readonly string[],
+  tasks: T[],
+  start: Date,
+  end: Date,
+): T[] {
+  const allowed = new Set(taskIds);
+  const inSnapshot = tasks.filter((task) => allowed.has(task.id));
+  const classified = toMonthlyPrintTasks(inSnapshot, start, end);
+  const classifiedIds = new Set(classified.map((task) => task.id));
+  const byId = new Map<string, T>();
+  for (const task of inSnapshot) {
+    if (!classifiedIds.has(task.id) && isPrintableTask(task)) byId.set(task.id, task);
+  }
+  for (const task of classified) byId.set(task.id, task);
+  return taskIds.flatMap((id) => {
+    const task = byId.get(id);
+    return task ? [task] : [];
+  });
+}
+
 function monthlyPrintSortTime(task: Pick<ReportTask, "printRole" | "assignedAt" | "createdAt" | "completedAt">) {
   const value = task.printRole === "dikerjakan" ? task.assignedAt || task.createdAt : task.completedAt;
   return value ? new Date(value).getTime() : Number.POSITIVE_INFINITY;

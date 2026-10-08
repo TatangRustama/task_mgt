@@ -342,6 +342,8 @@ const loadDirectReports = cache(async (userId: string, unitId: string): Promise<
         acting.user.id,
         toDirectReport({
           ...acting.user,
+          // The post they cover, not their home unit. Task.unitId is copied from here.
+          unitId: unit.id,
           unit: { name: unit.name },
           jabatanLabel: penugasanLabel(acting.jenis, unit.name),
         }),
