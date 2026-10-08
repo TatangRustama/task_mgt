@@ -1,3 +1,4 @@
+import { CircleCheck, CircleX, Clock, Inbox, ListTodo, Sigma, type LucideIcon } from "lucide-react";
 import { DashboardMonthSelect } from "@/components/admin/DashboardMonthSelect";
 import { DashboardTabs } from "@/components/admin/DashboardTabs";
 import { TaskConditionCharts } from "@/components/admin/TaskConditionCharts";
@@ -7,13 +8,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   DASHBOARD_STATUSES,
   dashboardPeriodCaption,
+  getPerangkatDaerahPegawaiRecap,
   getPerangkatDaerahTaskRecap,
   getTaskConditionTrend,
   listDashboardMonthChoices,
   resolveDashboardMonth,
+  type DashboardStatus,
 } from "@/lib/admin-dashboard";
 import { requireUser } from "@/lib/session";
-import { statusLabel } from "@/lib/utils";
+import { cn, statusLabel } from "@/lib/utils";
+
+const STATUS_CARD_ICONS: Record<Exclude<DashboardStatus, "dibatalkan">, { icon: LucideIcon; className: string }> = {
+  disetujui: { icon: CircleCheck, className: "text-emerald-600" },
+  menunggu_approval: { icon: Clock, className: "text-amber-500" },
+  dikerjakan: { icon: ListTodo, className: "text-primary" },
+  tersedia: { icon: Inbox, className: "text-secondary" },
+  ditolak: { icon: CircleX, className: "text-error" },
+};
 
 export default async function SuperAdminDashboardPage({
   searchParams,
@@ -25,9 +36,10 @@ export default async function SuperAdminDashboardPage({
   const monthChoices = await listDashboardMonthChoices();
   const month = resolveDashboardMonth(params.bulan, monthChoices);
   const period = dashboardPeriodCaption(month);
-  const [trend, perangkatDaerah] = await Promise.all([
+  const [trend, perangkatDaerah, pegawaiDaerah] = await Promise.all([
     getTaskConditionTrend(month),
     getPerangkatDaerahTaskRecap(month),
+    getPerangkatDaerahPegawaiRecap(month),
   ]);
 
   return (
@@ -40,30 +52,53 @@ export default async function SuperAdminDashboardPage({
 
       <DashboardTabs
         recap={
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-            <Card>
-              <CardContent className="space-y-1 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">Total</p>
-                <p className="text-2xl font-bold tabular-nums text-on-surface">{trend.total}</p>
-                <p className="text-xs text-on-surface-variant">{period}</p>
-              </CardContent>
-            </Card>
-            {DASHBOARD_STATUSES.map((status) => (
-              <Card key={status}>
-                <CardContent className="space-y-1 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">
-                    {statusLabel(status)}
-                  </p>
-                  <p className="text-2xl font-bold tabular-nums text-on-surface">{trend.totals[status]}</p>
-                  <p className="text-xs text-on-surface-variant">Kondisi saat ini</p>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              <StatCard label="Total" value={trend.total} icon={Sigma} iconClassName="text-primary" />
+              {DASHBOARD_STATUSES.filter((status) => status !== "dibatalkan").map((status) => {
+                const visual = STATUS_CARD_ICONS[status];
+                return (
+                  <StatCard
+                    key={status}
+                    label={status === "menunggu_approval" ? "Belum approval" : statusLabel(status)}
+                    value={trend.totals[status]}
+                    icon={visual.icon}
+                    iconClassName={visual.className}
+                  />
+                );
+              })}
+            </div>
+            <TaskConditionCharts trend={trend} />
           </div>
         }
-        charts={<TaskConditionCharts trend={trend} />}
-        perangkat={<PerangkatDaerahRecapTable rows={perangkatDaerah} />}
+        perangkat={<PerangkatDaerahRecapTable tasks={perangkatDaerah} pegawai={pegawaiDaerah} />}
       />
     </PageMain>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  iconClassName,
+}: {
+  label: string;
+  value: number;
+  icon: LucideIcon;
+  iconClassName: string;
+}) {
+  return (
+    <Card className="relative overflow-hidden">
+      <Icon
+        className={cn("pointer-events-none absolute -bottom-3 -right-2 h-16 w-16 opacity-20", iconClassName)}
+        strokeWidth={1.5}
+        aria-hidden
+      />
+      <CardContent className="relative space-y-1 p-4">
+        <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">{label}</p>
+        <p className="text-2xl font-bold tabular-nums text-on-surface">{value}</p>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,5 +1,5 @@
 import { AppLoader } from "@/components/layout/AppLoader";
 
-export default function MandiriLoading() {
+export default function DashboardPageLoading() {
   return <AppLoader />;
 }

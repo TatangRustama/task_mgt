@@ -2,7 +2,7 @@ import { signOut } from "@/auth";
 import Link from "next/link";
 import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
 import { PageMain } from "@/components/layout/PageMain";
-import { getAtasan, getDbOrgUser } from "@/lib/org";
+import { displayJabatan, getAtasan, getDbOrgUser } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { ChevronRight, LogOut, Settings } from "lucide-react";
@@ -28,7 +28,9 @@ export default async function ProfilPage() {
           {initials}
         </div>
         <h2 className="text-center text-2xl font-bold text-on-background">{user.name}</h2>
-        <p className="mt-1 text-center text-sm text-secondary">{unit?.name || "Belum ditetapkan"}</p>
+        <p className="mt-1 text-center text-sm text-secondary">
+          {displayJabatan(orgUser?.pegawai, orgUser?.jabatan)}
+        </p>
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           <span className="rounded-full border border-outline-variant bg-surface-container-high px-3 py-1 text-xs font-medium text-on-surface-variant">
             NIP: {user.nip}
@@ -44,7 +46,7 @@ export default async function ProfilPage() {
           <div className="border-t border-surface-container-highest px-4 py-4 text-sm text-on-surface-variant">
             <p>NIP: {user.nip}</p>
             <p className="mt-1">Unit: {unit?.name || "Belum ditetapkan"}</p>
-            <p className="mt-1">
+            <p className="mt-1 text-xs">
               Atasan: {atasan ? `${atasan.name}${atasan.unitName ? ` · ${atasan.unitName}` : ""}` : "Tidak ada"}
             </p>
           </div>

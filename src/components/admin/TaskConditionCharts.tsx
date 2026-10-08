@@ -6,7 +6,7 @@ import {
   type DashboardMonthPoint,
   type DashboardStatus,
   type TaskConditionTrend,
-} from "@/lib/admin-dashboard";
+} from "@/lib/admin-dashboard-shared";
 import { cn } from "@/lib/utils";
 
 const SERIES: { status: DashboardStatus; label: string; bar: string; stroke: string; swatch: string }[] = [

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AppLoader } from "@/components/layout/AppLoader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -219,7 +220,7 @@ export function PindahUnorPage({ pegawaiId }: { pegawaiId: string }) {
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
         <div>
-          <p className="font-medium text-on-surface">{pegawaiName || "Memuat pegawai..."}</p>
+          <p className="font-medium text-on-surface">{pegawaiName || "—"}</p>
           <p className="text-on-surface-variant">UNOR saat ini: {currentUnorNama || "-"}</p>
         </div>
         <Input
@@ -228,9 +229,8 @@ export function PindahUnorPage({ pegawaiId }: { pegawaiId: string }) {
           placeholder="Cari nama unit organisasi"
         />
         {error ? <p className="text-error">{error}</p> : null}
-        {loading ? (
-          <p className="text-on-surface-variant">Memuat treeview unit organisasi...</p>
-        ) : (
+        {loading ? <AppLoader label="Memuat unit organisasi" /> : null}
+        {!loading ? (
           <div className="max-h-[55vh] space-y-1 overflow-y-auto rounded-lg border border-outline-variant p-2">
             {forest.map((node) => (
               <UnorNode

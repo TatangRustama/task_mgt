@@ -1,5 +1,41 @@
+import {
+  AlarmClock,
+  ArrowRightLeft,
+  BarChart3,
+  CircleCheck,
+  ClipboardList,
+  FileText,
+  Gauge,
+  Inbox,
+  LayoutDashboard,
+  ListChecks,
+  Network,
+  Settings,
+  UserPlus,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { PageBackLink } from "@/components/layout/PageBackLink";
 import { cn } from "@/lib/utils";
+
+const PAGE_TITLE_ICONS: Record<string, LucideIcon> = {
+  Dashboard: LayoutDashboard,
+  Pegawai: Users,
+  "Manajemen pengguna": UserPlus,
+  Laporan: BarChart3,
+  "Active Tasks": ClipboardList,
+  Kinerja: Gauge,
+  Kolam: Inbox,
+  Terlambat: AlarmClock,
+  "Detail tugas": FileText,
+  "Detail Tugas": FileText,
+  "Monitoring tugas": ListChecks,
+  Persetujuan: CircleCheck,
+  "Pindah UNOR": ArrowRightLeft,
+  Setting: Settings,
+  Struktur: Network,
+  "Struktur organisasi": Network,
+};
 
 export function PageMain({
   children,
@@ -12,25 +48,6 @@ export function PageMain({
     <main className={cn("mx-auto w-full max-w-7xl px-3 py-3 md:px-6 md:py-5 print:max-w-none print:p-0", className)}>
       {children}
     </main>
-  );
-}
-
-export function PageLoadingSkeleton() {
-  return (
-    <PageMain>
-      <div className="space-y-3" aria-hidden="true">
-        <div className="h-7 w-40 animate-pulse rounded-md bg-surface-container-high" />
-        <div className="h-4 w-64 max-w-full animate-pulse rounded-md bg-surface-container" />
-        <div className="mt-2 h-28 animate-pulse rounded-xl bg-surface-container-high" />
-        <div className="grid grid-cols-3 gap-2">
-          <div className="h-20 animate-pulse rounded-xl bg-surface-container" />
-          <div className="h-20 animate-pulse rounded-xl bg-surface-container" />
-          <div className="h-20 animate-pulse rounded-xl bg-surface-container" />
-        </div>
-        <div className="h-40 animate-pulse rounded-xl bg-surface-container-lowest border border-outline" />
-      </div>
-      <span className="sr-only">Memuat halaman</span>
-    </PageMain>
   );
 }
 
@@ -51,7 +68,8 @@ export function PageHeader({
       {title || action ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
           {title ? (
-            <h2 className="text-xl font-bold leading-7 tracking-tight text-on-surface md:text-2xl md:leading-8">
+            <h2 className="flex items-center gap-2 text-xl font-bold leading-7 tracking-tight text-on-surface md:text-2xl md:leading-8">
+              <PageTitleIcon title={title} />
               {title}
             </h2>
           ) : null}
@@ -65,4 +83,10 @@ export function PageHeader({
       ) : null}
     </section>
   );
+}
+
+function PageTitleIcon({ title }: { title: string }) {
+  const Icon = PAGE_TITLE_ICONS[title];
+  if (!Icon) return null;
+  return <Icon className="h-6 w-6 shrink-0 text-primary md:h-7 md:w-7" strokeWidth={2} aria-hidden />;
 }

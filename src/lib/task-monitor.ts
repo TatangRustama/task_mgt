@@ -1,10 +1,17 @@
 import { Prisma, TaskSource, TaskStatus } from "@prisma/client";
 import { listPerangkatDaerah, listUnorChildren, listUnorRootsForPerangkatDaerah } from "@/lib/admin-pegawai";
 import { prisma } from "@/lib/prisma";
-import { TASK_STAGE_OPTIONS, type TaskMonitorFilterValues, type TaskStage, type UnorChoice } from "@/lib/task-monitor-shared";
+import {
+  TASK_STAGE_OPTIONS,
+  taskMonitorDetailHref,
+  taskMonitorHref,
+  type TaskMonitorFilterValues,
+  type TaskStage,
+  type UnorChoice,
+} from "@/lib/task-monitor-shared";
 import { formatNip } from "@/lib/utils";
 
-export { TASK_STAGE_OPTIONS };
+export { TASK_STAGE_OPTIONS, taskMonitorDetailHref, taskMonitorHref };
 export type { UnorChoice };
 
 export const TASK_MONITOR_PAGE_SIZE = 15;
@@ -114,26 +121,6 @@ export async function downgradeTaskStage(taskId: string) {
   });
 
   return { status: next };
-}
-
-export function taskMonitorDetailHref(id: string, filters: TaskMonitorFilters) {
-  const query = taskMonitorHref(filters).split("?")[1];
-  return query ? `/admin/monitoring/${id}?${query}` : `/admin/monitoring/${id}`;
-}
-
-export function taskMonitorHref(filters: TaskMonitorFilters, page = filters.page) {
-  const params = new URLSearchParams();
-  if (filters.pd) params.set("pd", filters.pd);
-  filters.unor.forEach((id, index) => {
-    if (id) params.set(`u${index + 1}`, id);
-  });
-  if (filters.q) params.set("q", filters.q);
-  if (filters.date) params.set("date", filters.date);
-  if (filters.sumber) params.set("sumber", filters.sumber);
-  if (filters.tahap) params.set("tahap", filters.tahap);
-  if (page > 1) params.set("page", String(page));
-  const query = params.toString();
-  return query ? `/admin/monitoring?${query}` : "/admin/monitoring";
 }
 
 const emptyUnor = {

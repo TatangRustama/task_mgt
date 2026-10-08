@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { AppLoader } from "@/components/layout/AppLoader";
 import { Badge } from "@/components/ui/badge";
 import { EvidencePhotoGrid } from "@/components/task/EvidencePhotoGrid";
 import {
@@ -121,13 +121,12 @@ export function TaskDetailModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-hidden p-0">
         {loading || !view ? (
-          <div className="flex min-h-56 flex-col items-center justify-center gap-3 p-8">
+          <>
             <DialogHeader className="sr-only">
               <DialogTitle>Memuat detail tugas</DialogTitle>
             </DialogHeader>
-            <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
-            <p className="text-sm text-on-surface-variant">Memuat detail tugas...</p>
-          </div>
+            <AppLoader label="Memuat detail tugas" />
+          </>
         ) : (
           <>
             <div className={cn("h-1.5", priorityBarClass[view.priority] ?? "bg-tertiary")} />

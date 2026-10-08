@@ -1,32 +1,30 @@
 import type { TaskStatus } from "@prisma/client";
+import {
+  DASHBOARD_STATUSES,
+  type DashboardMonthChoice,
+  type DashboardMonthPoint,
+  type DashboardMonthSelection,
+  type DashboardStatus,
+  type PerangkatDaerahPegawaiRow,
+  type PerangkatDaerahRecapRow,
+  type TaskConditionTrend,
+} from "@/lib/admin-dashboard-shared";
 import { listPerangkatDaerah } from "@/lib/admin-pegawai";
 import { prisma } from "@/lib/prisma";
 import { getMonthYearLabel } from "@/lib/utils";
 
+export {
+  DASHBOARD_STATUSES,
+  type DashboardMonthChoice,
+  type DashboardMonthPoint,
+  type DashboardMonthSelection,
+  type DashboardStatus,
+  type PerangkatDaerahPegawaiRow,
+  type PerangkatDaerahRecapRow,
+  type TaskConditionTrend,
+};
+
 export const DASHBOARD_MONTHS = 3;
-
-export const DASHBOARD_STATUSES = [
-  "disetujui",
-  "menunggu_approval",
-  "dikerjakan",
-  "tersedia",
-  "ditolak",
-  "dibatalkan",
-] as const satisfies readonly TaskStatus[];
-
-export type DashboardStatus = (typeof DASHBOARD_STATUSES)[number];
-
-export type DashboardMonthPoint = {
-  label: string;
-  total: number;
-  counts: Record<DashboardStatus, number>;
-};
-
-export type TaskConditionTrend = {
-  months: DashboardMonthPoint[];
-  totals: Record<DashboardStatus, number>;
-  total: number;
-};
 
 function isDashboardStatus(status: TaskStatus): status is DashboardStatus {
   return (DASHBOARD_STATUSES as readonly TaskStatus[]).includes(status);
@@ -42,16 +40,6 @@ function emptyCounts(): Record<DashboardStatus, number> {
     dibatalkan: 0,
   };
 }
-
-export type DashboardMonthChoice = {
-  value: string;
-  label: string;
-};
-
-export type DashboardMonthSelection = {
-  year: number;
-  month: number;
-};
 
 function monthValue(year: number, month: number) {
   return `${year}-${String(month).padStart(2, "0")}`;
@@ -145,14 +133,6 @@ export async function getTaskConditionTrend(
   };
 }
 
-export type PerangkatDaerahRecapRow = {
-  id: string;
-  name: string;
-  total: number;
-  listed: boolean;
-  counts: Record<DashboardStatus, number>;
-};
-
 const UNMAPPED_PERANGKAT = "Belum terpetakan";
 
 export async function getPerangkatDaerahTaskRecap(
@@ -187,13 +167,96 @@ export async function getPerangkatDaerahTaskRecap(
     rows.set(id, row);
   }
 
-  return [...rows.values()].sort((a, b) => {
-    if (!a.id) return 1;
-    if (!b.id) return -1;
-    const aActive = a.total > 0;
-    const bActive = b.total > 0;
-    if (aActive !== bActive) return aActive ? -1 : 1;
-    if (b.total !== a.total) return b.total - a.total;
-    return a.name.localeCompare(b.name, "id");
-  });
+  return [...rows.values()].sort(comparePerangkatRows);
+}
+
+const REPORTED_TASK_STATUSES = ["menunggu_approval", "disetujui"] as const satisfies readonly TaskStatus[];
+
+export async function getPerangkatDaerahPegawaiRecap(
+  selection: DashboardMonthSelection | null = null,
+  now = new Date(),
+): Promise<PerangkatDaerahPegawaiRow[]> {
+  const { start, end } = dashboardRange(selection, now);
+  const [catalog, pegawaiGroups, pegawaiNames, reported] = await Promise.all([
+    listPerangkatDaerah(),
+    prisma.pegawai.groupBy({
+      by: ["perangkatDaerahId"],
+      _count: true,
+    }),
+    prisma.pegawai.findMany({
+      where: { perangkatDaerahId: { not: null } },
+      distinct: ["perangkatDaerahId"],
+      select: { perangkatDaerahId: true, perangkatDaerahNama: true },
+    }),
+    prisma.task.findMany({
+      where: {
+        completedAt: { gte: start, lt: end },
+        status: { in: [...REPORTED_TASK_STATUSES] },
+        assignedToId: { not: null },
+      },
+      distinct: ["assignedToId"],
+      select: {
+        assignedToId: true,
+        unit: { select: { perangkatDaerahId: true, perangkatDaerahNama: true } },
+        assignedTo: {
+          select: {
+            pegawai: { select: { perangkatDaerahId: true, perangkatDaerahNama: true } },
+          },
+        },
+      },
+    }),
+  ]);
+
+  const names = new Map<string, string>();
+  for (const item of pegawaiNames) {
+    const id = item.perangkatDaerahId?.trim();
+    if (!id) continue;
+    names.set(id, item.perangkatDaerahNama?.trim() || id);
+  }
+
+  const rows = new Map<string, PerangkatDaerahPegawaiRow>();
+  const ensure = (id: string, name: string, listed: boolean) => {
+    const current = rows.get(id);
+    if (current) {
+      if (!current.name && name) current.name = name;
+      if (listed) current.listed = true;
+      return current;
+    }
+    const row = { id, name: name || (id ? id : UNMAPPED_PERANGKAT), listed, pegawai: 0, melapor: 0 };
+    rows.set(id, row);
+    return row;
+  };
+
+  for (const item of catalog) ensure(item.id, item.name, true);
+
+  for (const group of pegawaiGroups) {
+    const id = group.perangkatDaerahId?.trim() || "";
+    const row = ensure(id, names.get(id) || (id ? id : UNMAPPED_PERANGKAT), false);
+    row.pegawai += group._count;
+  }
+
+  for (const task of reported) {
+    if (!task.assignedToId) continue;
+    const pegawaiPd = task.assignedTo?.pegawai?.perangkatDaerahId?.trim() || "";
+    const unitPd = task.unit.perangkatDaerahId?.trim() || "";
+    const id = pegawaiPd || unitPd;
+    const name = pegawaiPd
+      ? task.assignedTo?.pegawai?.perangkatDaerahNama?.trim() || names.get(id) || id
+      : task.unit.perangkatDaerahNama?.trim() || names.get(id) || (id ? id : UNMAPPED_PERANGKAT);
+    ensure(id, name, false).melapor += 1;
+  }
+
+  return [...rows.values()].sort(comparePerangkatRows);
+}
+
+function comparePerangkatRows<T extends { id: string; name: string; total?: number; melapor?: number }>(a: T, b: T) {
+  if (!a.id) return 1;
+  if (!b.id) return -1;
+  const aScore = a.melapor ?? a.total ?? 0;
+  const bScore = b.melapor ?? b.total ?? 0;
+  const aActive = aScore > 0;
+  const bActive = bScore > 0;
+  if (aActive !== bActive) return aActive ? -1 : 1;
+  if (bScore !== aScore) return bScore - aScore;
+  return a.name.localeCompare(b.name, "id");
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AppLoader } from "@/components/layout/AppLoader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -72,9 +73,7 @@ export function SimpegSyncCard({
         ) : (
           <p className="text-on-surface-variant">Hanya admin yang dapat menjalankan sinkronisasi.</p>
         )}
-        {loading ? (
-          <p className="text-on-surface-variant">Proses ini dapat memakan beberapa menit.</p>
-        ) : null}
+        {loading ? <AppLoader label="Menyinkronkan" /> : null}
         {message ? (
           <p className="rounded-lg bg-secondary-container px-4 py-2 text-on-secondary-container">
             {message}

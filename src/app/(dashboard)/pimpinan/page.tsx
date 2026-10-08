@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { Archive } from "lucide-react";
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
 import { KinerjaBoard } from "@/components/pimpinan/KinerjaBoard";
-import { KinerjaBoardSkeleton } from "@/components/pimpinan/KinerjaBoardSkeleton";
+import { AppLoader } from "@/components/layout/AppLoader";
 import { KinerjaViewTabs } from "@/components/report/ReportFilters";
 import { laporanHref, parseKinerjaView } from "@/lib/laporan-url";
 import { parseMonitorFocus } from "@/lib/monitor-types";
@@ -66,7 +66,10 @@ export default async function PimpinanPage({
         <KinerjaViewTabs view={view} date={date} month={month} year={year} />
       </div>
 
-      <Suspense fallback={<KinerjaBoardSkeleton />}>
+      <Suspense
+        key={`${view}:${date}:${month}:${year}:${params.unit ?? ""}:${focus ?? ""}`}
+        fallback={<AppLoader />}
+      >
         <KinerjaBoard
           view={view}
           date={date}

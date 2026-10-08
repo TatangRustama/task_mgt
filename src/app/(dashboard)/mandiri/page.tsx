@@ -3,22 +3,13 @@ import Link from "next/link";
 import { FileText } from "lucide-react";
 import { AtasanCard } from "@/components/home/AtasanCard";
 import { PerformanceBanner } from "@/components/home/PerformanceBanner";
+import { AppLoader } from "@/components/layout/AppLoader";
 import { PageMain } from "@/components/layout/PageMain";
 import { getHomeDashboard } from "@/lib/home";
 import { requireUser } from "@/lib/session";
 import { formatRelativeTime, statusLabel } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-function HomeDashboardFallback() {
-  return (
-    <div className="space-y-3" aria-hidden="true">
-      <div className="h-36 animate-pulse rounded-xl bg-surface-container-high" />
-      <div className="h-24 animate-pulse rounded-xl bg-primary/80" />
-      <div className="h-40 animate-pulse rounded-xl border border-outline bg-surface-container-lowest" />
-    </div>
-  );
-}
 
 async function HomeDashboard() {
   const user = await requireUser(["personal"]);
@@ -100,7 +91,7 @@ async function HomeDashboard() {
 export default function MandiriPage() {
   return (
     <PageMain>
-      <Suspense fallback={<HomeDashboardFallback />}>
+      <Suspense fallback={<AppLoader />}>
         <HomeDashboard />
       </Suspense>
     </PageMain>

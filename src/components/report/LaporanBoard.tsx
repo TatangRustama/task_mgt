@@ -107,7 +107,7 @@ export function LaporanBoardView({
         <p className="mt-1.5 text-sm text-white/90">{board.insight}</p>
       </section>
 
-      <div className={cn("grid gap-2", board.isLeader ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3")}>
+      <div className={cn("grid gap-1 sm:gap-2", board.isLeader ? "grid-cols-4" : "grid-cols-3")}>
         <Stat label="Disetujui" value={board.summary.completed} />
         <Stat label="Ditolak" value={board.summary.rejected} warn={board.summary.rejected > 0} />
         <Stat label="Nilai" value={board.summary.averageScore ? `${board.summary.averageScore}/3` : "-"} />
@@ -200,11 +200,11 @@ export function LaporanBoardView({
 
 function Stat({ label, value, warn }: { label: string; value: number | string; warn?: boolean }) {
   return (
-    <div className="rounded-lg border border-outline bg-surface-container-lowest px-3 py-3">
-      <p className={cn("text-2xl font-bold leading-none tabular-nums", warn ? "text-error" : "text-on-surface")}>
+    <div className="rounded-lg border border-outline bg-surface-container-lowest px-1 py-1.5 sm:px-3 sm:py-3">
+      <p className={cn("text-base font-bold leading-none tabular-nums sm:text-2xl", warn ? "text-error" : "text-on-surface")}>
         {value}
       </p>
-      <p className="mt-1 text-[11px] font-medium text-on-surface-variant">{label}</p>
+      <p className="mt-0.5 text-[9px] font-medium leading-tight text-on-surface-variant sm:mt-1 sm:text-[11px]">{label}</p>
     </div>
   );
 }

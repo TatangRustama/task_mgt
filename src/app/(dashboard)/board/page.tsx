@@ -2,27 +2,11 @@ export const dynamic = "force-dynamic";
 
 import { Suspense } from "react";
 import { BoardView } from "@/components/board/BoardView";
+import { AppLoader } from "@/components/layout/AppLoader";
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
 import { getBoardPageData } from "@/lib/board";
 import { canDelegate, getDbOrgUser, isUnitLeader } from "@/lib/org";
 import { requireUser } from "@/lib/session";
-
-function BoardBodyFallback() {
-  return (
-    <div className="space-y-3" aria-hidden="true">
-      <div className="flex justify-between">
-        <div className="h-9 w-24 animate-pulse rounded-lg bg-surface-container" />
-        <div className="h-9 w-40 animate-pulse rounded-lg bg-surface-container" />
-      </div>
-      <div className="h-10 animate-pulse rounded-lg bg-surface-container" />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="h-32 animate-pulse rounded-lg bg-surface-container-high" />
-        <div className="h-32 animate-pulse rounded-lg bg-surface-container-high" />
-        <div className="h-32 animate-pulse rounded-lg bg-surface-container" />
-      </div>
-    </div>
-  );
-}
 
 async function BoardBody({ openDelegasi }: { openDelegasi: boolean }) {
   const user = await requireUser(["personal"]);
@@ -73,7 +57,7 @@ export default async function BoardPage({
             : "Belum terdaftar di unit"
         }
       />
-      <Suspense fallback={<BoardBodyFallback />}>
+      <Suspense fallback={<AppLoader />}>
         <BoardBody openDelegasi={params.delegasi === "1"} />
       </Suspense>
     </PageMain>

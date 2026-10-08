@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { PegawaiDetailDialog } from "@/components/admin/PegawaiDetailDialog";
 import { TambahPegawaiDialog } from "@/components/admin/TambahPegawaiDialog";
+import { AppLoader } from "@/components/layout/AppLoader";
 import { PageHeader } from "@/components/layout/PageMain";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -280,9 +281,8 @@ export function SuperAdminPegawaiList() {
           </p>
         </div>
 
-        {loading && rows.length === 0 ? (
-          <p className="text-on-surface-variant">Memuat pegawai...</p>
-        ) : rows.length === 0 ? (
+        {loading ? <AppLoader label="Memuat pegawai" /> : null}
+        {!loading && rows.length === 0 ? (
           <p className="text-on-surface-variant">Tidak ada pegawai yang cocok.</p>
         ) : (
           rows.map((row) => (

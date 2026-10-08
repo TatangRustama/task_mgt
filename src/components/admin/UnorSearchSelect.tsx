@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { AppLoader } from "@/components/layout/AppLoader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -48,11 +49,12 @@ export function UnorSearchSelect({
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>Unit organisasi</Label>
+      {loading ? <AppLoader label="Memuat UNOR" /> : null}
       <div className="relative">
         <Input
           id={id}
           value={open ? query : selected ? unorOptionLabel(selected) : ""}
-          placeholder={loading ? "Memuat UNOR..." : "Cari UNOR atau perangkat daerah"}
+          placeholder="Cari UNOR atau perangkat daerah"
           autoComplete="off"
           disabled={loading}
           className="pr-9"

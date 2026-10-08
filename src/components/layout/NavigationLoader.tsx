@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { AppLoader } from "@/components/layout/AppLoader";
 
 type NavigationLoaderContextValue = {
   start: () => void;
@@ -25,21 +26,17 @@ export function useNavigationLoader() {
 
 export function NavigationLoader({ children }: { children: React.ReactNode }) {
   const [visible, setVisible] = useState(false);
-  const showTimer = useRef<number | null>(null);
   const hideTimer = useRef<number | null>(null);
 
   const stop = useCallback(() => {
-    if (showTimer.current) window.clearTimeout(showTimer.current);
     if (hideTimer.current) window.clearTimeout(hideTimer.current);
-    showTimer.current = null;
     hideTimer.current = null;
     setVisible(false);
   }, []);
 
   const start = useCallback(() => {
-    if (showTimer.current) window.clearTimeout(showTimer.current);
     if (hideTimer.current) window.clearTimeout(hideTimer.current);
-    showTimer.current = window.setTimeout(() => setVisible(true), 120);
+    setVisible(true);
     hideTimer.current = window.setTimeout(() => setVisible(false), 12000);
   }, []);
 
@@ -76,7 +73,7 @@ export function NavigationLoader({ children }: { children: React.ReactNode }) {
       <Suspense fallback={null}>
         <RouteChangeListener onChange={stop} />
       </Suspense>
-      {visible ? <NavigationProgress /> : null}
+      {visible ? <AppLoader /> : null}
     </NavigationLoaderContext.Provider>
   );
 }
@@ -97,15 +94,3 @@ function RouteChangeListener({ onChange }: { onChange: () => void }) {
   return null;
 }
 
-function NavigationProgress() {
-  return (
-    <div
-      className="app-frame-bar pointer-events-none top-0 z-[90] h-0.5 overflow-hidden no-print"
-      role="status"
-      aria-live="polite"
-      aria-label="Memuat halaman"
-    >
-      <div className="nav-loader-bar h-full w-1/3 rounded-full bg-white" />
-    </div>
-  );
-}

@@ -1,12 +1,5 @@
-import { PageMain } from "@/components/layout/PageMain";
-import { KinerjaBoardSkeleton } from "@/components/pimpinan/KinerjaBoardSkeleton";
+import { AppLoader } from "@/components/layout/AppLoader";
 
 export default function PimpinanLoading() {
-  return (
-    <PageMain className="max-w-3xl space-y-6">
-      <div className="h-16 animate-pulse rounded-lg bg-surface-container" />
-      <div className="h-10 animate-pulse rounded-lg bg-surface-container" />
-      <KinerjaBoardSkeleton />
-    </PageMain>
-  );
+  return <AppLoader />;
 }

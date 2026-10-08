@@ -1,5 +1,6 @@
 import { starLabel } from "@/lib/rating";
 import type { ReportTask } from "@/lib/report-types";
+import { parseTaskDescription } from "@/lib/task-description";
 import { isMultiDayDeadline, parseISODate, statusLabel } from "@/lib/utils";
 import { formatJumlahSatuan } from "@/lib/satuan";
 
@@ -229,8 +230,30 @@ export function printUraianTitle(task: Pick<ReportTask, "title">) {
   return task.title.trim() || "-";
 }
 
+export function formatPrintDescription(raw: string | null | undefined) {
+  const blocks = parseTaskDescription(raw);
+  if (blocks.length === 0) return null;
+  return blocks
+    .map((block) => {
+      if (block.type === "paragraph") return block.text;
+      return block.items
+        .map((item, itemIndex) => (block.type === "ol" ? `${itemIndex + 1}. ${item}` : `• ${item}`))
+        .join("\n");
+    })
+    .join("\n");
+}
+
 export function printUraianDescription(task: Pick<ReportTask, "description">) {
-  return task.description?.trim() || null;
+  return formatPrintDescription(task.description);
+}
+
+export function showOnMonthlyPrint(task: ReportTask) {
+  if (task.printRole === "dikerjakan") return Boolean(task.assignedAt || task.createdAt);
+  return isPrintableTask(task) && Boolean(task.completedAt);
+}
+
+export function monthlyPrintLampiranTasks(tasks: ReportTask[]) {
+  return tasks.filter((task) => task.printRole !== "dikerjakan" && Boolean(task.completedAt));
 }
 
 export function printUraianText(

@@ -1,5 +1,5 @@
-import { PageLoadingSkeleton } from "@/components/layout/PageMain";
+import { AppLoader } from "@/components/layout/AppLoader";
 
 export default function DashboardLoading() {
-  return <PageLoadingSkeleton />;
+  return <AppLoader />;
 }

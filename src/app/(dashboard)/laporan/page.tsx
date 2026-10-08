@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { LaporanBoardView } from "@/components/report/LaporanBoard";
 import { ReportFilters } from "@/components/report/ReportFilters";
 import { LaporanPrintProvider } from "@/components/report/PrintReportButton";
+import { AppLoader } from "@/components/layout/AppLoader";
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
 import { getLaporanBoard } from "@/lib/laporan-board";
 import { getOrgScope } from "@/lib/org";
@@ -10,20 +11,6 @@ import { requireUser } from "@/lib/session";
 import { formatISODate, isISODate, parseISODate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-function ReportBodyFallback() {
-  return (
-    <div className="space-y-3" aria-hidden="true">
-      <div className="h-28 animate-pulse rounded-lg bg-surface-container" />
-      <div className="grid gap-2 sm:grid-cols-2">
-        <div className="h-28 animate-pulse rounded-lg bg-surface-container-high" />
-        <div className="h-28 animate-pulse rounded-lg bg-surface-container-high" />
-      </div>
-      <div className="h-20 animate-pulse rounded-lg bg-surface-container" />
-      <div className="h-20 animate-pulse rounded-lg bg-surface-container" />
-    </div>
-  );
-}
 
 async function LaporanBody({
   view,
@@ -133,7 +120,7 @@ export default async function LaporanPage({
           <div className="no-print">
             <ReportFilters basePath="/laporan" view={view} date={date} month={month} year={year} unit={params.unit} />
           </div>
-          <Suspense fallback={<ReportBodyFallback />}>
+          <Suspense key={`${view}:${date}:${month}:${year}:${params.unit ?? ""}`} fallback={<AppLoader />}>
             <LaporanBody view={view} date={date} month={month} year={year} unit={params.unit} />
           </Suspense>
         </div>

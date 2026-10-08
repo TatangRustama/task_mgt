@@ -6,12 +6,7 @@ import { DailyWfhPrintReport } from "@/components/report/DailyWfhPrintReport";
 import { MonthlyTaskPrintReport } from "@/components/report/MonthlyTaskPrintReport";
 import { Button } from "@/components/ui/button";
 import type { DailyLaporanPrintContext, LaporanPrintContext, PrintUnitReviewRow } from "@/lib/laporan-print-view";
-import { isPrintableTask } from "@/lib/laporan-print-view";
-
-function showOnMonthlyPrint(task: ReportTask) {
-  if (task.printRole === "dikerjakan") return Boolean(task.assignedAt || task.createdAt);
-  return isPrintableTask(task) && Boolean(task.completedAt);
-}
+import { monthlyPrintLampiranTasks, showOnMonthlyPrint } from "@/lib/laporan-print-view";
 import { downloadPrintPdf, printPdfFilename } from "@/lib/print-pdf";
 import type { LaporanView, ReportTask } from "@/lib/report-types";
 
@@ -240,9 +235,7 @@ export function LaporanPrintProvider({
           isLeader={bulanan.isLeader}
           rows={bulanan.rows}
           leaderTasks={bulanan.leaderTasks.filter(showOnMonthlyPrint)}
-          lampiranTasks={bulanan.lampiranTasks.filter(
-            (task) => task.printRole !== "dikerjakan" && task.completedAt,
-          )}
+          lampiranTasks={monthlyPrintLampiranTasks(bulanan.lampiranTasks)}
         />
       ) : null}
     </PrintPrepareContext.Provider>

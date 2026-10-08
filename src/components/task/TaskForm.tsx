@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, Save } from "lucide-react";
+import { CheckCircle2, Save } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { AppLoader } from "@/components/layout/AppLoader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -281,12 +282,7 @@ export function TaskFormDialog({
               : "Tunjuk bawahan langsung, atau lempar ke board staf jika Anda kepala sub bidang."}
           </p>
         </DialogHeader>
-        {mode === "delegasi" && orgLoading ? (
-          <div className="flex min-h-48 flex-col items-center justify-center gap-3 py-10">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
-            <p className="text-sm text-on-surface-variant">Memuat form delegasi...</p>
-          </div>
-        ) : (
+        {mode === "delegasi" && orgLoading ? <AppLoader label="Memuat form delegasi" /> : (
         <form key={task?.id ?? mode} onSubmit={handleSubmit} className="min-w-0 max-w-full space-y-6">
           {mode === "delegasi" ? (
             <div className="min-w-0 space-y-3 rounded-lg border border-outline-variant bg-surface-container-low p-4">

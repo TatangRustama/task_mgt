@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import type { DashboardMonthChoice } from "@/lib/admin-dashboard";
+import { AppLoader } from "@/components/layout/AppLoader";
+import type { DashboardMonthChoice } from "@/lib/admin-dashboard-shared";
 
 const selectClassName =
   "flex h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-sm capitalize focus-visible:border-primary-container focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-container disabled:opacity-60 sm:w-56";
@@ -45,6 +46,7 @@ export function DashboardMonthSelect({
           </option>
         ))}
       </select>
+      {pending ? <AppLoader /> : null}
     </div>
   );
 }

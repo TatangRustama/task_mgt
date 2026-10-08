@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { createPortal, flushSync } from "react-dom";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { AppLoader } from "@/components/layout/AppLoader";
 import { Button } from "@/components/ui/button";
 import { Collapse } from "@/components/ui/collapse";
 import { Input } from "@/components/ui/input";
@@ -204,25 +205,8 @@ export function TaskMonitorFilters({
       </div>
         </form>
       </Collapse>
-      {loading ? <TaskMonitorLoading /> : null}
+      {loading ? <AppLoader label="Memuat data tugas" /> : null}
     </div>
-  );
-}
-
-function TaskMonitorLoading() {
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-[#1b2156]/50 print:hidden"
-      role="status"
-      aria-live="polite"
-      aria-label="Memuat data tugas"
-    >
-      <div className="flex flex-col items-center gap-3 rounded-xl bg-surface-container-lowest px-8 py-6 shadow-[0_8px_24px_rgba(27,33,86,0.18)]">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" aria-hidden="true" />
-        <p className="text-sm font-semibold text-on-surface">Memuat data tugas</p>
-      </div>
-    </div>,
-    document.body,
   );
 }
 

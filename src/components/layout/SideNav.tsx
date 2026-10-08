@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Role } from "@prisma/client";
+import { LogOut } from "lucide-react";
 import { useSidebar } from "@/components/layout/SidebarState";
+import { logout } from "@/lib/logout";
 import { cn } from "@/lib/utils";
 import { getNavGroups, isNavActive } from "@/lib/nav";
 
@@ -73,6 +75,17 @@ export function SideNav({
             })}
           </div>
         ))}
+        <div className="border-t border-outline-variant pt-4">
+          <form action={logout}>
+            <button
+              type="submit"
+              className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-semibold text-error transition-colors hover:bg-error-container"
+            >
+              <LogOut className="h-5 w-5" strokeWidth={1.8} />
+              Logout
+            </button>
+          </form>
+        </div>
       </nav>
     </aside>
     </>

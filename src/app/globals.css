@@ -662,19 +662,6 @@ select {
     min-height: 36px;
   }
 
-@keyframes nav-loader-slide {
-  0% {
-    transform: translateX(-120%);
-  }
-  100% {
-    transform: translateX(320%);
-  }
-}
-
-.nav-loader-bar {
-  animation: nav-loader-slide 1.1s ease-in-out infinite;
-}
-
 .leaflet-container {
   z-index: 0;
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { AppLoader } from "@/components/layout/AppLoader";
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -251,9 +252,8 @@ export default function AdminPage() {
             </p>
           </div>
 
-          {loading && users.length === 0 ? (
-            <p className="text-on-surface-variant">Memuat pengguna...</p>
-          ) : users.length === 0 ? (
+          {loading ? <AppLoader label="Memuat pengguna" /> : null}
+          {!loading && users.length === 0 ? (
             <p className="text-on-surface-variant">Tidak ada pengguna yang cocok.</p>
           ) : (
             users.map((user) => (

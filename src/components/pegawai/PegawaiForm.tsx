@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AppLoader } from "@/components/layout/AppLoader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { displayJabatan } from "@/lib/jabatan-display";
@@ -84,12 +85,11 @@ export function PegawaiForm({ canAddNonAsn = false }: { canAddNonAsn?: boolean }
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Pegawai dalam Unit anda</CardTitle>
+          <CardTitle className="text-base">Pegawai dalam Unit Kerja</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
-          {listLoading && bawahan.length === 0 ? (
-            <p className="text-on-surface-variant">Memuat data pegawai...</p>
-          ) : bawahan.length === 0 ? (
+          {listLoading ? <AppLoader label="Memuat data pegawai" /> : null}
+          {!listLoading && bawahan.length === 0 ? (
             <p className="text-on-surface-variant">Tidak ada pegawai dalam unit Anda.</p>
           ) : (
             <>
@@ -111,7 +111,7 @@ export function PegawaiForm({ canAddNonAsn = false }: { canAddNonAsn?: boolean }
                     <p className="text-xs text-on-surface-variant">
                       {row.jenis === "non_asn" ? `NIK ${row.nik || "-"}` : `NIP ${formatNip(row.nip)}`}
                     </p>
-                    <p className="text-sm text-on-surface">{displayJabatan(row)}</p>
+                    <p className="text-xs text-on-surface">{displayJabatan(row)}</p>
                     <p className="text-xs text-on-surface-variant">{row.unorNama || "-"}</p>
                   </div>
                 ))}

@@ -2,11 +2,13 @@ import {
   evidenceRows,
   groupTasksByPrintDate,
   groupTasksForWfhPrint,
+  monthlyPrintLampiranTasks,
   printDailyHasilParafText,
   printDailyKeteranganText,
   printHasilParafText,
   printKeterangan,
   printUraianText,
+  showOnMonthlyPrint,
   type PrintPerson,
   type PrintUnitReviewRow,
 } from "@/lib/laporan-print-view";
@@ -46,22 +48,23 @@ function identityRows(person: PrintPerson, pangkatLabel: string) {
 
 function monthlyTaskTableRows(tasks: ReportTask[], authorName: string, empty: string) {
   const lines = [csvRow(["No.", "Hari/Tgl", "Uraian Tugas", "Keterangan", "Hasil/ Paraf"])];
-  if (tasks.length === 0) {
+  const groups = groupTasksByPrintDate(tasks.filter(showOnMonthlyPrint));
+  if (groups.length === 0) {
     lines.push(csvRow(["", "", empty, "", ""]));
     return lines;
   }
-  for (const group of groupTasksByPrintDate(tasks)) {
-    for (const task of group.tasks) {
+  for (const group of groups) {
+    group.tasks.forEach((task, index) => {
       lines.push(
         csvRow([
-          group.no,
-          group.date,
+          index === 0 ? group.no : "",
+          index === 0 ? group.date : "",
           printUraianText(task, { includeJumlah: true }),
           printKeterangan(task, authorName, { includeFeedback: false }) || "-",
           printHasilParafText(task),
         ]),
       );
-    }
+    });
   }
   return lines;
 }
@@ -93,16 +96,16 @@ function dailyUnitTableRows(tasks: ReportTask[]) {
     return lines;
   }
   for (const group of groups) {
-    for (const task of group.tasks) {
+    group.tasks.forEach((task, index) => {
       lines.push(
         csvRow([
-          group.no,
+          index === 0 ? group.no : "",
           printUraianText(task),
           printDailyKeteranganText(task),
           printDailyHasilParafText(task),
         ]),
       );
-    }
+    });
   }
   return lines;
 }
@@ -208,7 +211,7 @@ export function buildMonthlyPrintCsv(data: BulananPrintData) {
     ),
   );
   lines.push(csvRow([]), csvRow(["dicetak pada :", formatPrintedOnDate()]));
-  lines.push(...lampiranRows(lampiranTasks));
+  lines.push(...lampiranRows(monthlyPrintLampiranTasks(lampiranTasks)));
   return lines.join("");
 }
 

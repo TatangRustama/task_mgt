@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { KeyRound, Pencil, Trash2 } from "lucide-react";
+import { AppLoader } from "@/components/layout/AppLoader";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -194,7 +195,7 @@ export function UserDetailDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {loading ? <p className="text-sm text-on-surface-variant">Memuat detail...</p> : null}
+        {loading ? <AppLoader label="Memuat detail" /> : null}
         {error ? <p className="text-sm text-error">{error}</p> : null}
 
         {!loading && detail && panel === "detail" ? (

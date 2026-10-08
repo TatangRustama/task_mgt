@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Network, Pencil } from "lucide-react";
+import { AppLoader } from "@/components/layout/AppLoader";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -155,7 +156,7 @@ export function PegawaiDetailDialog({
         <DialogHeader className="pr-8 text-left">
           <DialogTitle>{editing ? "Edit pegawai" : "Detail pegawai"}</DialogTitle>
         </DialogHeader>
-        {loading ? <p className="text-sm text-on-surface-variant">Memuat detail...</p> : null}
+        {loading ? <AppLoader label="Memuat detail" /> : null}
         {error ? <p className="text-sm text-error">{error}</p> : null}
 
         {!loading && detail && !editing ? (
