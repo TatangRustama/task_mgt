@@ -255,7 +255,7 @@ export function PindahUnorPage({ pegawaiId }: { pegawaiId: string }) {
               />
             ))}
           </div>
-        )}
+        ) : null}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-on-surface-variant">Terpilih: {selectedName || "-"}</p>
           <div className="flex gap-2">
