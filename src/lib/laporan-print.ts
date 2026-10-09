@@ -5,7 +5,7 @@ import { displayJabatan } from "@/lib/jabatan-display";
 import { getAtasan, getDbOrgUser } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { mapTask } from "@/lib/reports";
-import { formatNip } from "@/lib/utils";
+import { formatNip, formatWfhReportDate, getMonthYearLabel, parseISODate } from "@/lib/utils";
 import {
   toMonthlyPrintTasks,
   type DailyLaporanPrintContext,
@@ -91,10 +91,23 @@ async function personFromUser(userId: string) {
   });
 }
 
+async function validationQr(reportId: string) {
+  const origin = await getRequestOrigin();
+  const validationUrl = `${origin}/validasi/laporan/${reportId}`;
+  const qrDataUrl = await QRCode.toDataURL(validationUrl, {
+    margin: 1,
+    width: 192,
+    errorCorrectionLevel: "M",
+  });
+  return { validationUrl, qrDataUrl };
+}
+
 export async function getDailyLaporanPrintContext(options: {
   userId: string;
+  date: string;
   instansiName: string;
   agencyName: string;
+  taskIds: string[];
 }): Promise<DailyLaporanPrintContext> {
   const orgUser = await getDbOrgUser(options.userId);
   const atasanOrg = orgUser ? await getAtasan(orgUser) : null;
@@ -102,6 +115,26 @@ export async function getDailyLaporanPrintContext(options: {
     personFromUser(options.userId),
     atasanOrg ? personFromUser(atasanOrg.id) : Promise.resolve(null),
   ]);
+
+  const report = await prisma.dailyTaskReport.upsert({
+    where: {
+      userId_date: {
+        userId: options.userId,
+        date: options.date,
+      },
+    },
+    create: {
+      userId: options.userId,
+      date: options.date,
+      atasanId: atasanOrg?.id ?? null,
+      taskIds: options.taskIds,
+    },
+    update: {
+      atasanId: atasanOrg?.id ?? null,
+      taskIds: options.taskIds,
+    },
+  });
+  const { validationUrl, qrDataUrl } = await validationQr(report.id);
 
   return {
     author: author ?? {
@@ -115,6 +148,9 @@ export async function getDailyLaporanPrintContext(options: {
     kopAgency: (options.agencyName || "Badan Kepegawaian Daerah").toUpperCase(),
     kopAddress: KOP_ADDRESS,
     kopWebsite: KOP_WEBSITE,
+    reportId: report.id,
+    validationUrl,
+    qrDataUrl,
   };
 }
 
@@ -154,13 +190,7 @@ export async function getLaporanPrintContext(options: {
     },
   });
 
-  const origin = await getRequestOrigin();
-  const validationUrl = `${origin}/validasi/laporan/${report.id}`;
-  const qrDataUrl = await QRCode.toDataURL(validationUrl, {
-    margin: 1,
-    width: 192,
-    errorCorrectionLevel: "M",
-  });
+  const { validationUrl, qrDataUrl } = await validationQr(report.id);
 
   return {
     author: author ?? {
@@ -180,19 +210,12 @@ export async function getLaporanPrintContext(options: {
   };
 }
 
-export async function getValidasiLaporan(id: string) {
-  const report = await prisma.monthlyTaskReport.findUnique({
-    where: { id },
-  });
-  if (!report) return null;
-
-  const start = new Date(report.year, report.month - 1, 1);
-  const end = new Date(report.year, report.month, 1);
+async function loadValidatedTasks(userId: string, taskIds: string[], start: Date, end: Date) {
   const tasks = await prisma.task.findMany({
     where: {
       status: { not: "dibatalkan" },
       AND: [
-        { OR: [{ id: { in: report.taskIds } }, { assignedToId: report.userId }] },
+        { OR: [{ id: { in: taskIds } }, { assignedToId: userId }] },
         {
           OR: [
             { completedAt: { gte: start, lt: end } },
@@ -209,16 +232,33 @@ export async function getValidasiLaporan(id: string) {
       rating: { select: { stars: true } },
     },
   });
+  return toMonthlyPrintTasks(tasks.map((task) => mapTask(task)), start, end);
+}
 
-  const ordered = toMonthlyPrintTasks(tasks.map((task) => mapTask(task)), start, end);
+export async function getValidasiLaporan(id: string) {
+  const monthly = await prisma.monthlyTaskReport.findUnique({ where: { id } });
+  const daily = monthly ? null : await prisma.dailyTaskReport.findUnique({ where: { id } });
+  const report = monthly ?? daily;
+  if (!report) return null;
 
+  const start = monthly
+    ? new Date(monthly.year, monthly.month - 1, 1)
+    : parseISODate(daily!.date);
+  const end = monthly
+    ? new Date(monthly.year, monthly.month, 1)
+    : new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1);
+  const tasks = await loadValidatedTasks(report.userId, report.taskIds, start, end);
   const [author, atasan] = await Promise.all([
     personFromUser(report.userId),
     report.atasanId ? personFromUser(report.atasanId) : Promise.resolve(null),
   ]);
 
   return {
-    report,
+    kind: monthly ? ("bulanan" as const) : ("harian" as const),
+    reportId: report.id,
+    periodLabel: monthly
+      ? getMonthYearLabel(monthly.month, monthly.year)
+      : formatWfhReportDate(daily!.date),
     author: author ?? {
       name: "-",
       nip: "-",
@@ -226,6 +266,6 @@ export async function getValidasiLaporan(id: string) {
       jabatan: "-",
     },
     atasan,
-    tasks: ordered,
+    tasks,
   };
 }

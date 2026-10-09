@@ -196,9 +196,11 @@ function periodWhere(start: Date, end: Date, view: LaporanView): Prisma.TaskWher
   const inPeriod: Prisma.TaskWhereInput[] = [
     { assignedAt: { gte: start, lt: end } },
     { completedAt: { gte: start, lt: end } },
-    { review: { is: { reviewedAt: { gte: start, lt: end } } } },
     { status: "ditolak", updatedAt: { gte: start, lt: end } },
   ];
+  if (view !== "harian") {
+    inPeriod.push({ review: { is: { reviewedAt: { gte: start, lt: end } } } });
+  }
   if (view === "bulanan") inPeriod.push({ status: "menunggu_approval" });
   else inPeriod.push({ status: "menunggu_approval", completedAt: { gte: start, lt: end } });
   return { OR: inPeriod };
@@ -225,11 +227,19 @@ function toPerson(
   view: LaporanView,
   includeIdle: boolean,
 ): LaporanPerson {
-  const approved = tasks.filter((task) => task.status === "disetujui" && inRange(assessedAt(task), start, end));
+  const approved = tasks.filter(
+    (task) =>
+      task.status === "disetujui" &&
+      inRange(view === "harian" ? task.completedAt : assessedAt(task), start, end),
+  );
   const rejected = tasks.filter(
     (task) => task.status === "ditolak" && inRange(assessedAt(task) || task.createdAt, start, end),
   );
-  const waiting = tasks.filter((task) => task.status === "menunggu_approval");
+  const waiting = tasks.filter(
+    (task) =>
+      task.status === "menunggu_approval" &&
+      (view !== "harian" || inRange(task.completedAt, start, end)),
+  );
   const inProgress = tasks.filter(
     (task) => task.status === "dikerjakan" && isMultiDayDeadline(task.assignedAt, task.createdAt, task.deadline),
   );
@@ -504,11 +514,19 @@ export async function getLaporanBoard(options: LaporanBoardOptions): Promise<Lap
     const ids = descendantSet(unitId, units);
     const unitPeople = allPeople.filter((person) => person.unitId && ids.has(person.unitId));
     const unitTasks = mapped.filter((task) => ids.has(task.unitId) && task.assigneeId !== options.viewerId);
-    const approved = unitTasks.filter((task) => task.status === "disetujui" && inRange(assessedAt(task), start, end));
+    const approved = unitTasks.filter(
+      (task) =>
+        task.status === "disetujui" &&
+        inRange(options.view === "harian" ? task.completedAt : assessedAt(task), start, end),
+    );
     const rejected = unitTasks.filter(
       (task) => task.status === "ditolak" && inRange(assessedAt(task) || task.createdAt, start, end),
     );
-    const waiting = unitTasks.filter((task) => task.status === "menunggu_approval");
+    const waiting = unitTasks.filter(
+      (task) =>
+        task.status === "menunggu_approval" &&
+        (options.view !== "harian" || inRange(task.completedAt, start, end)),
+    );
     const scores = scoreStats(approved);
     const completedCounts = unitPeople.filter((person) => person.isStaff).map((person) => person.completed);
     const completedMedian = median(completedCounts);

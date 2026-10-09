@@ -2,7 +2,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { MonthlyTaskDayRows } from "@/components/report/MonthlyTaskDayRows";
 import { evidenceRows, getValidasiLaporan } from "@/lib/laporan-print";
-import { getMonthYearLabel } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -30,8 +29,7 @@ export default async function ValidasiLaporanPage({
     );
   }
 
-  const { report, author, atasan, tasks } = data;
-  const period = getMonthYearLabel(report.month, report.year);
+  const { kind, reportId, periodLabel, author, atasan, tasks } = data;
   const bukti = evidenceRows(tasks);
 
   return (
@@ -41,13 +39,17 @@ export default async function ValidasiLaporanPage({
         <div>
           <p className="text-xs font-semibold tracking-[0.18em] text-secondary">PEMERINTAH PROVINSI PAPUA BARAT</p>
           <p className="text-lg font-bold text-on-surface">Validasi Laporan Tugas</p>
-          <p className="text-sm text-on-surface-variant">Laporan Pelaksanaan Kinerja Bulanan {period}</p>
+          <p className="text-sm text-on-surface-variant">
+            {kind === "harian"
+              ? `Laporan Kinerja Harian ${periodLabel}`
+              : `Laporan Pelaksanaan Kinerja Bulanan ${periodLabel}`}
+          </p>
         </div>
       </header>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Badge variant="disetujui">Terverifikasi</Badge>
-        <p className="text-xs text-tertiary">ID laporan: {report.id}</p>
+        <p className="text-xs text-tertiary">ID laporan: {reportId}</p>
       </div>
 
       <Card className="mb-4">

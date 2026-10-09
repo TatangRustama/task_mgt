@@ -122,6 +122,8 @@ model User {
   pegawai       Pegawai?
   authoredReports MonthlyTaskReport[] @relation("ReportAuthor")
   knownReports    MonthlyTaskReport[] @relation("ReportAtasan")
+  authoredDailyReports DailyTaskReport[] @relation("DailyReportAuthor")
+  knownDailyReports    DailyTaskReport[] @relation("DailyReportAtasan")
   pushSubscriptions PushSubscription[]
   penugasanSementara PenugasanSementara[]
 
@@ -246,6 +248,21 @@ model MonthlyTaskReport {
   atasan    User?    @relation("ReportAtasan", fields: [atasanId], references: [id], onDelete: SetNull)
 
   @@unique([userId, month, year])
+  @@index([userId])
+}
+
+model DailyTaskReport {
+  id        String   @id @default(cuid())
+  userId    String
+  date      String
+  atasanId  String?
+  taskIds   String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation("DailyReportAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  atasan    User?    @relation("DailyReportAtasan", fields: [atasanId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, date])
   @@index([userId])
 }
 

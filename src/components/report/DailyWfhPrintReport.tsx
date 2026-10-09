@@ -54,12 +54,24 @@ export function DailyWfhPrintReport({
 
       <div className="print-wfh-sign">
         <p className="print-printed-on">dicetak pada : {formatPrintedOnDate()}</p>
-        <p className="print-sign-jabatan">{print.author.jabatan}</p>
-        <div className="print-sign-space print-wfh-sign-space">
-          <span>ttd</span>
+        <div className="print-sign-qr">
+          {print.qrDataUrl ? (
+            <img
+              src={print.qrDataUrl}
+              alt={`QR validasi laporan ${print.reportId}`}
+              className="print-qr"
+            />
+          ) : null}
+          <p className="print-report-id">ID laporan: {print.reportId}</p>
         </div>
-        <p className="print-sign-name">{print.author.name}</p>
-        <p className="print-sign-nip">NIP {print.author.nip.replace(/\s+/g, "")}</p>
+        <div className="print-wfh-sign-author">
+          <p className="print-sign-jabatan">{print.author.jabatan}</p>
+          <div className="print-sign-space print-wfh-sign-space">
+            <span>ttd</span>
+          </div>
+          <p className="print-sign-name">{print.author.name}</p>
+          <p className="print-sign-nip">NIP {print.author.nip.replace(/\s+/g, "")}</p>
+        </div>
       </div>
 
       <PrintLampiranBukti tasks={lampiranTasks} showDate={false} />

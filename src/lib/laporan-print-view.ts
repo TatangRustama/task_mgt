@@ -43,6 +43,9 @@ export type DailyLaporanPrintContext = {
   kopAgency: string;
   kopAddress: string;
   kopWebsite: string;
+  reportId: string;
+  validationUrl: string;
+  qrDataUrl: string;
 };
 
 export function isMultiDayTask(

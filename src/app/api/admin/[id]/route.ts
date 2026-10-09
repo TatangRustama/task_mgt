@@ -126,6 +126,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     prisma.task.updateMany({ where: { assignedToId: id }, data: { assignedToId: null } }),
     prisma.pegawai.updateMany({ where: { userId: id }, data: { userId: null } }),
     prisma.monthlyTaskReport.updateMany({ where: { atasanId: id }, data: { atasanId: null } }),
+    prisma.dailyTaskReport.updateMany({ where: { atasanId: id }, data: { atasanId: null } }),
     prisma.user.delete({ where: { id } }),
   ]);
 

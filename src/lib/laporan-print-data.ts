@@ -130,8 +130,10 @@ export async function getLaporanPrintData(
   if (view === "harian") {
     const print = await getDailyLaporanPrintContext({
       userId: user.id,
+      date,
       instansiName: meta.instansiName,
       agencyName: meta.agencyName,
+      taskIds: [...new Set([...leaderTasks, ...tasks].map((task) => task.id))],
     });
     return {
       view,

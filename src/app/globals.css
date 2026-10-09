@@ -642,15 +642,39 @@ select {
 
   .print-wfh-sign {
     margin-top: 36px;
-    margin-left: auto;
-    width: 280px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    align-items: start;
     text-align: center;
     page-break-inside: avoid;
   }
 
   .print-wfh-sign .print-printed-on {
+    grid-column: 2;
     margin: 0 0 8px;
     text-align: center;
+  }
+
+  .print-wfh-sign .print-sign-qr {
+    grid-column: 1;
+    grid-row: 2;
+    width: auto;
+    align-items: flex-start;
+    padding-top: 0;
+    margin-left: 36px;
+  }
+
+  .print-wfh-sign .print-report-id {
+    white-space: nowrap;
+    word-break: normal;
+    text-align: left;
+  }
+
+  .print-wfh-sign-author {
+    grid-column: 2;
+    grid-row: 2;
+    width: 380px;
   }
 
   .print-sign-jabatan {
