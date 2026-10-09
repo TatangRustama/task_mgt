@@ -14,7 +14,14 @@ import { prisma } from "@/lib/prisma";
 import { mapTask } from "@/lib/reports";
 import type { DayRecap, LaporanView, ReportTask } from "@/lib/report-types";
 import { compareByPangkatDesc } from "@/lib/golongan";
-import { completedOnReportDate, formatISODate, isCompletedOnTime, isMultiDayDeadline, reportDayRange } from "@/lib/utils";
+import {
+  completedOnReportDate,
+  formatISODate,
+  isCompletedOnTime,
+  isMultiDayDeadline,
+  reportDayRange,
+  reportMonthRange,
+} from "@/lib/utils";
 
 type ScopedTask = ReportTask & { unitId: string };
 
@@ -343,9 +350,10 @@ type LaporanBoardOptions = {
 };
 
 export async function getLaporanBoard(options: LaporanBoardOptions): Promise<LaporanBoard | null> {
-  const day = options.view === "harian" ? reportDayRange(options.date) : null;
-  const start = day?.start ?? new Date(options.year, options.month - 1, 1);
-  const end = day?.end ?? new Date(options.year, options.month, 1);
+  const { start, end } =
+    options.view === "harian"
+      ? reportDayRange(options.date)
+      : reportMonthRange(options.year, options.month);
   const asOf = formatISODate(new Date());
   const includeIdle = options.view === "bulanan";
   const include = options.detail === "print" ? taskPrintInclude : taskUiInclude;

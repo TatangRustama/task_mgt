@@ -62,11 +62,13 @@ async function getPendingApprovalSection(reportIds: string[] | null): Promise<No
 
 async function getPerhatianSection(user: OrgUser): Promise<NoticeSection> {
   const now = new Date();
+  const today = formatISODate(now);
+  const [year, month] = today.split("-").map(Number);
   const href = kinerjaHref({
     view: "unit",
-    month: now.getMonth() + 1,
-    year: now.getFullYear(),
-    date: formatISODate(now),
+    month,
+    year,
+    date: today,
   });
   const empty: NoticeSection = {
     id: "perhatian",

@@ -15,7 +15,15 @@ import { prisma } from "@/lib/prisma";
 import { getUnitMeta, mapTask } from "@/lib/reports";
 import type { ReportTask } from "@/lib/report-types";
 import type { SessionUser } from "@/lib/session";
-import { completedOnReportDate, formatISODate, formatNip, isISODate, parseISODate, reportDayRange } from "@/lib/utils";
+import {
+  completedOnReportDate,
+  formatISODate,
+  formatNip,
+  isISODate,
+  parseISODate,
+  reportDayRange,
+  reportMonthRange,
+} from "@/lib/utils";
 
 const taskPrintInclude = {
   assignedTo: { select: { id: true, name: true } },
@@ -105,9 +113,7 @@ export async function getLaporanPrintData(
   if (!board) return null;
   const meta = await getUnitMeta(user.unitId);
 
-  const day = view === "harian" ? reportDayRange(date) : null;
-  const start = day?.start ?? new Date(year, month - 1, 1);
-  const end = day?.end ?? new Date(year, month, 1);
+  const { start, end } = view === "harian" ? reportDayRange(date) : reportMonthRange(year, month);
 
   const unitAssigneeIds = [
     ...new Set(

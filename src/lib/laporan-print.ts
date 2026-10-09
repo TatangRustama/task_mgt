@@ -5,7 +5,14 @@ import { displayJabatan } from "@/lib/jabatan-display";
 import { getAtasan, getDbOrgUser } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { mapTask } from "@/lib/reports";
-import { completedOnReportDate, formatNip, formatWfhReportDate, getMonthYearLabel, reportDayRange } from "@/lib/utils";
+import {
+  completedOnReportDate,
+  formatNip,
+  formatWfhReportDate,
+  getMonthYearLabel,
+  reportDayRange,
+  reportMonthRange,
+} from "@/lib/utils";
 import {
   toMonthlyPrintTasks,
   type DailyLaporanPrintContext,
@@ -241,9 +248,9 @@ export async function getValidasiLaporan(id: string) {
   const report = monthly ?? daily;
   if (!report) return null;
 
-  const day = monthly ? null : reportDayRange(daily!.date);
-  const start = monthly ? new Date(monthly.year, monthly.month - 1, 1) : day!.start;
-  const end = monthly ? new Date(monthly.year, monthly.month, 1) : day!.end;
+  const { start, end } = monthly
+    ? reportMonthRange(monthly.year, monthly.month)
+    : reportDayRange(daily!.date);
   const loaded = await loadValidatedTasks(report.userId, report.taskIds, start, end);
   const tasks = daily
     ? loaded.filter(
