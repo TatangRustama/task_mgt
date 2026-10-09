@@ -15,7 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { getUnitMeta, mapTask } from "@/lib/reports";
 import type { ReportTask } from "@/lib/report-types";
 import type { SessionUser } from "@/lib/session";
-import { formatISODate, formatNip, isISODate, parseISODate, reportDayRange } from "@/lib/utils";
+import { completedOnReportDate, formatISODate, formatNip, isISODate, parseISODate, reportDayRange } from "@/lib/utils";
 
 const taskPrintInclude = {
   assignedTo: { select: { id: true, name: true } },
@@ -25,18 +25,25 @@ const taskPrintInclude = {
   rating: { select: { stars: true } },
 } as const;
 
-async function loadMonthlyPrintTasks(where: Prisma.TaskWhereInput, start: Date, end: Date) {
+async function loadMonthlyPrintTasks(
+  where: Prisma.TaskWhereInput,
+  start: Date,
+  end: Date,
+  completedOnly = false,
+) {
   const rows = await prisma.task.findMany({
     where: {
       AND: [
         where,
         { status: { not: "dibatalkan" } },
-        {
-          OR: [
-            { completedAt: { gte: start, lt: end } },
-            { assignedAt: { gte: start, lt: end }, completedAt: { gte: end } },
-          ],
-        },
+        completedOnly
+          ? { completedAt: { gte: start, lt: end } }
+          : {
+              OR: [
+                { completedAt: { gte: start, lt: end } },
+                { assignedAt: { gte: start, lt: end }, completedAt: { gte: end } },
+              ],
+            },
       ],
     },
     include: taskPrintInclude,
@@ -110,18 +117,26 @@ export async function getLaporanPrintData(
       ].filter((id): id is string => Boolean(id) && id !== user.id),
     ),
   ];
+  const completedOnly = view === "harian";
   const [leaderTasks, tasks] = await Promise.all([
-    isLeader ? loadMonthlyPrintTasks({ assignedToId: user.id }, start, end) : Promise.resolve([]),
+    isLeader
+      ? loadMonthlyPrintTasks({ assignedToId: user.id }, start, end, completedOnly)
+      : Promise.resolve([]),
     isLeader
       ? unitAssigneeIds.length
-        ? loadMonthlyPrintTasks({ assignedToId: { in: unitAssigneeIds } }, start, end)
+        ? loadMonthlyPrintTasks({ assignedToId: { in: unitAssigneeIds } }, start, end, completedOnly)
         : Promise.resolve([])
       : loadMonthlyPrintTasks(
           { OR: [{ assignedToId: user.id }, { createdById: user.id }] },
           start,
           end,
+          completedOnly,
         ),
   ]);
+  const onReportDate = (task: { completedAt?: string | Date | null }) =>
+    !completedOnly || completedOnReportDate(task.completedAt, date);
+  leaderTasks.splice(0, leaderTasks.length, ...leaderTasks.filter(onReportDate));
+  tasks.splice(0, tasks.length, ...tasks.filter(onReportDate));
   const ownPrinted = isLeader ? leaderTasks : tasks.filter((task) => task.assigneeId === user.id);
   const lampiranTasks = ownPrinted.filter((task) => task.printRole !== "dikerjakan");
 

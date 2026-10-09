@@ -16,7 +16,7 @@ import {
   emptySummary,
 } from "@/lib/report-types";
 import { compareByPangkatDesc } from "@/lib/golongan";
-import { formatISODate, isCompletedOnTime, reportDayRange } from "@/lib/utils";
+import { completedOnReportDate, formatISODate, isCompletedOnTime, reportDayRange } from "@/lib/utils";
 import { normalizeStars } from "@/lib/rating";
 
 type ReportKind = "all" | "unit_tree" | "self";
@@ -280,23 +280,14 @@ export async function getDailyReport(
 
   const tasks = await prisma.task.findMany({
     where: {
-      AND: [
-        scopeFilter,
-        {
-          OR: [
-            { assignedAt: { gte: start, lt: end } },
-            { createdAt: { gte: start, lt: end } },
-            { completedAt: { gte: start, lt: end } },
-          ],
-        },
-      ],
+      AND: [scopeFilter, { completedAt: { gte: start, lt: end } }],
       status: { not: "dibatalkan" },
     },
     include: options.detail === "print" || options.detail === undefined ? taskPrintInclude : taskUiInclude,
-    orderBy: { createdAt: "desc" },
+    orderBy: { completedAt: "asc" },
   });
 
-  const mapped = tasks.map(mapTask);
+  const mapped = tasks.map(mapTask).filter((task) => completedOnReportDate(task.completedAt, options.date));
   const meta = await getUnitMeta(options.unitId);
 
   return {

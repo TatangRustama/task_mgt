@@ -16,6 +16,7 @@ export function formatNip(nip: string | null | undefined) {
 export function formatDate(date: Date | string | null | undefined) {
   if (!date) return "-";
   return new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jayapura",
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -25,6 +26,7 @@ export function formatDate(date: Date | string | null | undefined) {
 export function formatDateTime(date: Date | string | null | undefined) {
   if (!date) return "-";
   return new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jayapura",
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -80,6 +82,13 @@ export function calendarDay(value: string | Date | null | undefined) {
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) return null;
   return formatISODate(date);
+}
+
+export function completedOnReportDate(
+  completedAt: string | Date | null | undefined,
+  reportDate: string,
+) {
+  return calendarDay(completedAt) === reportDate;
 }
 
 export function isCompletedOnTime(

@@ -5,7 +5,7 @@ import { displayJabatan } from "@/lib/jabatan-display";
 import { getAtasan, getDbOrgUser } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { mapTask } from "@/lib/reports";
-import { formatNip, formatWfhReportDate, getMonthYearLabel, reportDayRange } from "@/lib/utils";
+import { completedOnReportDate, formatNip, formatWfhReportDate, getMonthYearLabel, reportDayRange } from "@/lib/utils";
 import {
   toMonthlyPrintTasks,
   type DailyLaporanPrintContext,
@@ -244,7 +244,12 @@ export async function getValidasiLaporan(id: string) {
   const day = monthly ? null : reportDayRange(daily!.date);
   const start = monthly ? new Date(monthly.year, monthly.month - 1, 1) : day!.start;
   const end = monthly ? new Date(monthly.year, monthly.month, 1) : day!.end;
-  const tasks = await loadValidatedTasks(report.userId, report.taskIds, start, end);
+  const loaded = await loadValidatedTasks(report.userId, report.taskIds, start, end);
+  const tasks = daily
+    ? loaded.filter(
+        (task) => task.printRole !== "dikerjakan" && completedOnReportDate(task.completedAt, daily.date),
+      )
+    : loaded;
   const [author, atasan] = await Promise.all([
     personFromUser(report.userId),
     report.atasanId ? personFromUser(report.atasanId) : Promise.resolve(null),

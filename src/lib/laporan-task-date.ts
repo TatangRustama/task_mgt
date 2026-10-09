@@ -1,11 +1,12 @@
 import type { DayRecap, ReportTask } from "@/lib/report-types";
+import { calendarDay } from "@/lib/utils";
 
-export function taskReportDate(task: Pick<ReportTask, "reviewedAt" | "completedAt" | "createdAt">) {
-  return (task.reviewedAt || task.completedAt || task.createdAt).slice(0, 10);
+export function taskReportDate(task: Pick<ReportTask, "completedAt">) {
+  return calendarDay(task.completedAt);
 }
 
 export function lastActiveTaskDate(tasks: ReportTask[]) {
-  const dates = tasks.map(taskReportDate).sort();
+  const dates = tasks.map(taskReportDate).filter((date): date is string => Boolean(date)).sort();
   return dates.at(-1) ?? null;
 }
 
@@ -18,7 +19,9 @@ export function recapDaysForPersonTasks(tasks: ReportTask[], month: number, year
   }));
   const byDate = new Map(recap.map((day) => [day.date, day]));
   for (const task of tasks) {
-    const day = byDate.get(taskReportDate(task));
+    const reportDate = taskReportDate(task);
+    if (!reportDate) continue;
+    const day = byDate.get(reportDate);
     if (!day) continue;
     if (task.status === "disetujui") day.completed += 1;
     else day.posted += 1;

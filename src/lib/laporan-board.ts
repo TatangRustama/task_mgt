@@ -14,7 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { mapTask } from "@/lib/reports";
 import type { DayRecap, LaporanView, ReportTask } from "@/lib/report-types";
 import { compareByPangkatDesc } from "@/lib/golongan";
-import { formatISODate, isCompletedOnTime, isMultiDayDeadline, reportDayRange } from "@/lib/utils";
+import { completedOnReportDate, formatISODate, isCompletedOnTime, isMultiDayDeadline, reportDayRange } from "@/lib/utils";
 
 type ScopedTask = ReportTask & { unitId: string };
 
@@ -189,17 +189,16 @@ function emptyDays(month: number, year: number): DayRecap[] {
 }
 
 function periodWhere(start: Date, end: Date, view: LaporanView): Prisma.TaskWhereInput {
-  const inPeriod: Prisma.TaskWhereInput[] = [
-    { assignedAt: { gte: start, lt: end } },
-    { completedAt: { gte: start, lt: end } },
-    { status: "ditolak", updatedAt: { gte: start, lt: end } },
-  ];
-  if (view !== "harian") {
-    inPeriod.push({ review: { is: { reviewedAt: { gte: start, lt: end } } } });
-  }
-  if (view === "bulanan") inPeriod.push({ status: "menunggu_approval" });
-  else inPeriod.push({ status: "menunggu_approval", completedAt: { gte: start, lt: end } });
-  return { OR: inPeriod };
+  if (view === "harian") return { completedAt: { gte: start, lt: end } };
+  return {
+    OR: [
+      { assignedAt: { gte: start, lt: end } },
+      { completedAt: { gte: start, lt: end } },
+      { status: "ditolak", updatedAt: { gte: start, lt: end } },
+      { review: { is: { reviewedAt: { gte: start, lt: end } } } },
+      { status: "menunggu_approval" },
+    ],
+  };
 }
 
 function toPerson(
@@ -222,11 +221,16 @@ function toPerson(
   end: Date,
   view: LaporanView,
   includeIdle: boolean,
+  reportDate?: string,
 ): LaporanPerson {
+  const onThisDay = (completedAt: string | null | undefined) =>
+    view === "harian" && reportDate
+      ? completedOnReportDate(completedAt, reportDate)
+      : inRange(completedAt, start, end);
   const approved = tasks.filter(
     (task) =>
       task.status === "disetujui" &&
-      inRange(view === "harian" ? task.completedAt : assessedAt(task), start, end),
+      (view === "harian" ? onThisDay(task.completedAt) : inRange(assessedAt(task), start, end)),
   );
   const rejected = tasks.filter(
     (task) => task.status === "ditolak" && inRange(assessedAt(task) || task.createdAt, start, end),
@@ -234,10 +238,13 @@ function toPerson(
   const waiting = tasks.filter(
     (task) =>
       task.status === "menunggu_approval" &&
-      (view !== "harian" || inRange(task.completedAt, start, end)),
+      (view !== "harian" || onThisDay(task.completedAt)),
   );
   const inProgress = tasks.filter(
-    (task) => task.status === "dikerjakan" && isMultiDayDeadline(task.assignedAt, task.createdAt, task.deadline),
+    (task) =>
+      view !== "harian" &&
+      task.status === "dikerjakan" &&
+      isMultiDayDeadline(task.assignedAt, task.createdAt, task.deadline),
   );
   const scores = scoreStats(approved);
   const person: LaporanPerson = {
@@ -391,6 +398,7 @@ export async function getLaporanBoard(options: LaporanBoardOptions): Promise<Lap
       end,
       options.view,
       includeIdle,
+      options.view === "harian" ? options.date : undefined,
     );
     const summary = rollupPeople([person]);
     const days = options.view === "bulanan" ? recapDays(mapped, start, end, options.month, options.year) : [];
@@ -497,6 +505,7 @@ export async function getLaporanBoard(options: LaporanBoardOptions): Promise<Lap
         end,
         options.view,
         includeIdle,
+        options.view === "harian" ? options.date : undefined,
       ),
     );
 
@@ -508,7 +517,9 @@ export async function getLaporanBoard(options: LaporanBoardOptions): Promise<Lap
     const approved = unitTasks.filter(
       (task) =>
         task.status === "disetujui" &&
-        inRange(options.view === "harian" ? task.completedAt : assessedAt(task), start, end),
+        (options.view === "harian"
+          ? completedOnReportDate(task.completedAt, options.date)
+          : inRange(assessedAt(task), start, end)),
     );
     const rejected = unitTasks.filter(
       (task) => task.status === "ditolak" && inRange(assessedAt(task) || task.createdAt, start, end),
@@ -516,7 +527,7 @@ export async function getLaporanBoard(options: LaporanBoardOptions): Promise<Lap
     const waiting = unitTasks.filter(
       (task) =>
         task.status === "menunggu_approval" &&
-        (options.view !== "harian" || inRange(task.completedAt, start, end)),
+        (options.view !== "harian" || completedOnReportDate(task.completedAt, options.date)),
     );
     const scores = scoreStats(approved);
     const completedCounts = unitPeople.filter((person) => person.isStaff).map((person) => person.completed);
