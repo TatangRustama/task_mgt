@@ -77,6 +77,20 @@ export function reportDayRange(isoDate: string) {
   return { start, end };
 }
 
+export function startOfReportDay(now = new Date()) {
+  return reportDayRange(formatISODate(now)).start;
+}
+
+export function reportMonthRange(year: number, month: number) {
+  const start = reportDayRange(`${year}-${String(month).padStart(2, "0")}-01`).start;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  return {
+    start,
+    end: reportDayRange(`${nextYear}-${String(nextMonth).padStart(2, "0")}-01`).start,
+  };
+}
+
 export function calendarDay(value: string | Date | null | undefined) {
   if (!value) return null;
   const date = typeof value === "string" ? new Date(value) : value;

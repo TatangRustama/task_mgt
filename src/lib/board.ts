@@ -3,7 +3,7 @@ import type { TaskCardData } from "@/components/board/TaskCard";
 import { canSeeTaskWithScope, getOrgScope } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import type { SessionUser } from "@/lib/session";
-import { formatISODate, parseISODate } from "@/lib/utils";
+import { startOfReportDay } from "@/lib/utils";
 
 const boardTaskSelect = {
   id: true,
@@ -39,7 +39,7 @@ function activeBoardWhere(todayStart: Date): Prisma.TaskWhereInput {
 
 export async function getBoardPageData(user: SessionUser) {
   const { orgUser, visibleUnitIds, isLeader } = await getOrgScope(user);
-  const todayStart = parseISODate(formatISODate(new Date()));
+  const todayStart = startOfReportDay();
 
   const visibility: Prisma.TaskWhereInput = isLeader
     ? {

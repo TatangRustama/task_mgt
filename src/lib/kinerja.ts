@@ -1,6 +1,6 @@
 import { UNASSIGNED_PEGAWAI_ID, type DayRecap, type PegawaiReportRow } from "@/lib/report-types";
 import { compareByPangkatDesc } from "@/lib/golongan";
-import { formatISODate } from "@/lib/utils";
+import { formatISODate, reportMonthRange } from "@/lib/utils";
 
 export type KinerjaLevel = "perlu_perhatian" | "lancar" | "tidak_aktif";
 
@@ -167,12 +167,11 @@ export function groupKinerja(
   };
 }
 
-export function monthAsOfDate(month: number, year: number) {
-  const today = new Date();
-  if (today.getFullYear() === year && today.getMonth() + 1 === month) {
-    return formatISODate(today);
-  }
-  return formatISODate(new Date(year, month, 0));
+export function monthAsOfDate(month: number, year: number, now = new Date()) {
+  const today = formatISODate(now);
+  const [todayYear, todayMonth] = today.split("-").map(Number);
+  if (todayYear === year && todayMonth === month) return today;
+  return formatISODate(new Date(reportMonthRange(year, month).end.getTime() - 1));
 }
 
 export function recapDaysForTasks(

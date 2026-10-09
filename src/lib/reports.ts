@@ -16,7 +16,7 @@ import {
   emptySummary,
 } from "@/lib/report-types";
 import { compareByPangkatDesc } from "@/lib/golongan";
-import { completedOnReportDate, formatISODate, isCompletedOnTime, reportDayRange } from "@/lib/utils";
+import { completedOnReportDate, formatISODate, isCompletedOnTime, reportDayRange, reportMonthRange } from "@/lib/utils";
 import { normalizeStars } from "@/lib/rating";
 
 type ReportKind = "all" | "unit_tree" | "self";
@@ -304,8 +304,7 @@ export async function getMonthlyCalendar(
   const scopeFilter = await buildScopeFilter(options);
   if (!scopeFilter) return null;
 
-  const start = new Date(options.year, options.month - 1, 1);
-  const end = new Date(options.year, options.month, 1);
+  const { start, end } = reportMonthRange(options.year, options.month);
 
   const tasks = await prisma.task.findMany({
     where: {
