@@ -16,7 +16,7 @@ import {
   emptySummary,
 } from "@/lib/report-types";
 import { compareByPangkatDesc } from "@/lib/golongan";
-import { formatISODate, isCompletedOnTime, parseISODate } from "@/lib/utils";
+import { formatISODate, isCompletedOnTime, reportDayRange } from "@/lib/utils";
 import { normalizeStars } from "@/lib/rating";
 
 type ReportKind = "all" | "unit_tree" | "self";
@@ -276,9 +276,7 @@ export async function getDailyReport(
   const scopeFilter = await buildScopeFilter(options);
   if (!scopeFilter) return null;
 
-  const start = parseISODate(options.date);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+  const { start, end } = reportDayRange(options.date);
 
   const tasks = await prisma.task.findMany({
     where: {

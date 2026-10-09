@@ -1,7 +1,7 @@
 import { starLabel } from "@/lib/rating";
 import type { ReportTask } from "@/lib/report-types";
 import { parseTaskDescription } from "@/lib/task-description";
-import { isMultiDayDeadline, parseISODate, statusLabel } from "@/lib/utils";
+import { formatISODate, isMultiDayDeadline, reportDayRange, statusLabel } from "@/lib/utils";
 import { formatJumlahSatuan } from "@/lib/satuan";
 
 export const PRINT_TASK_STATUSES = ["dikerjakan", "menunggu_approval", "disetujui"] as const;
@@ -147,8 +147,7 @@ function monthlyPrintSortTime(task: Pick<ReportTask, "printRole" | "assignedAt" 
 }
 
 export function dailyPrintTasks<T extends ReportTask>(tasks: T[], date: string): T[] {
-  const start = parseISODate(date);
-  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1);
+  const { start, end } = reportDayRange(date);
   return toMonthlyPrintTasks(tasks, start, end);
 }
 
@@ -194,9 +193,8 @@ export function formatPrintDate(value: string | Date | null | undefined) {
   if (!value) return "-";
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) return "-";
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  return `${day}/${month}/${date.getFullYear()}`;
+  const [year, month, day] = formatISODate(date).split("-");
+  return `${day}/${month}/${year}`;
 }
 
 export function printHasil(task: Pick<ReportTask, "score" | "jumlahIntervensi" | "satuan">) {

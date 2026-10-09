@@ -14,7 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { mapTask } from "@/lib/reports";
 import type { DayRecap, LaporanView, ReportTask } from "@/lib/report-types";
 import { compareByPangkatDesc } from "@/lib/golongan";
-import { formatISODate, isCompletedOnTime, isMultiDayDeadline, parseISODate } from "@/lib/utils";
+import { formatISODate, isCompletedOnTime, isMultiDayDeadline, reportDayRange } from "@/lib/utils";
 
 type ScopedTask = ReportTask & { unitId: string };
 
@@ -33,10 +33,6 @@ const taskPrintInclude = {
   review: { select: { score: true, reviewedAt: true, feedback: true } },
   rating: { select: { stars: true } },
 } as const;
-
-function startOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
 
 function hoursBetween(from: Date, to: Date) {
   return (to.getTime() - from.getTime()) / 3_600_000;
@@ -340,15 +336,10 @@ type LaporanBoardOptions = {
 };
 
 export async function getLaporanBoard(options: LaporanBoardOptions): Promise<LaporanBoard | null> {
-  const start =
-    options.view === "harian"
-      ? parseISODate(options.date)
-      : new Date(options.year, options.month - 1, 1);
-  const end =
-    options.view === "harian"
-      ? new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1)
-      : new Date(options.year, options.month, 1);
-  const asOf = formatISODate(startOfDay(new Date()));
+  const day = options.view === "harian" ? reportDayRange(options.date) : null;
+  const start = day?.start ?? new Date(options.year, options.month - 1, 1);
+  const end = day?.end ?? new Date(options.year, options.month, 1);
+  const asOf = formatISODate(new Date());
   const includeIdle = options.view === "bulanan";
   const include = options.detail === "print" ? taskPrintInclude : taskUiInclude;
 

@@ -45,11 +45,34 @@ export function isOverdue(deadline: Date | string | null | undefined) {
   return new Date(deadline) < new Date();
 }
 
+const REPORT_TIME_ZONE = "Asia/Jayapura";
+const JAYAPURA_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+function reportDateParts(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: REPORT_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const pick = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+  return {
+    year: pick("year"),
+    month: pick("month"),
+    day: pick("day"),
+  };
+}
+
 export function formatISODate(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const { year, month, day } = reportDateParts(date);
   return `${year}-${month}-${day}`;
+}
+
+export function reportDayRange(isoDate: string) {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const start = new Date(Date.UTC(year, month - 1, day) - JAYAPURA_OFFSET_MS);
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  return { start, end };
 }
 
 export function calendarDay(value: string | Date | null | undefined) {
