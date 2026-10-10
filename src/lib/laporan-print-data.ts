@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { getLaporanBoard } from "@/lib/laporan-board";
 import { laporanPersonLabel } from "@/lib/laporan-board-types";
 import { golonganSortKey } from "@/lib/golongan";
+import { dailyValidationTaskIds } from "@/lib/daily-report-snapshot";
 import { getDailyLaporanPrintContext, getLaporanPrintContext } from "@/lib/laporan-print";
 import { toMonthlyPrintTasks } from "@/lib/laporan-print-view";
 import type {
@@ -109,14 +110,7 @@ export async function getLaporanPrintData(
   const start = day?.start ?? new Date(year, month - 1, 1);
   const end = day?.end ?? new Date(year, month, 1);
 
-  const unitAssigneeIds = [
-    ...new Set(
-      [
-        ...board.people.map((person) => person.id),
-        ...board.childUnits.map((unitRow) => unitRow.leaderId),
-      ].filter((id): id is string => Boolean(id) && id !== user.id),
-    ),
-  ];
+  const unitAssigneeIds = assigneeIdsFromBoard(board, user.id);
   const completedOnly = view === "harian";
   const [leaderTasks, tasks] = await Promise.all([
     isLeader
@@ -141,12 +135,45 @@ export async function getLaporanPrintData(
   const lampiranTasks = ownPrinted.filter((task) => task.printRole !== "dikerjakan");
 
   if (view === "harian") {
+    const focusedTaskIds = [...new Set([...leaderTasks, ...tasks].map((task) => task.id))];
+    const drilledIn = Boolean(unit && user.unitId && unit !== user.unitId && visibleUnitIds.includes(unit));
+    let taskIds = focusedTaskIds;
+    if (drilledIn && isLeader) {
+      const rootBoard = await getLaporanBoard({
+        viewerId: user.id,
+        rootUnitId: user.unitId,
+        visibleUnitIds,
+        isLeader,
+        view: "harian",
+        date,
+        month,
+        year,
+        detail: "ui",
+      });
+      if (rootBoard) {
+        const rootAssigneeIds = assigneeIdsFromBoard(rootBoard, user.id);
+        const rootUnitTasks = rootAssigneeIds.length
+          ? await loadMonthlyPrintTasks({ assignedToId: { in: rootAssigneeIds } }, start, end, true)
+          : [];
+        taskIds = dailyValidationTaskIds({
+          drilledIn: true,
+          focusedTaskIds,
+          rootTaskIds: [
+            ...new Set(
+              [...leaderTasks, ...rootUnitTasks.filter((task) => completedOnReportDate(task.completedAt, date))].map(
+                (task) => task.id,
+              ),
+            ),
+          ],
+        });
+      }
+    }
     const print = await getDailyLaporanPrintContext({
       userId: user.id,
       date,
       instansiName: meta.instansiName,
       agencyName: meta.agencyName,
-      taskIds: [...new Set([...leaderTasks, ...tasks].map((task) => task.id))],
+      taskIds,
     });
     return {
       view,
@@ -216,6 +243,23 @@ export async function getLaporanPrintData(
     leaderTasks,
     lampiranTasks,
   };
+}
+
+function assigneeIdsFromBoard(
+  board: {
+    people: { id: string }[];
+    childUnits: { leaderId: string | null }[];
+  },
+  viewerId: string,
+) {
+  return [
+    ...new Set(
+      [
+        ...board.people.map((person) => person.id),
+        ...board.childUnits.map((unitRow) => unitRow.leaderId),
+      ].filter((id): id is string => Boolean(id) && id !== viewerId),
+    ),
+  ];
 }
 
 async function loadIdentities(userIds: Array<string | null>) {
