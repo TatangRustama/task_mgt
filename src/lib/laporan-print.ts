@@ -4,8 +4,9 @@ import { formatGolonganPangkat } from "@/lib/golongan";
 import { displayJabatan } from "@/lib/jabatan-display";
 import { getAtasan, getDbOrgUser } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
+import { dailySnapshotTasks } from "@/lib/daily-report-snapshot";
 import { mapTask } from "@/lib/reports";
-import { completedOnReportDate, formatNip, formatWfhReportDate, getMonthYearLabel, reportDayRange } from "@/lib/utils";
+import { formatNip, formatWfhReportDate, getMonthYearLabel } from "@/lib/utils";
 import {
   toMonthlyPrintTasks,
   type DailyLaporanPrintContext,
@@ -235,32 +236,20 @@ async function loadValidatedTasks(userId: string, taskIds: string[], start: Date
   return toMonthlyPrintTasks(tasks.map((task) => mapTask(task)), start, end);
 }
 
-export async function getValidasiLaporan(id: string) {
-  const monthly = await prisma.monthlyTaskReport.findUnique({ where: { id } });
-  const daily = monthly ? null : await prisma.dailyTaskReport.findUnique({ where: { id } });
-  const report = monthly ?? daily;
-  if (!report) return null;
+const validatedTaskInclude = {
+  assignedTo: { select: { id: true, name: true } },
+  createdBy: { select: { name: true } },
+  evidence: { select: { address: true, notes: true, photoUrls: true } },
+  review: { select: { score: true, reviewedAt: true, feedback: true } },
+  rating: { select: { stars: true } },
+} as const;
 
-  const day = monthly ? null : reportDayRange(daily!.date);
-  const start = monthly ? new Date(monthly.year, monthly.month - 1, 1) : day!.start;
-  const end = monthly ? new Date(monthly.year, monthly.month, 1) : day!.end;
-  const loaded = await loadValidatedTasks(report.userId, report.taskIds, start, end);
-  const tasks = daily
-    ? loaded.filter(
-        (task) => task.printRole !== "dikerjakan" && completedOnReportDate(task.completedAt, daily.date),
-      )
-    : loaded;
+async function validationPeople(userId: string, atasanId: string | null) {
   const [author, atasan] = await Promise.all([
-    personFromUser(report.userId),
-    report.atasanId ? personFromUser(report.atasanId) : Promise.resolve(null),
+    personFromUser(userId),
+    atasanId ? personFromUser(atasanId) : Promise.resolve(null),
   ]);
-
   return {
-    kind: monthly ? ("bulanan" as const) : ("harian" as const),
-    reportId: report.id,
-    periodLabel: monthly
-      ? getMonthYearLabel(monthly.month, monthly.year)
-      : formatWfhReportDate(daily!.date),
     author: author ?? {
       name: "-",
       nip: "-",
@@ -268,6 +257,44 @@ export async function getValidasiLaporan(id: string) {
       jabatan: "-",
     },
     atasan,
+  };
+}
+
+export async function getValidasiLaporan(id: string) {
+  const monthly = await prisma.monthlyTaskReport.findUnique({ where: { id } });
+  if (monthly) {
+    const tasks = await loadValidatedTasks(
+      monthly.userId,
+      monthly.taskIds,
+      new Date(monthly.year, monthly.month - 1, 1),
+      new Date(monthly.year, monthly.month, 1),
+    );
+    const people = await validationPeople(monthly.userId, monthly.atasanId);
+    return {
+      kind: "bulanan" as const,
+      reportId: monthly.id,
+      periodLabel: getMonthYearLabel(monthly.month, monthly.year),
+      ...people,
+      tasks,
+    };
+  }
+
+  const daily = await prisma.dailyTaskReport.findUnique({ where: { id } });
+  if (!daily) return null;
+
+  const rows = daily.taskIds.length
+    ? await prisma.task.findMany({
+        where: { id: { in: daily.taskIds } },
+        include: validatedTaskInclude,
+      })
+    : [];
+  const tasks = dailySnapshotTasks(daily.taskIds, rows.map((task) => mapTask(task)), daily.date);
+  const people = await validationPeople(daily.userId, daily.atasanId);
+  return {
+    kind: "harian" as const,
+    reportId: daily.id,
+    periodLabel: formatWfhReportDate(daily.date),
+    ...people,
     tasks,
   };
 }
