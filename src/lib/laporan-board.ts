@@ -14,6 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { mapTask } from "@/lib/reports";
 import type { DayRecap, LaporanView, ReportTask } from "@/lib/report-types";
 import { compareByPangkatDesc } from "@/lib/golongan";
+import { leaderBoardTrail, ledScopeIds, resolveBoardFocus, visibleForestRoots } from "@/lib/led-root";
 import { completedOnReportDate, formatISODate, isCompletedOnTime, isMultiDayDeadline, reportDayRange } from "@/lib/utils";
 
 type ScopedTask = ReportTask & { unitId: string };
@@ -421,11 +422,6 @@ export async function getLaporanBoard(options: LaporanBoardOptions): Promise<Lap
 
   if (!options.visibleUnitIds.length) return null;
 
-  const allowed = new Set(options.visibleUnitIds);
-  const focusUnitId =
-    options.focusUnitId && allowed.has(options.focusUnitId) ? options.focusUnitId : options.rootUnitId;
-  const drilledIn = Boolean(focusUnitId && options.rootUnitId && focusUnitId !== options.rootUnitId);
-
   const [units, reportIdList] = await Promise.all([
     prisma.unit.findMany({
       where: { id: { in: options.visibleUnitIds } },
@@ -451,9 +447,12 @@ export async function getLaporanBoard(options: LaporanBoardOptions): Promise<Lap
   const leadsByUser = new Map(
     units.filter((unit) => unit.pimpinanId).map((unit) => [unit.pimpinanId as string, unit.id]),
   );
-  const scopeIds = focusUnitId
-    ? [...descendantSet(focusUnitId, units)].filter((id) => allowed.has(id))
-    : options.visibleUnitIds;
+  const { ledRootId, focusUnitId, boardRootId, drilledIn } = resolveBoardFocus(
+    options.rootUnitId,
+    options.focusUnitId,
+    units,
+  );
+  const scopeIds = ledScopeIds(focusUnitId, units, options.visibleUnitIds);
 
   const [peopleRows, taskRows] = await Promise.all([
     prisma.user.findMany({
@@ -577,8 +576,10 @@ export async function getLaporanBoard(options: LaporanBoardOptions): Promise<Lap
     return { ...stats, tone, insight: laporanUnitLine({ ...stats, tone }) };
   }
 
-  const heatmapParent = focusUnitId ?? options.rootUnitId;
-  const childUnits = units.filter((unit) => unit.parentId === heatmapParent).map((unit) => unitStats(unit.id));
+  const childSource = focusUnitId
+    ? units.filter((unit) => unit.parentId === focusUnitId)
+    : visibleForestRoots(units);
+  const childUnits = childSource.map((unit) => unitStats(unit.id));
   const childLeaderIds = new Set(childUnits.map((unit) => unit.leaderId).filter((id): id is string => Boolean(id)));
 
   const people = allPeople.filter((person) => {
@@ -588,14 +589,16 @@ export async function getLaporanBoard(options: LaporanBoardOptions): Promise<Lap
     }
     if (drilledIn) return person.unitId === focusUnitId || person.leadsUnitId === focusUnitId;
     if (directReportIds.size > 0) return directReportIds.has(person.id);
-    return person.unitId === heatmapParent;
+    return person.unitId === focusUnitId;
   });
 
   people.sort(compareByPangkatDesc);
 
-  const displayedSummary = rollupFromBoard(people, childUnits);
+  const displayedSummary = rollupFromBoard(focusUnitId ? people : [], childUnits);
   const days = options.view === "bulanan" ? recapDays(mapped, start, end, options.month, options.year) : [];
-  const rootName = units.find((unit) => unit.id === (focusUnitId ?? options.rootUnitId))?.name ?? "Unit";
+  const rootName = focusUnitId
+    ? (units.find((unit) => unit.id === focusUnitId)?.name ?? "Unit")
+    : "Unit yang dipimpin";
   const childLeaderTasks = allPeople
     .filter(
       (person) =>
@@ -607,9 +610,13 @@ export async function getLaporanBoard(options: LaporanBoardOptions): Promise<Lap
     view: options.view,
     asOf,
     isLeader: true,
-    rootUnitId: options.rootUnitId,
+    rootUnitId: boardRootId,
     unitName: rootName,
-    trail: focusUnitId ? buildTrail(focusUnitId, options.rootUnitId, units) : [],
+    trail: leaderBoardTrail(
+      focusUnitId,
+      ledRootId,
+      focusUnitId ? buildTrail(focusUnitId, boardRootId, units) : [],
+    ),
     childUnits,
     people,
     summary: displayedSummary,
