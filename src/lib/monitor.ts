@@ -19,6 +19,7 @@ import { prisma } from "@/lib/prisma";
 import { mapTask } from "@/lib/reports";
 import type { ReportTask } from "@/lib/report-types";
 import { addDays, formatISODate, isCompletedOnTime } from "@/lib/utils";
+import { leaderBoardTrail, ledScopeIds, resolveBoardFocus, visibleForestRoots } from "@/lib/led-root";
 import { getDbOrgUser, getDirectReportIds } from "@/lib/org";
 import { cache } from "react";
 
@@ -198,7 +199,6 @@ const loadMonitorBoard = cache(async (
     focusUnitId: focusKey || null,
     directReportIds: reportKey ? reportKey.split(",") : [],
   };
-  const allowed = new Set(options.visibleUnitIds);
   const now = new Date();
   const todayStart = startOfDay(now);
   const asOf = formatISODate(now);
@@ -226,16 +226,16 @@ const loadMonitorBoard = cache(async (
     orderBy: { name: "asc" },
   });
   const directReportIds = new Set(reportIdList);
-  const focusUnitId =
-    options.focusUnitId && allowed.has(options.focusUnitId) ? options.focusUnitId : options.rootUnitId;
-  const drilledIn = Boolean(focusUnitId && options.rootUnitId && focusUnitId !== options.rootUnitId);
+  const { ledRootId, focusUnitId, boardRootId, drilledIn } = resolveBoardFocus(
+    options.rootUnitId,
+    options.focusUnitId,
+    units,
+  );
   const leadsByUser = new Map(
     units.filter((unit) => unit.pimpinanId).map((unit) => [unit.pimpinanId as string, unit.id]),
   );
 
-  const scopeIds = focusUnitId
-    ? [...descendantSet(focusUnitId, units)].filter((id) => allowed.has(id))
-    : options.visibleUnitIds;
+  const scopeIds = ledScopeIds(focusUnitId, units, options.visibleUnitIds);
 
   const [peopleRows, tasks, lastCompleted] = await Promise.all([
     prisma.user.findMany({
@@ -453,15 +453,17 @@ const loadMonitorBoard = cache(async (
     return { ...stats, tone, insight: unitLeadershipLine({ ...stats, tone }) };
   }
 
-  const heatmapParent = focusUnitId ?? options.rootUnitId;
-  const childUnits = units.filter((unit) => unit.parentId === heatmapParent).map((unit) => unitStats(unit.id));
+  const childSource = focusUnitId
+    ? units.filter((unit) => unit.parentId === focusUnitId)
+    : visibleForestRoots(units);
+  const childUnits = childSource.map((unit) => unitStats(unit.id));
   const childLeaderIds = new Set(childUnits.map((unit) => unit.leaderId).filter((id): id is string => Boolean(id)));
 
   const people = allPeople.filter((person) => {
     if (childLeaderIds.has(person.id)) return false;
     if (drilledIn) return person.unitId === focusUnitId || person.leadsUnitId === focusUnitId;
     if (directReportIds.size > 0) return directReportIds.has(person.id);
-    return person.unitId === heatmapParent;
+    return person.unitId === focusUnitId;
   });
 
   const summary: MonitorSummary = {
@@ -476,14 +478,19 @@ const loadMonitorBoard = cache(async (
     pool: poolTasks.length,
   };
 
-  const rootName =
-    units.find((unit) => unit.id === (focusUnitId ?? options.rootUnitId))?.name ?? "Unit";
+  const rootName = focusUnitId
+    ? (units.find((unit) => unit.id === focusUnitId)?.name ?? "Unit")
+    : "Unit yang dipimpin";
 
   return {
     asOf,
-    rootUnitId: options.rootUnitId,
+    rootUnitId: boardRootId,
     unitName: rootName,
-    trail: focusUnitId ? buildTrail(focusUnitId, options.rootUnitId, units) : [],
+    trail: leaderBoardTrail(
+      focusUnitId,
+      ledRootId,
+      focusUnitId ? buildTrail(focusUnitId, boardRootId, units) : [],
+    ),
     childUnits,
     people,
     poolTasks,

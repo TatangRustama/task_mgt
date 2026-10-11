@@ -31,6 +31,7 @@ import {
   type MonitorPerson,
   type MonitorUnitHeat,
 } from "@/lib/monitor-types";
+import { LED_SCOPE_OVERVIEW } from "@/lib/led-root";
 import { cn, formatRelativeTime } from "@/lib/utils";
 
 const FOCUS_CHIPS: Array<{
@@ -91,7 +92,10 @@ export function MonitorDashboard({
         <nav className="flex flex-wrap items-center gap-1 text-xs text-on-surface-variant">
           {board.trail.map((item, index) => {
             const isLast = index === board.trail.length - 1;
-            const target = index === 0 ? (board.rootUnitId === item.id ? null : item.id) : item.id;
+            const target =
+              item.id === LED_SCOPE_OVERVIEW || (index === 0 && board.rootUnitId === item.id)
+                ? null
+                : item.id;
             return (
               <span key={item.id} className="inline-flex items-center gap-1">
                 {index > 0 ? <ChevronRight className="h-3 w-3" /> : null}
