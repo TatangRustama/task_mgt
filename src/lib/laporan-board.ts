@@ -55,6 +55,15 @@ function assessedAt(task: Pick<ReportTask, "reviewedAt" | "completedAt">) {
   return task.reviewedAt || task.completedAt;
 }
 
+export function isReportedRejection(
+  task: Pick<ReportTask, "status" | "reviewedAt" | "completedAt" | "createdAt">,
+  start: Date,
+  end: Date,
+) {
+  if (task.status !== "ditolak") return false;
+  return inRange(assessedAt(task) || task.createdAt, start, end);
+}
+
 function descendantSet(rootId: string, units: Array<{ id: string; parentId: string | null }>) {
   const children = new Map<string, string[]>();
   for (const unit of units) {
@@ -188,8 +197,15 @@ function emptyDays(month: number, year: number): DayRecap[] {
   }));
 }
 
-function periodWhere(start: Date, end: Date, view: LaporanView): Prisma.TaskWhereInput {
-  if (view === "harian") return { completedAt: { gte: start, lt: end } };
+export function periodWhere(start: Date, end: Date, view: LaporanView): Prisma.TaskWhereInput {
+  if (view === "harian") {
+    return {
+      OR: [
+        { completedAt: { gte: start, lt: end } },
+        { status: "ditolak", review: { is: { reviewedAt: { gte: start, lt: end } } } },
+      ],
+    };
+  }
   return {
     OR: [
       { assignedAt: { gte: start, lt: end } },
@@ -232,9 +248,7 @@ function toPerson(
       task.status === "disetujui" &&
       (view === "harian" ? onThisDay(task.completedAt) : inRange(assessedAt(task), start, end)),
   );
-  const rejected = tasks.filter(
-    (task) => task.status === "ditolak" && inRange(assessedAt(task) || task.createdAt, start, end),
-  );
+  const rejected = tasks.filter((task) => isReportedRejection(task, start, end));
   const waiting = tasks.filter(
     (task) =>
       task.status === "menunggu_approval" &&
@@ -521,9 +535,7 @@ export async function getLaporanBoard(options: LaporanBoardOptions): Promise<Lap
           ? completedOnReportDate(task.completedAt, options.date)
           : inRange(assessedAt(task), start, end)),
     );
-    const rejected = unitTasks.filter(
-      (task) => task.status === "ditolak" && inRange(assessedAt(task) || task.createdAt, start, end),
-    );
+    const rejected = unitTasks.filter((task) => isReportedRejection(task, start, end));
     const waiting = unitTasks.filter(
       (task) =>
         task.status === "menunggu_approval" &&
