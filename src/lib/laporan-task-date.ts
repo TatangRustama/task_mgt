@@ -1,7 +1,20 @@
 import type { DayRecap, ReportTask } from "@/lib/report-types";
 import { calendarDay } from "@/lib/utils";
 
-export function taskReportDate(task: Pick<ReportTask, "completedAt">) {
+type DatedTask = Pick<
+  ReportTask,
+  "status" | "completedAt" | "reviewedAt" | "assignedAt" | "createdAt"
+>;
+
+// Rejection clears completedAt, and multi-day work is still dikerjakan, so the
+// monthly calendar cannot key only off the completion timestamp.
+export function taskReportDate(task: DatedTask) {
+  if (task.status === "ditolak") {
+    return calendarDay(task.reviewedAt || task.completedAt || task.createdAt);
+  }
+  if (task.status === "dikerjakan") {
+    return calendarDay(task.assignedAt || task.createdAt);
+  }
   return calendarDay(task.completedAt);
 }
 
