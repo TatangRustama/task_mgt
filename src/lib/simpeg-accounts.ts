@@ -54,6 +54,7 @@ export async function ensureUserFromPegawai(
   if (!nip) return null;
 
   const existing = await prisma.user.findUnique({ where: { nip } });
+  if (existing?.deletedAt) return null;
   if (existing && isProtectedUser(existing)) {
     return existing;
   }

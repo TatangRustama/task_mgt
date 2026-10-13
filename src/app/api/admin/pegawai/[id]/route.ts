@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { softDeletePegawai } from "@/lib/admin-pegawai";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 
@@ -121,4 +122,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const pegawai = await loadPegawai(id);
   return NextResponse.json({ pegawai });
+}
+
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const actor = await requireUser(["super_admin"]);
+  const { id } = await params;
+  const result = await softDeletePegawai(id, actor.id);
+  if ("error" in result) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
+  }
+  return NextResponse.json({ ok: true, name: result.name });
 }

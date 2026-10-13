@@ -15,24 +15,26 @@ export function formatNip(nip: string | null | undefined) {
 
 export function formatDate(date: Date | string | null | undefined) {
   if (!date) return "-";
+  const value = calendarDate(date);
+  if (!value) return "-";
   return new Intl.DateTimeFormat("id-ID", {
-    timeZone: "Asia/Jayapura",
     day: "numeric",
     month: "short",
     year: "numeric",
-  }).format(new Date(date));
+  }).format(value);
 }
 
 export function formatDateTime(date: Date | string | null | undefined) {
   if (!date) return "-";
+  const value = typeof date === "string" && isISODate(date) ? parseISODate(date) : new Date(date);
+  if (Number.isNaN(value.getTime())) return "-";
   return new Intl.DateTimeFormat("id-ID", {
-    timeZone: "Asia/Jayapura",
     day: "numeric",
     month: "short",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(new Date(date));
+  }).format(value);
 }
 
 export function getMonthYearLabel(month: number, year: number) {
@@ -43,44 +45,37 @@ export function getMonthYearLabel(month: number, year: number) {
 }
 
 export function isOverdue(deadline: Date | string | null | undefined) {
-  if (!deadline) return false;
-  return new Date(deadline) < new Date();
+  const due = calendarDay(deadline);
+  if (!due) return false;
+  return due < formatISODate(new Date());
 }
 
-const REPORT_TIME_ZONE = "Asia/Jayapura";
-const JAYAPURA_OFFSET_MS = 9 * 60 * 60 * 1000;
+function padDatePart(value: number) {
+  return String(value).padStart(2, "0");
+}
 
-function reportDateParts(date: Date) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: REPORT_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const pick = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
-  return {
-    year: pick("year"),
-    month: pick("month"),
-    day: pick("day"),
-  };
+function calendarDate(value: Date | string) {
+  if (typeof value === "string" && isISODate(value)) return parseISODate(value);
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return null;
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
 export function formatISODate(date: Date) {
-  const { year, month, day } = reportDateParts(date);
-  return `${year}-${month}-${day}`;
+  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
 }
 
 export function reportDayRange(isoDate: string) {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  const start = new Date(Date.UTC(year, month - 1, day) - JAYAPURA_OFFSET_MS);
-  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  const start = parseISODate(isoDate);
+  const end = addDays(start, 1);
   return { start, end };
 }
 
 export function calendarDay(value: string | Date | null | undefined) {
   if (!value) return null;
-  const date = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(date.getTime())) return null;
+  if (typeof value === "string" && isISODate(value)) return value;
+  const date = calendarDate(value);
+  if (!date) return null;
   return formatISODate(date);
 }
 
@@ -190,8 +185,7 @@ export function formatPrintedOnDate(date: Date = new Date()) {
     day: "numeric",
     month: "long",
     year: "numeric",
-    timeZone: "Asia/Jayapura",
-  }).format(date);
+  }).format(calendarDate(date) ?? date);
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 

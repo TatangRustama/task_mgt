@@ -111,6 +111,7 @@ model User {
   role          Role      @default(personal)
   jabatan       Jabatan?
   unitId        String?
+  deletedAt     DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   unit          Unit?     @relation("UnitMembers", fields: [unitId], references: [id])
@@ -178,6 +179,7 @@ model Task {
   assignedAt       DateTime       @default(now())
   deadline         DateTime?
   completedAt    DateTime?
+  deletedAt      DateTime?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   unit           Unit           @relation(fields: [unitId], references: [id], onDelete: Cascade)
@@ -303,6 +305,7 @@ model Pegawai {
   perangkatDaerahNama  String?
   unitId               String?
   userId               String?      @unique
+  deletedAt            DateTime?
   syncedAt             DateTime?
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt

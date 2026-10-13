@@ -1,0 +1,25 @@
+---
+description: Task dates are calendar dates only; do not use timezones or UTC
+alwaysApply: true
+---
+
+# Task dates
+
+Task time is a calendar date (`YYYY-MM-DD`). Do not add timezone or UTC conversion for tugas, laporan, tenggat, or "hari ini".
+
+Use the helpers in `src/lib/utils.ts`:
+
+- `parseISODate` / `parseAssignedAt` store a date as local midnight of that calendar day.
+- `formatISODate` and `calendarDay` read the calendar date with `getFullYear`, `getMonth`, and `getDate`.
+- `reportDayRange` is local midnight of that date through local midnight of the next date.
+- `isOverdue` is true only when the deadline date is before today's date.
+
+A clock time on a timestamp must not move a task to another day. Do not use `Asia/Jayapura`, `timeZone` options, `Date.UTC`, or a fixed hour offset to decide which day a task belongs to.
+
+```ts
+// Bad: shifts the day
+const start = new Date(Date.UTC(year, month - 1, day) - 9 * 60 * 60 * 1000);
+
+// Good: the entered date stays that date
+const { start, end } = reportDayRange("2026-10-13");
+```

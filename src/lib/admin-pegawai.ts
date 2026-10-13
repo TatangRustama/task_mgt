@@ -1,6 +1,59 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
+export async function softDeletePegawai(pegawaiId: string, actorId: string) {
+  const pegawai = await prisma.pegawai.findUnique({
+    where: { id: pegawaiId },
+    select: {
+      id: true,
+      name: true,
+      userId: true,
+      deletedAt: true,
+      user: { select: { role: true } },
+    },
+  });
+  if (!pegawai || pegawai.deletedAt) {
+    return { error: "Pegawai tidak ditemukan", status: 404 as const };
+  }
+  if (pegawai.user?.role === "super_admin") {
+    return { error: "Akun super admin tidak dapat dihapus dari daftar pegawai", status: 409 as const };
+  }
+  if (pegawai.userId === actorId) {
+    return { error: "Anda tidak dapat menghapus akun yang sedang dipakai", status: 409 as const };
+  }
+
+  const now = new Date();
+  await prisma.$transaction(async (tx) => {
+    if (pegawai.userId) {
+      await tx.task.updateMany({
+        where: {
+          deletedAt: null,
+          OR: [{ assignedToId: pegawai.userId }, { createdById: pegawai.userId }],
+        },
+        data: { deletedAt: now },
+      });
+      await tx.unit.updateMany({
+        where: { pimpinanId: pegawai.userId },
+        data: { pimpinanId: null },
+      });
+      await tx.penugasanSementara.updateMany({
+        where: { userId: pegawai.userId, selesai: null },
+        data: { selesai: now },
+      });
+      await tx.user.update({
+        where: { id: pegawai.userId },
+        data: { deletedAt: now },
+      });
+    }
+    await tx.pegawai.update({
+      where: { id: pegawai.id },
+      data: { deletedAt: now },
+    });
+  });
+
+  return { ok: true as const, name: pegawai.name };
+}
+
 export type PegawaiStatusFilter = "cpns" | "pns" | "pppk" | "non_asn";
 
 export const PEGAWAI_STATUS_OPTIONS: { value: PegawaiStatusFilter; label: string }[] = [

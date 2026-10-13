@@ -104,7 +104,6 @@ export function LaporanBoardView({
           {view === "harian" ? "Recap harian" : "Rapor bulanan"}
         </p>
         <h3 className="mt-0.5 text-lg font-bold leading-6 tracking-tight md:text-xl">{board.unitName}</h3>
-        <p className="mt-1.5 text-sm text-white/90">{board.insight}</p>
       </section>
 
       <div className={cn("grid gap-1 sm:gap-2", board.isLeader ? "grid-cols-4" : "grid-cols-3")}>

@@ -82,6 +82,12 @@ async function provisionUserFromPegawai(identifier: string) {
   const nip = normalizeLoginIdentifier(identifier);
   if (!nip) return null;
 
+  const removed = await prisma.pegawai.findUnique({
+    where: { nip },
+    select: { deletedAt: true },
+  });
+  if (removed?.deletedAt) return null;
+
   let pegawai = await prisma.pegawai.findUnique({
     where: { nip },
     select: pegawaiSelect,

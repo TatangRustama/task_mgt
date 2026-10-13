@@ -123,6 +123,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "NIP wajib diisi" }, { status: 400 });
     }
     const existing = await prisma.pegawai.findUnique({ where: { nip } });
+    if (existing?.deletedAt) {
+      return NextResponse.json({ error: "Pegawai ini sudah dihapus" }, { status: 409 });
+    }
     if (existing) {
       const saved = assignment
         ? await prisma.pegawai.update({ where: { id: existing.id }, data: assignment })

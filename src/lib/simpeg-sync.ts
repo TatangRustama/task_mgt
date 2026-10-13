@@ -90,6 +90,11 @@ async function upsertAsnDirectory(nip: string, name: string, address: string) {
 
 export async function upsertPegawaiFromSimpeg(pegawai: SimpegPegawai) {
   const data = pegawaiRecordFromSimpeg(pegawai, str(pegawai.unor_id));
+  const removed = await prisma.pegawai.findUnique({
+    where: { nip: data.nip },
+    select: { id: true, deletedAt: true },
+  });
+  if (removed?.deletedAt) return removed;
   const unit = data.unitId
     ? await prisma.unit.findFirst({
         where: { OR: [{ id: data.unitId }, { externalId: data.unitId }] },
@@ -197,6 +202,16 @@ async function syncPegawai(onProgress?: ProgressFn) {
     ),
   );
   let saved = 0;
+  const removedNips = new Set(
+    (
+      await prisma.pegawai.findMany({
+        where: { deletedAt: { not: null } },
+        select: { nip: true },
+      })
+    )
+      .map((row) => row.nip)
+      .filter((nip): nip is string => Boolean(nip)),
+  );
 
   onProgress?.({
     step: "pegawai",
@@ -210,7 +225,7 @@ async function syncPegawai(onProgress?: ProgressFn) {
       await Promise.all(
         group.map(async (pegawai) => {
           const nip = str(pegawai.nip);
-          if (!nip) return;
+          if (!nip || removedNips.has(nip)) return;
           const unorId = str(pegawai.unor_id);
           const data = pegawaiRecordFromSimpeg(pegawai, unorId);
           const unitId = unorId && unitIds.has(unorId) ? unorId : null;
@@ -268,6 +283,7 @@ export async function syncSimpeg(onProgress?: ProgressFn) {
 
 export async function lookupOrSyncPegawaiByNip(nip: string) {
   const local = await prisma.pegawai.findUnique({ where: { nip } });
+  if (local?.deletedAt) return null;
   if (local) {
     return { pegawai: local, source: "local" as const, alreadySaved: true };
   }

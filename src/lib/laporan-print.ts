@@ -82,12 +82,13 @@ async function personFromUserId(
 async function personFromUser(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { name: true, nip: true, jabatan: true },
+    select: { name: true, nip: true, jabatan: true, deletedAt: true },
   });
+  if (!user || user.deletedAt) return null;
   return personFromUserId(userId, {
-    name: user?.name || "-",
-    nip: user?.nip || "-",
-    jabatan: "-",
+    name: user.name || "-",
+    nip: user.nip || "-",
+    jabatan: user.jabatan ?? "-",
   });
 }
 
@@ -254,6 +255,7 @@ export async function getValidasiLaporan(id: string) {
     personFromUser(report.userId),
     report.atasanId ? personFromUser(report.atasanId) : Promise.resolve(null),
   ]);
+  if (!author) return null;
 
   return {
     kind: monthly ? ("bulanan" as const) : ("harian" as const),

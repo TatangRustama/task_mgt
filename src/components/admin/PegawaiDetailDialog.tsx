@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Network, Pencil } from "lucide-react";
+import { Network, Pencil, Trash2 } from "lucide-react";
 import { AppLoader } from "@/components/layout/AppLoader";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -63,6 +63,8 @@ export function PegawaiDetailDialog({
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const [detail, setDetail] = useState<PegawaiDetail | null>(null);
   const [name, setName] = useState("");
@@ -77,6 +79,7 @@ export function PegawaiDetailDialog({
     if (!open || !pegawaiId) {
       setDetail(null);
       setEditing(false);
+      setConfirmingDelete(false);
       setError("");
       return;
     }
@@ -85,6 +88,7 @@ export function PegawaiDetailDialog({
     setLoading(true);
     setError("");
     setEditing(false);
+    setConfirmingDelete(false);
     fetch(`/api/admin/pegawai/${pegawaiId}`)
       .then(async (res) => {
         const data = await res.json();
@@ -107,6 +111,26 @@ export function PegawaiDetailDialog({
       cancelled = true;
     };
   }, [open, pegawaiId]);
+
+  async function removePegawai() {
+    if (!detail) return;
+    setDeleting(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/pegawai/${detail.id}`, { method: "DELETE", redirect: "manual" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        setError(data.error || "Gagal menghapus pegawai");
+        return;
+      }
+      onOpenChange(false);
+      onChanged(`${detail.name} dihapus dari pengelolaan tugas dan laporan.`);
+    } catch {
+      setError("Gagal menghapus pegawai");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   function startEdit() {
     if (!detail) return;
@@ -182,23 +206,60 @@ export function PegawaiDetailDialog({
                 Pegawai ini belum punya akun, sehingga belum dapat ditunjuk sebagai Plt atau Plh.
               </p>
             )}
-            <div className="flex flex-wrap gap-2 pb-4">
-              <Button type="button" variant="outline" className="flex-1" onClick={startEdit}>
-                <Pencil className="h-4 w-4" />
-                Edit pegawai
-              </Button>
-              <Button
-                type="button"
-                className="flex-1"
-                onClick={() => {
-                  onOpenChange(false);
-                  router.push(`/admin/pegawai/${detail.id}/unor`);
-                }}
-              >
-                <Network className="h-4 w-4" />
-                Pindah UNOR
-              </Button>
-            </div>
+            {confirmingDelete ? (
+              <div className="space-y-3 rounded-lg border border-error/30 bg-error/5 p-3">
+                <p className="text-sm text-on-surface">
+                  Hapus {detail.name} dari pengelolaan tugas? Akun pengguna dan seluruh tugas yang berkaitan tidak akan muncul lagi di aplikasi maupun laporan. Data tetap tersimpan di database.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    disabled={deleting}
+                    onClick={() => setConfirmingDelete(false)}
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    className="flex-1"
+                    disabled={deleting}
+                    onClick={removePegawai}
+                  >
+                    {deleting ? "Menghapus..." : "Ya, hapus"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2 pb-4">
+                <Button type="button" variant="outline" className="flex-1" onClick={startEdit}>
+                  <Pencil className="h-4 w-4" />
+                  Edit pegawai
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-1"
+                  onClick={() => {
+                    onOpenChange(false);
+                    router.push(`/admin/pegawai/${detail.id}/unor`);
+                  }}
+                >
+                  <Network className="h-4 w-4" />
+                  Pindah UNOR
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="w-full"
+                  onClick={() => setConfirmingDelete(true)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Hapus pegawai
+                </Button>
+              </div>
+            )}
           </div>
         ) : null}
 
