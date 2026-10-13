@@ -94,7 +94,7 @@ export async function upsertPegawaiFromSimpeg(pegawai: SimpegPegawai) {
     where: { nip: data.nip },
     select: { id: true, deletedAt: true },
   });
-  if (removed?.deletedAt) return removed;
+  if (removed?.deletedAt) return null;
   const unit = data.unitId
     ? await prisma.unit.findFirst({
         where: { OR: [{ id: data.unitId }, { externalId: data.unitId }] },
@@ -292,6 +292,7 @@ export async function lookupOrSyncPegawaiByNip(nip: string) {
     const remote = await fetchSimpegPegawaiByNip(nip);
     if (remote) {
       const pegawai = await upsertPegawaiFromSimpeg(remote);
+      if (!pegawai) return null;
       return { pegawai, source: "simpeg" as const, alreadySaved: true };
     }
   } catch {
