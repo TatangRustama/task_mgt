@@ -6,6 +6,20 @@ export const TASK_STAGE_OPTIONS = [
 
 export type TaskStage = (typeof TASK_STAGE_OPTIONS)[number]["value"];
 
+const DONE_STATUSES = new Set(["disetujui", "menunggu_approval"]);
+
+// Assigned work can only be submitted from "dikerjakan" or "ditolak".
+// "tersedia" is the unassigned pool state, so an assignee must not land there.
+export function downgradedTaskStatus(task: {
+  status: string;
+  assignedToId?: string | null;
+}): "dikerjakan" | "tersedia" | null {
+  if (DONE_STATUSES.has(task.status)) return "dikerjakan";
+  if (task.status === "ditolak") return task.assignedToId ? "dikerjakan" : "tersedia";
+  if (task.status === "dikerjakan") return task.assignedToId ? null : "tersedia";
+  return null;
+}
+
 export type UnorChoice = { id: string; name: string };
 
 export type TaskMonitorFilterValues = {

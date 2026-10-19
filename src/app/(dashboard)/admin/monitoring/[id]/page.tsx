@@ -114,7 +114,10 @@ export default async function TaskMonitorDetailPage({
             }}
             listHref={listHref}
             currentStatus={task.status}
-            nextStatus={downgradedTaskStatus(task.status)}
+            nextStatus={downgradedTaskStatus({
+              status: task.status,
+              assignedToId: task.assignedToId,
+            })}
           />
         </CardContent>
       </Card>
