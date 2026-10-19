@@ -3,6 +3,7 @@ import { listPerangkatDaerah, listUnorChildren, listUnorRootsForPerangkatDaerah 
 import { prisma } from "@/lib/prisma";
 import {
   TASK_STAGE_OPTIONS,
+  downgradedTaskStatus,
   taskMonitorDetailHref,
   taskMonitorHref,
   type TaskMonitorFilterValues,
@@ -11,7 +12,7 @@ import {
 } from "@/lib/task-monitor-shared";
 import { formatNip } from "@/lib/utils";
 
-export { TASK_STAGE_OPTIONS, taskMonitorDetailHref, taskMonitorHref };
+export { TASK_STAGE_OPTIONS, downgradedTaskStatus, taskMonitorDetailHref, taskMonitorHref };
 export type { UnorChoice };
 
 export const TASK_MONITOR_PAGE_SIZE = 15;
@@ -96,19 +97,13 @@ export function hasTaskMonitorFilter(filters: Pick<TaskMonitorFilters, "pd" | "q
   return Boolean(filters.pd || filters.q || filters.date || filters.sumber || filters.tahap);
 }
 
-export function downgradedTaskStatus(status: TaskStatus): TaskStatus | null {
-  if (status === "disetujui" || status === "menunggu_approval") return "dikerjakan";
-  if (status === "dikerjakan" || status === "ditolak") return "tersedia";
-  return null;
-}
-
 export async function downgradeTaskStage(taskId: string) {
   const task = await prisma.task.findUnique({
     where: { id: taskId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, assignedToId: true },
   });
   if (!task) return { error: "Tugas tidak ditemukan", httpStatus: 404 as const };
-  const next = downgradedTaskStatus(task.status);
+  const next = downgradedTaskStatus(task);
   if (!next) return { error: "Tahapan sudah paling rendah", httpStatus: 400 as const };
 
   await prisma.$transaction(async (tx) => {
@@ -116,7 +111,11 @@ export async function downgradeTaskStage(taskId: string) {
     await tx.taskRating.deleteMany({ where: { taskId } });
     await tx.task.update({
       where: { id: taskId },
-      data: { status: next, completedAt: null },
+      data: {
+        status: next,
+        completedAt: null,
+        ...(next === "tersedia" ? { assignedToId: null } : {}),
+      },
     });
   });
 
