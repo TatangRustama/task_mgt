@@ -1,4 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
+import { applyActiveAccount, loadActiveAccount } from "@/lib/auth-account";
 
 function stripLoopbackAuthUrl() {
   for (const key of ["AUTH_URL", "NEXTAUTH_URL"] as const) {
@@ -26,13 +27,24 @@ export const authConfig = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
+        token.id = user.id ?? token.id;
         token.role = user.role;
         token.jabatan = user.jabatan;
         token.unitId = user.unitId;
         token.nip = user.nip;
+        if (user.name) token.name = user.name;
+        if (user.email) token.email = user.email;
       }
-      return token;
+      const userId = typeof token.id === "string" ? token.id : "";
+      if (!userId) return token;
+      try {
+        const account = await loadActiveAccount(userId);
+        if (!account) return null;
+        return applyActiveAccount(token, account);
+      } catch (error) {
+        console.error("[auth] failed to refresh session account", error instanceof Error ? error.name : "error");
+        return token;
+      }
     },
     async session({ session, token }) {
       if (session.user) {
