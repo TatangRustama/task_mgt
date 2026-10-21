@@ -11,7 +11,14 @@ import { assignmentModeLabel } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { formatJumlahSatuan } from "@/lib/satuan";
 import { requireUser } from "@/lib/session";
-import { downgradedTaskStatus, parseTaskMonitorFilters, taskMonitorHref } from "@/lib/task-monitor";
+import { getAdminScope, taskRecordInScope } from "@/lib/admin-scope";
+import { hasSuperAdminAccess } from "@/lib/roles";
+import {
+  downgradedTaskStatus,
+  parseTaskMonitorFilters,
+  taskCanReturnToPool,
+  taskMonitorHref,
+} from "@/lib/task-monitor";
 import { cn, formatDate, formatDateTime, formatNip, priorityBarClass, statusLabel } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +45,8 @@ export default async function TaskMonitorDetailPage({
     page?: string;
   }>;
 }) {
-  await requireUser(["super_admin"]);
+  const user = await requireUser(["super_admin", "admin"]);
+  const scope = await getAdminScope(user);
   const { id } = await params;
   const listHref = taskMonitorHref(parseTaskMonitorFilters(await searchParams));
 
@@ -49,7 +57,10 @@ export default async function TaskMonitorDetailPage({
         select: {
           name: true,
           nip: true,
-          pegawai: { select: { jenis: true, nip: true, nik: true, perangkatDaerahNama: true } },
+          unitId: true,
+          pegawai: {
+            select: { jenis: true, nip: true, nik: true, perangkatDaerahNama: true, unitId: true, unorId: true },
+          },
         },
       },
       createdBy: { select: { name: true } },
@@ -60,7 +71,7 @@ export default async function TaskMonitorDetailPage({
     },
   });
 
-  if (!task || task.status === "dibatalkan") notFound();
+  if (!task || task.status === "dibatalkan" || !taskRecordInScope(scope, task)) notFound();
 
   const assigneeId =
     task.assignedTo?.pegawai?.jenis === "non_asn"
@@ -114,7 +125,9 @@ export default async function TaskMonitorDetailPage({
             }}
             listHref={listHref}
             currentStatus={task.status}
-            nextStatus={downgradedTaskStatus(task.status)}
+            nextStatus={downgradedTaskStatus(task.status, task)}
+            floorLabel={taskCanReturnToPool(task) ? "Open" : "Dikerjakan"}
+            canEditCompletedAt={hasSuperAdminAccess(user)}
           />
         </CardContent>
       </Card>

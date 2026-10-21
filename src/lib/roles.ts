@@ -61,6 +61,15 @@ export function canManageOrg(role: Role) {
   return isSuperAdmin(role);
 }
 
+export function hasSuperAdminAccess(user: { role: Role; superAdmin?: boolean }) {
+  return isSuperAdmin(user.role) || Boolean(user.superAdmin);
+}
+
+export function canAccessAdminConsole(role: Role, opdAdmin = false, superAdmin = false) {
+  const value = coerceRole(role);
+  return value === "super_admin" || superAdmin || value === "admin" || opdAdmin;
+}
+
 export function canManageNonAsn(role: Role) {
   const value = coerceRole(role);
   return value === "super_admin" || value === "admin";
@@ -79,13 +88,22 @@ export function isPrivilegedRole(role: Role) {
   return value === "super_admin" || value === "admin";
 }
 
-export function hasAllowedRole(userRole: Role, allowed: Role[]) {
-  return allowed.includes(coerceRole(userRole));
+export function hasAllowedRole(userRole: Role, allowed: Role[], opdAdmin = false, superAdmin = false) {
+  if (allowed.includes(coerceRole(userRole))) return true;
+  if (superAdmin && (allowed.includes("super_admin") || allowed.includes("admin"))) return true;
+  return opdAdmin && allowed.includes("admin");
+}
+
+export function roleAccessLabel(role: Role, opdAdmin = false, superAdmin = false) {
+  const value = coerceRole(role);
+  if (value === "personal" && superAdmin && opdAdmin) return "Personal · Super Admin · Admin OPD";
+  if (value === "personal" && superAdmin) return "Personal · Super Admin";
+  if (value === "personal" && opdAdmin) return "Personal · Admin OPD";
+  return roleLabel[value];
 }
 
 export function defaultHomePath(role: Role) {
   const value = coerceRole(role);
-  if (value === "super_admin") return "/dashboard";
-  if (value === "admin") return "/pegawai";
+  if (value === "super_admin" || value === "admin") return "/dashboard";
   return "/mandiri";
 }

@@ -15,8 +15,8 @@ export async function softDeletePegawai(pegawaiId: string, actorId: string) {
   if (!pegawai || pegawai.deletedAt) {
     return { error: "Pegawai tidak ditemukan", status: 404 as const };
   }
-  if (pegawai.user?.role === "super_admin") {
-    return { error: "Akun super admin tidak dapat dihapus dari daftar pegawai", status: 409 as const };
+  if (pegawai.user?.role === "super_admin" || pegawai.user?.role === "admin") {
+    return { error: "Akun pengelola tidak dapat dihapus dari daftar pegawai", status: 409 as const };
   }
   if (pegawai.userId === actorId) {
     return { error: "Anda tidak dapat menghapus akun yang sedang dipakai", status: 409 as const };
@@ -153,9 +153,9 @@ export async function listPerangkatDaerah() {
     .sort((a, b) => a.name.localeCompare(b.name, "id"));
 }
 
-export async function listGolonganOptions() {
+export async function listGolonganOptions(extra?: Prisma.PegawaiWhereInput) {
   const rows = await prisma.pegawai.findMany({
-    where: { golonganNama: { not: null } },
+    where: extra ? { AND: [extra, { golonganNama: { not: null } }] } : { golonganNama: { not: null } },
     distinct: ["golonganNama"],
     select: { golonganNama: true },
     orderBy: { golonganNama: "asc" },

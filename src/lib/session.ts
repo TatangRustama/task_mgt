@@ -10,6 +10,8 @@ export type SessionUser = {
   name: string;
   email: string;
   role: Role;
+  opdAdmin: boolean;
+  superAdmin: boolean;
   jabatan: Jabatan | null;
   unitId: string | null;
   nip: string;
@@ -21,20 +23,23 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   const sessionUser = session.user as SessionUser;
   const row = await prisma.user.findUnique({
     where: { id: sessionUser.id },
-    select: { deletedAt: true },
+    select: { deletedAt: true, role: true, opdAdmin: true, superAdmin: true, unitId: true, jabatan: true },
   });
   if (!row || row.deletedAt) return null;
   return {
     ...sessionUser,
-    role: coerceRole(sessionUser.role),
-    jabatan: sessionUser.jabatan ?? null,
+    role: coerceRole(row.role),
+    opdAdmin: row.opdAdmin,
+    superAdmin: row.superAdmin,
+    unitId: row.unitId,
+    jabatan: row.jabatan,
   };
 });
 
 export async function requireUser(roles?: Role[]) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (roles && !hasAllowedRole(user.role, roles)) {
+  if (roles && !hasAllowedRole(user.role, roles, user.opdAdmin, user.superAdmin)) {
     redirect(defaultHomePath(user.role));
   }
   return user;

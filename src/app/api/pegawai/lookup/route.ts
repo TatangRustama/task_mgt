@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isSuperAdmin } from "@/lib/roles";
+import { hasSuperAdminAccess } from "@/lib/roles";
 import { getCurrentUser } from "@/lib/session";
 import { lookupOrSyncPegawaiByNip } from "@/lib/simpeg-sync";
 
@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!isSuperAdmin(user.role)) {
+  if (!hasSuperAdminAccess(user)) {
     return NextResponse.json({ error: "Hanya super admin yang dapat mencari pegawai ASN" }, { status: 403 });
   }
 

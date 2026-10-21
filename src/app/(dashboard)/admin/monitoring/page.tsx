@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/session";
+import { adminScopeNotice, getAdminScope } from "@/lib/admin-scope";
 import { getTaskMonitor, parseTaskMonitorFilters, taskMonitorDetailHref, taskMonitorHref } from "@/lib/task-monitor";
 import { cn, formatDateTime, statusLabel } from "@/lib/utils";
 
@@ -29,17 +30,29 @@ export default async function TaskMonitorPage({
     page?: string;
   }>;
 }) {
-  await requireUser(["super_admin"]);
+  const user = await requireUser(["super_admin", "admin"]);
+  const scope = await getAdminScope(user);
+  const notice = adminScopeNotice(scope);
   const params = await searchParams;
   const requested = parseTaskMonitorFilters(params);
-  const { rows, total, page, totalPages, perangkatDaerah, unor, filters, queried } = await getTaskMonitor(requested);
+  const { rows, total, page, totalPages, perangkatDaerah, unor, filters, queried, perangkatLocked } =
+    await getTaskMonitor(requested, scope);
 
   return (
     <PageMain className="max-w-4xl space-y-4">
       <PageHeader
         title="Monitoring tugas"
-        subtitle="Pilih filter lalu terapkan untuk menampilkan tugas. Daftar tidak dimuat sebelum ada filter."
+        subtitle={
+          scope.unrestricted
+            ? "Pilih filter lalu terapkan untuk menampilkan tugas. Daftar tidak dimuat sebelum ada filter."
+            : "Tugas pada unit organisasi Anda."
+        }
       />
+      {notice ? (
+        <p className="rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-3 text-sm text-on-surface-variant">
+          {notice}
+        </p>
+      ) : null}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{queried ? `Daftar tugas (${total})` : "Daftar tugas"}</CardTitle>
@@ -51,6 +64,7 @@ export default async function TaskMonitorPage({
             filters={filters}
             unorOptions={unor.options}
             showReset={queried}
+            perangkatLocked={perangkatLocked}
           />
 
           {queried ? (

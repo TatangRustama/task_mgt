@@ -112,7 +112,7 @@ export async function upsertPegawaiFromSimpeg(pegawai: SimpegPegawai) {
   return saved;
 }
 
-async function syncUnor(onProgress?: ProgressFn) {
+export async function syncSimpegUnor(onProgress?: ProgressFn) {
   onProgress?.({ step: "unor", message: "Mengambil unit organisasi dari Simpeg..." });
   const { items } = await fetchSimpegUnor();
   const instansi = await ensureInstansi();
@@ -263,7 +263,7 @@ async function syncPegawai(onProgress?: ProgressFn) {
 }
 
 export async function syncSimpeg(onProgress?: ProgressFn) {
-  const unitCount = await syncUnor(onProgress);
+  const unitCount = await syncSimpegUnor(onProgress);
   const pegawaiCount = await syncPegawai(onProgress);
   onProgress?.({
     step: "akun",

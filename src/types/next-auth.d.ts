@@ -6,6 +6,8 @@ declare module "next-auth" {
     user: {
       id: string;
       role: Role;
+      opdAdmin: boolean;
+      superAdmin: boolean;
       jabatan: Jabatan | null;
       unitId: string | null;
       nip: string;
@@ -14,6 +16,8 @@ declare module "next-auth" {
 
   interface User {
     role: Role;
+    opdAdmin: boolean;
+    superAdmin: boolean;
     jabatan: Jabatan | null;
     unitId: string | null;
     nip: string;
@@ -24,6 +28,8 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     role: Role;
+    opdAdmin: boolean;
+    superAdmin: boolean;
     jabatan: Jabatan | null;
     unitId: string | null;
     nip: string;

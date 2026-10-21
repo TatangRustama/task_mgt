@@ -6,7 +6,7 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { MandiriCreateControl } from "@/components/layout/CreateTaskFab";
 import { EnablePushNotifications } from "@/components/layout/EnablePushNotifications";
 import { getDbOrgUser, isUnitLeader } from "@/lib/org";
-import { canUseEmployeeApp, isSuperAdmin } from "@/lib/roles";
+import { canUseEmployeeApp, isAppAdmin, isPersonal, isSuperAdmin } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -17,19 +17,25 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const orgUser = await getDbOrgUser(user.id);
   const pegawai = orgUser?.pegawai;
   const isLeader = Boolean(orgUser && isUnitLeader(orgUser));
+  const pegawaiIdentity =
+    pegawai?.jenis === "non_asn" ? `NIK ${pegawai.nik || "-"}` : `NIP ${pegawai?.nip || user.nip}`;
   const identity = isSuperAdmin(user.role)
     ? "Super Admin"
-    : pegawai?.jenis === "non_asn"
-      ? `NIK ${pegawai.nik || "-"}`
-      : `NIP ${pegawai?.nip || user.nip}`;
+    : isAppAdmin(user.role)
+      ? "Admin OPD"
+      : user.superAdmin
+        ? `${pegawaiIdentity} · Super Admin`
+        : user.opdAdmin
+          ? `${pegawaiIdentity} · Admin OPD`
+          : pegawaiIdentity;
 
   return (
     <SidebarStateProvider>
     <div className="min-h-screen bg-surface-container-high print:bg-white">
       <Header userName={user.name} identity={identity} />
-      <SideNav role={user.role} isLeader={isLeader} />
-      <AppContent>{children}</AppContent>
-      <BottomNav role={user.role} isLeader={isLeader} />
+      <SideNav role={user.role} isLeader={isLeader} opdAdmin={user.opdAdmin} superAdmin={user.superAdmin} />
+      <AppContent keepFooter={isPersonal(user.role) && (user.opdAdmin || user.superAdmin)}>{children}</AppContent>
+      <BottomNav role={user.role} isLeader={isLeader} opdAdmin={user.opdAdmin} superAdmin={user.superAdmin} />
       {canCreateMandiri ? <MandiriCreateControl /> : null}
       {canCreateMandiri ? <EnablePushNotifications /> : null}
     </div>

@@ -7,7 +7,7 @@ export default async function SuperAdminPindahUnorPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireUser(["super_admin"]);
+  await requireUser(["super_admin", "admin"]);
   const { id } = await params;
 
   return (

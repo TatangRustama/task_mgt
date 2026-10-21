@@ -1,5 +1,6 @@
-import { Prisma, TaskSource, TaskStatus } from "@prisma/client";
+import { AssignmentMode, Prisma, TaskSource, TaskStatus } from "@prisma/client";
 import { listPerangkatDaerah, listUnorChildren, listUnorRootsForPerangkatDaerah } from "@/lib/admin-pegawai";
+import { perangkatDaerahIdsForScope, taskInScopeWhere, type AdminScope } from "@/lib/admin-scope";
 import { prisma } from "@/lib/prisma";
 import {
   TASK_STAGE_OPTIONS,
@@ -96,19 +97,27 @@ export function hasTaskMonitorFilter(filters: Pick<TaskMonitorFilters, "pd" | "q
   return Boolean(filters.pd || filters.q || filters.date || filters.sumber || filters.tahap);
 }
 
-export function downgradedTaskStatus(status: TaskStatus): TaskStatus | null {
+export function taskCanReturnToPool(task: { source: TaskSource; assignmentMode: AssignmentMode }) {
+  return task.source === "delegasi" && task.assignmentMode === "kolam";
+}
+
+export function downgradedTaskStatus(
+  status: TaskStatus,
+  task: { source: TaskSource; assignmentMode: AssignmentMode },
+): TaskStatus | null {
   if (status === "disetujui" || status === "menunggu_approval") return "dikerjakan";
-  if (status === "dikerjakan" || status === "ditolak") return "tersedia";
+  if (status === "ditolak" && !taskCanReturnToPool(task)) return "dikerjakan";
+  if ((status === "dikerjakan" || status === "ditolak") && taskCanReturnToPool(task)) return "tersedia";
   return null;
 }
 
 export async function downgradeTaskStage(taskId: string) {
   const task = await prisma.task.findUnique({
     where: { id: taskId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, source: true, assignmentMode: true },
   });
   if (!task) return { error: "Tugas tidak ditemukan", httpStatus: 404 as const };
-  const next = downgradedTaskStatus(task.status);
+  const next = downgradedTaskStatus(task.status, task);
   if (!next) return { error: "Tahapan sudah paling rendah", httpStatus: 400 as const };
 
   await prisma.$transaction(async (tx) => {
@@ -128,24 +137,29 @@ const emptyUnor = {
   options: [[], [], []] as [UnorChoice[], UnorChoice[], UnorChoice[]],
 };
 
-async function resolveUnorChain(pd: string, raw: [string, string, string]) {
+async function resolveUnorChain(
+  pd: string,
+  raw: [string, string, string],
+  allowed: Set<string> | null,
+) {
   if (!pd) return { ...emptyUnor, unitId: "" };
 
+  const keep = (items: UnorChoice[]) => (allowed ? items.filter((item) => allowed.has(item.id)) : items);
   const options: [UnorChoice[], UnorChoice[], UnorChoice[]] = [[], [], []];
   const selected: [string, string, string] = ["", "", ""];
-  options[0] = await listUnorRootsForPerangkatDaerah(pd);
+  options[0] = keep(await listUnorRootsForPerangkatDaerah(pd));
   if (!options[0].some((item) => item.id === raw[0])) {
     return { selected, options, unitId: "" };
   }
 
   selected[0] = raw[0];
-  options[1] = await listUnorChildren(selected[0]);
+  options[1] = keep(await listUnorChildren(selected[0]));
   if (!options[1].some((item) => item.id === raw[1])) {
     return { selected, options, unitId: selected[0] };
   }
 
   selected[1] = raw[1];
-  options[2] = await listUnorChildren(selected[1]);
+  options[2] = keep(await listUnorChildren(selected[1]));
   if (options[2].some((item) => item.id === raw[2])) selected[2] = raw[2];
   return { selected, options, unitId: selected[2] || selected[1] };
 }
@@ -173,11 +187,17 @@ function identityLabel(pegawai: { jenis: string; nip: string | null; nik: string
   return `NIP ${formatNip(pegawai?.nip || nip)}`;
 }
 
-export async function getTaskMonitor(filters: TaskMonitorFilters) {
-  const perangkatDaerah = await listPerangkatDaerah();
-  const pd = perangkatDaerah.some((item) => item.id === filters.pd) ? filters.pd : "";
+export async function getTaskMonitor(filters: TaskMonitorFilters, scope?: AdminScope) {
+  const scoped = Boolean(scope && !scope.unrestricted);
+  const allowedPd = scope ? await perangkatDaerahIdsForScope(scope) : null;
+  const allPerangkat = await listPerangkatDaerah();
+  const perangkatDaerah = allowedPd ? allPerangkat.filter((item) => allowedPd.has(item.id)) : allPerangkat;
+  let pd = perangkatDaerah.some((item) => item.id === filters.pd) ? filters.pd : "";
+  const perangkatLocked = scoped && perangkatDaerah.length === 1;
+  if (perangkatLocked) pd = perangkatDaerah[0]?.id ?? "";
   const active = { ...filters, pd };
-  if (!hasTaskMonitorFilter(active)) {
+  const allowedUnits = scoped && scope ? new Set(scope.unitIds) : null;
+  if (!scoped && !hasTaskMonitorFilter(active)) {
     return {
       rows: [] as TaskMonitorRow[],
       total: 0,
@@ -187,12 +207,17 @@ export async function getTaskMonitor(filters: TaskMonitorFilters) {
       unor: emptyUnor,
       filters: { ...active, unor: emptyUnor.selected, page: 1 },
       queried: false,
+      perangkatLocked,
     };
   }
 
-  const unor = await resolveUnorChain(pd, filters.unor);
+  const unor = await resolveUnorChain(pd, filters.unor, allowedUnits);
   const day = parseDay(filters.date);
   const and: Prisma.TaskWhereInput[] = [{ status: { not: "dibatalkan" } }];
+  if (scope && !scope.unrestricted) {
+    const scopedWhere = taskInScopeWhere(scope);
+    if (scopedWhere) and.push(scopedWhere);
+  }
 
   if (filters.tahap) {
     and.push({ status: { in: STAGE_STATUSES[filters.tahap] } });
@@ -302,5 +327,6 @@ export async function getTaskMonitor(filters: TaskMonitorFilters) {
     unor,
     filters: { ...filters, pd, unor: unor.selected, page },
     queried: true,
+    perangkatLocked,
   };
 }

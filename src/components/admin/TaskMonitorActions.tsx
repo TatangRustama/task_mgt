@@ -14,11 +14,15 @@ export function TaskMonitorActions({
   listHref,
   currentStatus,
   nextStatus,
+  floorLabel = "Open",
+  canEditCompletedAt = true,
 }: {
   task: PostedTaskFields;
   listHref: string;
   currentStatus: string;
   nextStatus: string | null;
+  floorLabel?: string;
+  canEditCompletedAt?: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -90,7 +94,7 @@ export function TaskMonitorActions({
         </Button>
       </div>
       {!nextStatus ? (
-        <p className="text-xs text-on-surface-variant">Tahapan sudah paling rendah (Open).</p>
+        <p className="text-xs text-on-surface-variant">Tahapan sudah paling rendah ({floorLabel}).</p>
       ) : null}
 
       <TaskFormDialog
@@ -99,7 +103,7 @@ export function TaskMonitorActions({
         mode="edit"
         task={task}
         description="Perbarui judul, deskripsi, tanggal, selesai, prioritas, dan jumlah."
-        canEditCompletedAt
+        canEditCompletedAt={canEditCompletedAt}
       />
 
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>

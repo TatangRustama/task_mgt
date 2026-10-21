@@ -8,9 +8,11 @@ import { orderByIds, pageIdsByPangkatDesc } from "@/lib/golongan";
 import { prisma } from "@/lib/prisma";
 import { parseUserPageSize } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
+import { getAdminScope, pegawaiInScopeWhere } from "@/lib/admin-scope";
 
 export async function GET(request: Request) {
-  await requireUser(["super_admin"]);
+  const user = await requireUser(["super_admin", "admin"]);
+  const scope = await getAdminScope(user);
 
   const url = new URL(request.url);
   const q = url.searchParams.get("q")?.trim() || "";
@@ -22,6 +24,8 @@ export async function GET(request: Request) {
   const requestedPage = Math.max(1, Number(url.searchParams.get("page") || 1) || 1);
 
   const and: Prisma.PegawaiWhereInput[] = [];
+  const scoped = pegawaiInScopeWhere(scope);
+  if (scoped) and.push(scoped);
   const statusWhere = pegawaiStatusWhere(status);
   if (statusWhere) and.push(statusWhere);
   if (golongan) and.push({ golonganNama: golongan });

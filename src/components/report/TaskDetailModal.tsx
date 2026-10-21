@@ -116,28 +116,25 @@ export function TaskDetailModal({
     view?.status === "ditolak" ||
     view?.score != null ||
     Boolean(view?.feedback?.trim());
+  const showLoader = open && (loading || !view);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+    {showLoader ? <AppLoader /> : null}
+    <Dialog open={open && !showLoader} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-hidden p-0">
-        {loading || !view ? (
-          <>
-            <DialogHeader className="sr-only">
-              <DialogTitle>Memuat detail tugas</DialogTitle>
-            </DialogHeader>
-            <AppLoader label="Memuat detail tugas" />
-          </>
-        ) : (
+        {view ? (
           <>
             <div className={cn("h-1.5", priorityBarClass[view.priority] ?? "bg-tertiary")} />
             <div className="max-h-[85vh] space-y-4 overflow-y-auto p-6">
               <DialogHeader>
+                <DialogTitle className="text-sm">Rincian tugas</DialogTitle>
                 <div className="flex flex-wrap gap-1 pr-6">
                   <Badge variant={view.source}>{view.source}</Badge>
                   <Badge variant={view.priority}>{view.priority}</Badge>
                   <Badge variant={view.status}>{statusLabel(view.status)}</Badge>
                 </div>
-                <DialogTitle>{view.title}</DialogTitle>
+                <p className="text-lg font-semibold text-on-surface">{view.title}</p>
               </DialogHeader>
               <div className="space-y-3 text-sm text-on-surface-variant">
                 {view.description ? <TaskDescription text={view.description} /> : null}
@@ -174,8 +171,9 @@ export function TaskDetailModal({
               ) : null}
             </div>
           </>
-        )}
+        ) : null}
       </DialogContent>
     </Dialog>
+    </>
   );
 }

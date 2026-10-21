@@ -93,6 +93,7 @@ model Unit {
   children            Unit[]    @relation("UnitHierarchy")
   pimpinan            User?     @relation("UnitPimpinan", fields: [pimpinanId], references: [id])
   users               User[]    @relation("UnitMembers")
+  opdAdmins           User[]    @relation("UserOpdScope")
   tasks               Task[]
   pegawai             Pegawai[]
   penugasanSementara  PenugasanSementara[]
@@ -109,12 +110,16 @@ model User {
   email         String    @unique
   passwordHash  String
   role          Role      @default(personal)
+  opdAdmin      Boolean   @default(false)
+  superAdmin    Boolean   @default(false)
+  opdUnitId     String?
   jabatan       Jabatan?
   unitId        String?
   deletedAt     DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   unit          Unit?     @relation("UnitMembers", fields: [unitId], references: [id])
+  opdUnit       Unit?     @relation("UserOpdScope", fields: [opdUnitId], references: [id], onDelete: SetNull)
   ledUnits      Unit[]    @relation("UnitPimpinan")
   createdTasks  Task[]    @relation("TaskCreator")
   assignedTasks Task[]    @relation("TaskAssignee")
@@ -129,6 +134,7 @@ model User {
   penugasanSementara PenugasanSementara[]
 
   @@index([unitId])
+  @@index([opdUnitId])
   @@index([jabatan])
 }
 

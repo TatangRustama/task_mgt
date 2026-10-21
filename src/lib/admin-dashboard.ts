@@ -1,4 +1,5 @@
-import type { TaskStatus } from "@prisma/client";
+import { Prisma, type TaskStatus } from "@prisma/client";
+import { pegawaiInScopeWhere, taskInScopeWhere, perangkatDaerahIdsForScope, type AdminScope } from "@/lib/admin-scope";
 import {
   DASHBOARD_STATUSES,
   type DashboardMonthChoice,
@@ -45,8 +46,14 @@ function monthValue(year: number, month: number) {
   return `${year}-${String(month).padStart(2, "0")}`;
 }
 
-export async function listDashboardMonthChoices(now = new Date()): Promise<DashboardMonthChoice[]> {
-  const oldest = await prisma.task.aggregate({ _min: { createdAt: true } });
+export async function listDashboardMonthChoices(
+  now = new Date(),
+  scope?: AdminScope,
+): Promise<DashboardMonthChoice[]> {
+  const oldest = await prisma.task.aggregate({
+    where: withTaskScope({}, scope),
+    _min: { createdAt: true },
+  });
   const current = new Date(now.getFullYear(), now.getMonth(), 1);
   const earliest = oldest._min.createdAt
     ? new Date(oldest._min.createdAt.getFullYear(), oldest._min.createdAt.getMonth(), 1)
@@ -69,6 +76,26 @@ export function resolveDashboardMonth(
 ): DashboardMonthSelection | null {
   if (!raw || !choices.some((choice) => choice.value === raw)) return null;
   return { year: Number(raw.slice(0, 4)), month: Number(raw.slice(5, 7)) };
+}
+
+function withTaskScope(where: Prisma.TaskWhereInput, scope?: AdminScope): Prisma.TaskWhereInput {
+  if (!scope || scope.unrestricted) return where;
+  const scoped = taskInScopeWhere(scope);
+  return scoped ? { AND: [where, scoped] } : where;
+}
+
+function withPegawaiScope(where: Prisma.PegawaiWhereInput, scope?: AdminScope): Prisma.PegawaiWhereInput {
+  if (!scope || scope.unrestricted) return where;
+  const scoped = pegawaiInScopeWhere(scope);
+  return scoped ? { AND: [where, scoped] } : where;
+}
+
+async function scopedPerangkatCatalog(scope?: AdminScope) {
+  const catalog = await listPerangkatDaerah();
+  if (!scope || scope.unrestricted) return catalog;
+  const allowed = await perangkatDaerahIdsForScope(scope);
+  if (!allowed) return catalog;
+  return catalog.filter((item) => allowed.has(item.id));
 }
 
 export function dashboardPeriodCaption(selection: DashboardMonthSelection | null) {
@@ -96,13 +123,14 @@ function monthLabel(date: Date, withYear: boolean) {
 export async function getTaskConditionTrend(
   selection: DashboardMonthSelection | null = null,
   now = new Date(),
+  scope?: AdminScope,
 ): Promise<TaskConditionTrend> {
   const { start, end, count } = dashboardRange(selection, now);
   const endMonth = new Date(end.getFullYear(), end.getMonth() - 1, 1);
   const withYear = count === 1 || start.getFullYear() !== endMonth.getFullYear();
 
   const tasks = await prisma.task.findMany({
-    where: { createdAt: { gte: start, lt: end } },
+    where: withTaskScope({ createdAt: { gte: start, lt: end } }, scope),
     select: { status: true, createdAt: true },
   });
 
@@ -138,12 +166,13 @@ const UNMAPPED_PERANGKAT = "Belum terpetakan";
 export async function getPerangkatDaerahTaskRecap(
   selection: DashboardMonthSelection | null = null,
   now = new Date(),
+  scope?: AdminScope,
 ): Promise<PerangkatDaerahRecapRow[]> {
   const { start, end } = dashboardRange(selection, now);
   const [catalog, tasks] = await Promise.all([
-    listPerangkatDaerah(),
+    scopedPerangkatCatalog(scope),
     prisma.task.findMany({
-      where: { createdAt: { gte: start, lt: end } },
+      where: withTaskScope({ createdAt: { gte: start, lt: end } }, scope),
       select: {
         status: true,
         unit: { select: { perangkatDaerahId: true, perangkatDaerahNama: true } },
@@ -175,25 +204,30 @@ const REPORTED_TASK_STATUSES = ["menunggu_approval", "disetujui"] as const satis
 export async function getPerangkatDaerahPegawaiRecap(
   selection: DashboardMonthSelection | null = null,
   now = new Date(),
+  scope?: AdminScope,
 ): Promise<PerangkatDaerahPegawaiRow[]> {
   const { start, end } = dashboardRange(selection, now);
   const [catalog, pegawaiGroups, pegawaiNames, reported] = await Promise.all([
-    listPerangkatDaerah(),
+    scopedPerangkatCatalog(scope),
     prisma.pegawai.groupBy({
       by: ["perangkatDaerahId"],
+      where: withPegawaiScope({}, scope),
       _count: true,
     }),
     prisma.pegawai.findMany({
-      where: { perangkatDaerahId: { not: null } },
+      where: withPegawaiScope({ perangkatDaerahId: { not: null } }, scope),
       distinct: ["perangkatDaerahId"],
       select: { perangkatDaerahId: true, perangkatDaerahNama: true },
     }),
     prisma.task.findMany({
-      where: {
-        completedAt: { gte: start, lt: end },
-        status: { in: [...REPORTED_TASK_STATUSES] },
-        assignedToId: { not: null },
-      },
+      where: withTaskScope(
+        {
+          completedAt: { gte: start, lt: end },
+          status: { in: [...REPORTED_TASK_STATUSES] },
+          assignedToId: { not: null },
+        },
+        scope,
+      ),
       distinct: ["assignedToId"],
       select: {
         assignedToId: true,

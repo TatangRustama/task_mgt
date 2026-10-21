@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
+import { getAdminScope } from "@/lib/admin-scope";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 
 export async function GET() {
-  await requireUser(["super_admin"]);
+  const actor = await requireUser(["super_admin", "admin"]);
+  const scope = await getAdminScope(actor);
   const units = await prisma.unit.findMany({
-    where: { externalId: { not: null } },
+    where: scope.unrestricted
+      ? { externalId: { not: null } }
+      : { id: { in: scope.unitIds } },
     select: {
       id: true,
       name: true,

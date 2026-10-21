@@ -16,6 +16,7 @@ import {
   type DashboardStatus,
 } from "@/lib/admin-dashboard";
 import { requireUser } from "@/lib/session";
+import { adminScopeNotice, getAdminScope } from "@/lib/admin-scope";
 import { cn, statusLabel } from "@/lib/utils";
 
 const STATUS_CARD_ICONS: Record<Exclude<DashboardStatus, "dibatalkan">, { icon: LucideIcon; className: string }> = {
@@ -31,15 +32,17 @@ export default async function SuperAdminDashboardPage({
 }: {
   searchParams: Promise<{ bulan?: string }>;
 }) {
-  await requireUser(["super_admin"]);
+  const user = await requireUser(["super_admin", "admin"]);
+  const scope = await getAdminScope(user);
+  const notice = adminScopeNotice(scope);
   const params = await searchParams;
-  const monthChoices = await listDashboardMonthChoices();
+  const monthChoices = await listDashboardMonthChoices(new Date(), scope);
   const month = resolveDashboardMonth(params.bulan, monthChoices);
   const period = dashboardPeriodCaption(month);
   const [trend, perangkatDaerah, pegawaiDaerah] = await Promise.all([
-    getTaskConditionTrend(month),
-    getPerangkatDaerahTaskRecap(month),
-    getPerangkatDaerahPegawaiRecap(month),
+    getTaskConditionTrend(month, new Date(), scope),
+    getPerangkatDaerahTaskRecap(month, new Date(), scope),
+    getPerangkatDaerahPegawaiRecap(month, new Date(), scope),
   ]);
 
   return (
@@ -49,6 +52,11 @@ export default async function SuperAdminDashboardPage({
         subtitle={month ? `Kondisi ${period}` : "Kondisi 3 Bulan terakhir"}
         action={<DashboardMonthSelect value={month ? params.bulan ?? "" : ""} options={monthChoices} />}
       />
+      {notice ? (
+        <p className="rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-3 text-sm text-on-surface-variant">
+          {notice}
+        </p>
+      ) : null}
 
       <DashboardTabs
         recap={

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { Prisma, Role } from "@prisma/client";
-import { credentialsForRole, userDetailSelect } from "@/lib/admin-users";
+import { buildOpdScope, credentialsForRole, userDetailSelect, validateOpdUnit } from "@/lib/admin-users";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 
@@ -18,7 +18,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (!user) {
     return NextResponse.json({ error: "Pengguna tidak ditemukan" }, { status: 404 });
   }
-  return NextResponse.json({ user, isSelf: actor.id === user.id });
+  const opdScope = await buildOpdScope(user.id, user.opdUnitId || user.pegawai?.unorId);
+  return NextResponse.json({ user, opdScope, isSelf: actor.id === user.id });
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -26,7 +27,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params;
   const existing = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, role: true, email: true, jabatan: true },
+    select: { id: true, role: true, opdAdmin: true, superAdmin: true, email: true, jabatan: true },
   });
   if (!existing) {
     return NextResponse.json({ error: "Pengguna tidak ditemukan" }, { status: 404 });
@@ -36,6 +37,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const name = String(body.name || "").trim();
   const role = String(body.role || "") as Role;
   const loginId = String(body.username || body.nip || "").trim();
+  const opdAdmin = role === "personal" && Boolean(body.opdAdmin);
+  const superAdmin = role === "personal" && Boolean(body.superAdmin);
+  const requestedUnitId = String(body.opdUnitId || "").trim();
 
   if (!name) {
     return NextResponse.json({ error: "Nama wajib diisi" }, { status: 400 });
@@ -46,14 +50,25 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: credentials.error }, { status: 400 });
   }
 
-  if (existing.role === "super_admin" && role !== "super_admin") {
-    const superAdminCount = await prisma.user.count({ where: { role: "super_admin" } });
+  const keepsSuperAdmin = role === "super_admin" || superAdmin;
+  const hadSuperAdmin = existing.role === "super_admin" || existing.superAdmin;
+  if (hadSuperAdmin && !keepsSuperAdmin) {
+    const superAdminCount = await prisma.user.count({
+      where: { OR: [{ role: "super_admin" }, { superAdmin: true }] },
+    });
     if (superAdminCount <= 1) {
       return NextResponse.json({ error: "Tidak dapat mengubah role Super Admin terakhir" }, { status: 400 });
     }
     if (actor.id === existing.id) {
       return NextResponse.json({ error: "Tidak dapat mengubah role akun yang sedang digunakan" }, { status: 400 });
     }
+  }
+
+  let opdUnitId: string | null | undefined = opdAdmin && superAdmin ? undefined : null;
+  if (opdAdmin && !superAdmin) {
+    const scope = await validateOpdUnit(id, requestedUnitId);
+    if (!scope.ok) return NextResponse.json({ error: scope.error }, { status: 400 });
+    opdUnitId = scope.opdUnitId;
   }
 
   const email =
@@ -70,6 +85,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       data: {
         name,
         role,
+        opdAdmin,
+        superAdmin,
+        ...(opdUnitId !== undefined ? { opdUnitId } : {}),
         nip: credentials.nip,
         email,
         jabatan: role === "personal" ? existing.jabatan ?? "pelaksana" : null,
@@ -83,7 +101,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   const user = await loadUser(id);
-  return NextResponse.json({ user, isSelf: actor.id === id });
+  const opdScope = user ? await buildOpdScope(user.id, user.opdUnitId || user.pegawai?.unorId) : null;
+  return NextResponse.json({ user, opdScope, isSelf: actor.id === id });
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -96,14 +115,16 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   const existing = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, role: true },
+    select: { id: true, role: true, superAdmin: true },
   });
   if (!existing) {
     return NextResponse.json({ error: "Pengguna tidak ditemukan" }, { status: 404 });
   }
 
-  if (existing.role === "super_admin") {
-    const superAdminCount = await prisma.user.count({ where: { role: "super_admin" } });
+  if (existing.role === "super_admin" || existing.superAdmin) {
+    const superAdminCount = await prisma.user.count({
+      where: { OR: [{ role: "super_admin" }, { superAdmin: true }] },
+    });
     if (superAdminCount <= 1) {
       return NextResponse.json({ error: "Tidak dapat menghapus Super Admin terakhir" }, { status: 400 });
     }

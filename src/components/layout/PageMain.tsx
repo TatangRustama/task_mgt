@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 const PAGE_TITLE_ICONS: Record<string, LucideIcon> = {
   Dashboard: LayoutDashboard,
   Pegawai: Users,
+  "Unit organisasi": Network,
   "Manajemen pengguna": UserPlus,
   Laporan: BarChart3,
   "Active Tasks": ClipboardList,

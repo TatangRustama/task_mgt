@@ -72,12 +72,13 @@ export function SidebarStateProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function AppContent({ children }: { children: ReactNode }) {
+export function AppContent({ children, keepFooter = false }: { children: ReactNode; keepFooter?: boolean }) {
   const { collapsed } = useSidebar();
   return (
     <div
       className={cn(
-        "app-frame min-h-screen bg-background pb-24 pt-16 shadow-[0_0_40px_rgba(27,33,86,0.06)] transition-[padding-left] duration-300 ease-out print:m-0 print:bg-white print:p-0 print:shadow-none motion-reduce:transition-none md:pb-8",
+        "app-frame min-h-screen bg-background pb-24 pt-16 shadow-[0_0_40px_rgba(27,33,86,0.06)] transition-[padding-left] duration-300 ease-out print:m-0 print:bg-white print:p-0 print:shadow-none motion-reduce:transition-none",
+        !keepFooter && "md:pb-8",
         !collapsed && "md:pl-64",
       )}
     >

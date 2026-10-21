@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserDetailDialog } from "@/components/admin/UserDetailDialog";
-import { roleLabel, USER_PAGE_SIZES } from "@/lib/roles";
+import { roleAccessLabel, USER_PAGE_SIZES } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
 const selectClassName =
@@ -24,6 +24,9 @@ type UserRow = {
   email: string;
   nip: string;
   role: UserRole;
+  opdAdmin?: boolean;
+  superAdmin?: boolean;
+  opdUnit?: { id: string; name: string } | null;
   pegawai?: { nik: string | null; nip: string | null } | null;
 };
 
@@ -39,7 +42,7 @@ function loginId(user: UserRow) {
 export default function AdminPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [message, setMessage] = useState("");
-  const [role, setRole] = useState<UserRole>("admin");
+  const [role, setRole] = useState<UserRole>("personal");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
@@ -109,7 +112,7 @@ export default function AdminPage() {
     setMessage(res.ok ? "User berhasil dibuat" : data.error || "Gagal membuat user");
     if (res.ok) {
       form.reset();
-      setRole("admin");
+      setRole("personal");
       setPage(1);
       loadData();
     }
@@ -119,7 +122,7 @@ export default function AdminPage() {
     <PageMain className="max-w-4xl space-y-4">
       <PageHeader
         title="Manajemen pengguna"
-        subtitle="Tambah akun baru dan pilih role. Pegawai personal login dengan NIP/NIK; super admin/admin login dengan username."
+        subtitle="Pegawai login dengan NIP. Role Admin OPD dan Super Admin ditambahkan pada akun NIP yang sama, tanpa membuat akun kedua."
       />
       {message ? (
         <p className="rounded-lg bg-secondary-container px-4 py-2 text-sm text-on-secondary-container">{message}</p>
@@ -159,9 +162,8 @@ export default function AdminPage() {
                   value={role}
                   onChange={(event) => setRole(event.target.value as UserRole)}
                 >
-                  <option value="super_admin">Super Admin</option>
-                  <option value="admin">Admin OPD</option>
                   <option value="personal">Personal</option>
+                  <option value="super_admin">Super Admin</option>
                 </select>
               </div>
               <div className="space-y-2">
@@ -265,7 +267,8 @@ export default function AdminPage() {
               >
                 <p className="font-medium text-on-surface">{user.name}</p>
                 <p className="text-on-surface-variant">
-                  {roleLabel[user.role]} · {loginId(user)}
+                  {roleAccessLabel(user.role, user.opdAdmin, user.superAdmin)}
+                  {user.opdAdmin && !user.superAdmin && user.opdUnit?.name ? ` · ${user.opdUnit.name}` : ""} · {loginId(user)}
                 </p>
               </button>
             ))

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { hasSuperAdminAccess } from "@/lib/roles";
 import { getCurrentUser } from "@/lib/session";
 import { isSimpegConfigured } from "@/lib/simpeg";
 import { syncSimpeg } from "@/lib/simpeg-sync";
@@ -35,7 +36,7 @@ export async function POST() {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (user.role !== "super_admin") {
+  if (!hasSuperAdminAccess(user)) {
     return NextResponse.json({ error: "Hanya super admin yang dapat sinkronisasi" }, { status: 403 });
   }
   if (!isSimpegConfigured()) {

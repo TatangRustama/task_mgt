@@ -26,14 +26,24 @@ export async function GET(request: Request) {
   const requestedPage = Math.max(1, Number(url.searchParams.get("page") || 1) || 1);
 
   const where: Prisma.UserWhereInput = {};
-  if (role) where.role = role;
-  if (q) {
-    where.OR = [
-      { nip: { contains: q, mode: "insensitive" } },
-      { email: { contains: q, mode: "insensitive" } },
-      { pegawai: { is: { nik: { contains: q, mode: "insensitive" } } } },
-    ];
+  const filters: Prisma.UserWhereInput[] = [];
+  if (role === "admin") {
+    filters.push({ OR: [{ role: "admin" }, { opdAdmin: true }] });
+  } else if (role === "super_admin") {
+    filters.push({ OR: [{ role: "super_admin" }, { superAdmin: true }] });
+  } else if (role) {
+    filters.push({ role });
   }
+  if (q) {
+    filters.push({
+      OR: [
+        { nip: { contains: q, mode: "insensitive" } },
+        { email: { contains: q, mode: "insensitive" } },
+        { pegawai: { is: { nik: { contains: q, mode: "insensitive" } } } },
+      ],
+    });
+  }
+  if (filters.length) where.AND = filters;
 
   const total = await prisma.user.count({ where });
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -47,7 +57,10 @@ export async function GET(request: Request) {
       email: true,
       nip: true,
       role: true,
+      opdAdmin: true,
+      superAdmin: true,
       createdAt: true,
+      opdUnit: { select: { id: true, name: true } },
       pegawai: { select: { nik: true, nip: true } },
     },
     orderBy: [{ role: "asc" }, { name: "asc" }],

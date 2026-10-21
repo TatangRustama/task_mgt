@@ -1,12 +1,12 @@
 import { SuperAdminMockCard, SuperAdminMockPage } from "@/components/admin/SuperAdminMock";
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
-import { isSuperAdmin } from "@/lib/roles";
+import { hasSuperAdminAccess } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
 
 export default async function SettingPage() {
   const user = await requireUser();
 
-  if (isSuperAdmin(user.role)) {
+  if (hasSuperAdminAccess(user)) {
     return (
       <SuperAdminMockPage
         title="Setting"

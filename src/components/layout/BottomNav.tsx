@@ -3,18 +3,25 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Role } from "@prisma/client";
+import { useSidebar } from "@/components/layout/SidebarState";
 import { cn } from "@/lib/utils";
 import { getNavItems, isNavActive, type AppNavItem } from "@/lib/nav";
 
 export function BottomNav({
   role,
   isLeader = false,
+  opdAdmin = false,
+  superAdmin = false,
 }: {
   role: Role;
   isLeader?: boolean;
+  opdAdmin?: boolean;
+  superAdmin?: boolean;
 }) {
   const pathname = usePathname();
-  const items = getNavItems(role, { isLeader });
+  const { collapsed, isDesktop } = useSidebar();
+  const items = getNavItems(role, { isLeader, opdAdmin, superAdmin, surface: "footer" });
+  const pinned = (opdAdmin || superAdmin) && role === "personal";
 
   function renderItem({ href, label, icon: Icon }: AppNavItem) {
     const active = isNavActive(pathname, href);
@@ -39,7 +46,11 @@ export function BottomNav({
       id="app-footer"
       tabIndex={-1}
       aria-label="Menu"
-      className="app-frame-bar app-bottom bottom-0 z-[70] overflow-visible border-t border-outline-variant bg-surface-container-lowest pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_20px_rgba(27,33,86,0.12)] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary md:hidden print:hidden"
+      className={cn(
+        "app-frame-bar app-bottom bottom-0 z-[70] overflow-visible border-t border-outline-variant bg-surface-container-lowest pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_20px_rgba(27,33,86,0.12)] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary print:hidden",
+        pinned ? "md:flex" : "md:hidden",
+        pinned && isDesktop && !collapsed && "md:pl-64",
+      )}
     >
       <div className="flex h-14 w-full items-center px-1">{items.map(renderItem)}</div>
     </nav>

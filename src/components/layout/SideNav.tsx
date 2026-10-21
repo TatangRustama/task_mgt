@@ -12,13 +12,17 @@ import { getNavGroups, isNavActive } from "@/lib/nav";
 export function SideNav({
   role,
   isLeader = false,
+  opdAdmin = false,
+  superAdmin = false,
 }: {
   role: Role;
   isLeader?: boolean;
+  opdAdmin?: boolean;
+  superAdmin?: boolean;
 }) {
   const pathname = usePathname();
   const { collapsed, drawer, isDesktop, closeDrawer } = useSidebar();
-  const groups = getNavGroups(role, { isLeader });
+  const groups = getNavGroups(role, { isLeader, opdAdmin, superAdmin, surface: "sidebar" });
   const shown = isDesktop ? !collapsed : drawer;
 
   return (

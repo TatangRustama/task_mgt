@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { TaskPriority } from "@prisma/client";
 import { canDeletePostedTask, canManagePostedTask, canSeeTask } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
-import { isSuperAdmin } from "@/lib/roles";
+import { hasSuperAdminAccess, isAppAdmin } from "@/lib/roles";
+import { getAdminScope, taskRecordInScope } from "@/lib/admin-scope";
 import { parseJumlahSatuan } from "@/lib/satuan";
 import { getCurrentUser, type SessionUser } from "@/lib/session";
 import { parseAssignedAt, parseDateTimeLocal, parseFormDateInput } from "@/lib/utils";
@@ -18,7 +19,14 @@ export async function GET(
   const task = await prisma.task.findUnique({
     where: { id },
     include: {
-      assignedTo: { select: { id: true, name: true } },
+      assignedTo: {
+        select: {
+          id: true,
+          name: true,
+          unitId: true,
+          pegawai: { select: { unitId: true, unorId: true } },
+        },
+      },
       createdBy: { select: { id: true, name: true } },
       evidence: true,
       review: { include: { reviewedBy: { select: { name: true } } } },
@@ -27,7 +35,15 @@ export async function GET(
     },
   });
 
-  if (!task || !(await canSeeTask(user, task))) {
+  if (!task) {
+    return NextResponse.json({ error: "Tugas tidak ditemukan" }, { status: 404 });
+  }
+  if (isAppAdmin(user.role)) {
+    const scope = await getAdminScope(user);
+    if (!taskRecordInScope(scope, task)) {
+      return NextResponse.json({ error: "Tugas tidak ditemukan" }, { status: 404 });
+    }
+  } else if (!(await canSeeTask(user, task))) {
     return NextResponse.json({ error: "Tugas tidak ditemukan" }, { status: 404 });
   }
 
@@ -36,12 +52,28 @@ export async function GET(
 
 const PRIORITIES = new Set<TaskPriority>(["rendah", "sedang", "tinggi"]);
 
+const taskAccessSelect = {
+  unitId: true,
+  createdById: true,
+  status: true,
+  priority: true,
+  assignedTo: { select: { unitId: true, pegawai: { select: { unitId: true, unorId: true } } } },
+} as const;
+
 async function getEditablePostedTask(user: SessionUser, taskId: string) {
-  const task = await prisma.task.findUnique({ where: { id: taskId } });
+  const task = await prisma.task.findUnique({ where: { id: taskId }, select: taskAccessSelect });
   if (!task) {
     return { error: NextResponse.json({ error: "Tugas tidak ditemukan" }, { status: 404 }) };
   }
-  if (!isSuperAdmin(user.role) && !canManagePostedTask(user, task)) {
+  if (hasSuperAdminAccess(user)) return { task };
+  if (isAppAdmin(user.role)) {
+    const scope = await getAdminScope(user);
+    if (!taskRecordInScope(scope, task)) {
+      return { error: NextResponse.json({ error: "Tugas tidak ditemukan" }, { status: 404 }) };
+    }
+    return { task };
+  }
+  if (!canManagePostedTask(user, task)) {
     return {
       error: NextResponse.json(
         { error: "Hanya pembuat tugas yang dapat mengubah tugas tersedia atau dikerjakan" },
@@ -82,7 +114,7 @@ export async function PATCH(
   }
 
   let completedAt: Date | null | undefined;
-  if (isSuperAdmin(user.role) && "completedAt" in body) {
+  if (hasSuperAdminAccess(user) && "completedAt" in body) {
     if (body.completedAt) {
       completedAt = parseDateTimeLocal(body.completedAt);
       if (!completedAt) {
@@ -118,11 +150,16 @@ export async function DELETE(
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const task = await prisma.task.findUnique({ where: { id } });
+  const task = await prisma.task.findUnique({ where: { id }, select: taskAccessSelect });
   if (!task) {
     return NextResponse.json({ error: "Tugas tidak ditemukan" }, { status: 404 });
   }
-  if (!isSuperAdmin(user.role) && !canDeletePostedTask(user, task)) {
+  if (isAppAdmin(user.role)) {
+    const scope = await getAdminScope(user);
+    if (!taskRecordInScope(scope, task)) {
+      return NextResponse.json({ error: "Tugas tidak ditemukan" }, { status: 404 });
+    }
+  } else if (!hasSuperAdminAccess(user) && !canDeletePostedTask(user, task)) {
     return NextResponse.json(
       { error: "Hanya pembuat tugas yang dapat menghapus tugas tersedia atau dikerjakan" },
       { status: 403 },

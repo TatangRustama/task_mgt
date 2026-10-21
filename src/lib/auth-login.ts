@@ -122,6 +122,8 @@ export type AuthUserPayload = {
   name: string;
   email: string;
   role: Role;
+  opdAdmin: boolean;
+  superAdmin: boolean;
   jabatan: Jabatan | null;
   unitId: string | null;
   nip: string;
@@ -152,6 +154,8 @@ export async function authenticateCredentials(
       name: user.name,
       email: user.email,
       role: user.role,
+      opdAdmin: user.opdAdmin,
+      superAdmin: user.superAdmin,
       jabatan: user.jabatan,
       unitId: user.unitId,
       nip: user.nip,

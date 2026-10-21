@@ -27,12 +27,14 @@ export function TambahPegawaiDialog({
   open,
   onOpenChange,
   onCreated,
+  allowAsn = true,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: (message: string) => void;
+  allowAsn?: boolean;
 }) {
-  const [jenis, setJenis] = useState<PegawaiJenis>("asn");
+  const [jenis, setJenis] = useState<PegawaiJenis>(allowAsn ? "asn" : "non_asn");
   const [nip, setNip] = useState("");
   const [nik, setNik] = useState("");
   const [name, setName] = useState("");
@@ -175,32 +177,34 @@ export function TambahPegawaiDialog({
         <DialogHeader className="pr-8 text-left">
           <DialogTitle>Tambah pegawai baru</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            type="button"
-            variant={jenis === "asn" ? "default" : "outline"}
-            onClick={() => {
-              setJenis("asn");
-              setResult(null);
-              setUnorId("");
-              setError("");
-            }}
-          >
-            ASN
-          </Button>
-          <Button
-            type="button"
-            variant={jenis === "non_asn" ? "default" : "outline"}
-            onClick={() => {
-              setJenis("non_asn");
-              setResult(null);
-              setUnorId("");
-              setError("");
-            }}
-          >
-            Non-ASN
-          </Button>
-        </div>
+        {allowAsn ? (
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant={jenis === "asn" ? "default" : "outline"}
+              onClick={() => {
+                setJenis("asn");
+                setResult(null);
+                setUnorId("");
+                setError("");
+              }}
+            >
+              ASN
+            </Button>
+            <Button
+              type="button"
+              variant={jenis === "non_asn" ? "default" : "outline"}
+              onClick={() => {
+                setJenis("non_asn");
+                setResult(null);
+                setUnorId("");
+                setError("");
+              }}
+            >
+              Non-ASN
+            </Button>
+          </div>
+        ) : null}
 
         {error ? <p className="text-sm text-error">{error}</p> : null}
 

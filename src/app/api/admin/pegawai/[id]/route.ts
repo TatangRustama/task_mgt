@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { softDeletePegawai } from "@/lib/admin-pegawai";
+import { getAdminScope, pegawaiRecordInScope, ADMIN_SCOPE_MISSING, unitIdInScope } from "@/lib/admin-scope";
 import { prisma } from "@/lib/prisma";
+import { isPrivilegedRole } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
 
 const pegawaiDetailSelect = {
@@ -29,6 +31,7 @@ const pegawaiDetailSelect = {
   unitId: true,
   userId: true,
   unit: { select: { id: true, name: true } },
+  user: { select: { unitId: true, role: true } },
 } as const;
 
 async function loadPegawai(id: string) {
@@ -39,24 +42,32 @@ async function loadPegawai(id: string) {
 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireUser(["super_admin"]);
+  const actor = await requireUser(["super_admin", "admin"]);
+  const scope = await getAdminScope(actor);
   const { id } = await params;
   const pegawai = await loadPegawai(id);
-  if (!pegawai) {
+  if (!pegawai || !pegawaiRecordInScope(scope, pegawai)) {
     return NextResponse.json({ error: "Pegawai tidak ditemukan" }, { status: 404 });
   }
   return NextResponse.json({ pegawai });
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireUser(["super_admin"]);
+  const actor = await requireUser(["super_admin", "admin"]);
+  const scope = await getAdminScope(actor);
+  if (!scope.unrestricted && scope.unitIds.length === 0) {
+    return NextResponse.json({ error: ADMIN_SCOPE_MISSING }, { status: 403 });
+  }
   const { id } = await params;
   const existing = await prisma.pegawai.findUnique({
     where: { id },
-    select: { id: true, userId: true },
+    select: { id: true, userId: true, unitId: true, unorId: true, user: { select: { unitId: true, role: true } } },
   });
-  if (!existing) {
+  if (!existing || !pegawaiRecordInScope(scope, existing)) {
     return NextResponse.json({ error: "Pegawai tidak ditemukan" }, { status: 404 });
+  }
+  if (existing.user && isPrivilegedRole(existing.user.role)) {
+    return NextResponse.json({ error: "Akun pengelola tidak dapat diubah dari daftar pegawai" }, { status: 403 });
   }
 
   const body = await request.json();
@@ -72,7 +83,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         perangkatDaerahNama: true,
       },
     });
-    if (!unit) {
+    if (!unit || !unitIdInScope(scope, unit.id)) {
       return NextResponse.json({ error: "Unit organisasi tidak ditemukan" }, { status: 404 });
     }
 
@@ -125,8 +136,19 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const actor = await requireUser(["super_admin"]);
+  const actor = await requireUser(["super_admin", "admin"]);
+  const scope = await getAdminScope(actor);
+  if (!scope.unrestricted && scope.unitIds.length === 0) {
+    return NextResponse.json({ error: ADMIN_SCOPE_MISSING }, { status: 403 });
+  }
   const { id } = await params;
+  const existing = await prisma.pegawai.findUnique({
+    where: { id },
+    select: { unitId: true, unorId: true, user: { select: { unitId: true, role: true } } },
+  });
+  if (!existing || !pegawaiRecordInScope(scope, existing)) {
+    return NextResponse.json({ error: "Pegawai tidak ditemukan" }, { status: 404 });
+  }
   const result = await softDeletePegawai(id, actor.id);
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: result.status });

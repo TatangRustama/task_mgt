@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { PegawaiJenis, Prisma } from "@prisma/client";
 import { orderByIds, pageIdsByPangkatDesc } from "@/lib/golongan";
 import { getOrgScope } from "@/lib/org";
+import { ADMIN_SCOPE_MISSING, getAdminScope, pegawaiInScopeWhere, unitIdInScope } from "@/lib/admin-scope";
 import { prisma } from "@/lib/prisma";
 import { pegawaiUnorAssignment } from "@/lib/admin-pegawai";
-import { canManageNonAsn, isSuperAdmin } from "@/lib/roles";
+import { canManageNonAsn, hasSuperAdminAccess, isAppAdmin, isSuperAdmin } from "@/lib/roles";
 import { getCurrentUser } from "@/lib/session";
 import { ensureUserFromPegawai } from "@/lib/simpeg-accounts";
 import { lookupOrSyncPegawaiByNip } from "@/lib/simpeg-sync";
@@ -50,7 +51,10 @@ export async function GET(request: Request) {
     ];
   }
 
-  if (scope === "bawahan") {
+  if (isAppAdmin(user.role)) {
+    const scoped = pegawaiInScopeWhere(await getAdminScope(user));
+    where.AND = [scoped ?? { id: { in: [] } }];
+  } else if (scope === "bawahan") {
     if (!isSuperAdmin(user.role)) {
       const { visibleUnitIds } = await getOrgScope(user);
       if (visibleUnitIds.length === 0) {
@@ -115,7 +119,7 @@ export async function POST(request: Request) {
   }
 
   if (jenis === "asn") {
-    if (!isSuperAdmin(user.role)) {
+    if (!hasSuperAdminAccess(user)) {
       return NextResponse.json({ error: "Hanya super admin yang dapat menambah pegawai ASN" }, { status: 403 });
     }
     const nip = String(body.nip || "").trim();
@@ -157,7 +161,7 @@ export async function POST(request: Request) {
     return NextResponse.json(created, { status: 201 });
   }
 
-  if (jenis === "non_asn" && !canManageNonAsn(user.role)) {
+  if (jenis === "non_asn" && !canManageNonAsn(user.role) && !hasSuperAdminAccess(user)) {
     return NextResponse.json(
       { error: "Hanya admin yang dapat menambahkan pegawai Non-ASN" },
       { status: 403 },
@@ -182,6 +186,15 @@ export async function POST(request: Request) {
 
   if (!assignment) {
     return NextResponse.json({ error: "Unit organisasi wajib dipilih" }, { status: 400 });
+  }
+  if (isAppAdmin(user.role)) {
+    const adminScope = await getAdminScope(user);
+    if (!adminScope.unrestricted && adminScope.unitIds.length === 0) {
+      return NextResponse.json({ error: ADMIN_SCOPE_MISSING }, { status: 403 });
+    }
+    if (!unitIdInScope(adminScope, assignment.unorId)) {
+      return NextResponse.json({ error: "Unit organisasi tidak ditemukan" }, { status: 404 });
+    }
   }
 
   const created = await prisma.pegawai.create({

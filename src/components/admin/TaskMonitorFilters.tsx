@@ -25,11 +25,13 @@ export function TaskMonitorFilters({
   filters,
   unorOptions,
   showReset,
+  perangkatLocked = false,
 }: {
   perangkatDaerah: UnorChoice[];
   filters: TaskMonitorFilterValues;
   unorOptions: UnorLevels;
   showReset: boolean;
+  perangkatLocked?: boolean;
 }) {
   const router = useRouter();
   const [pd, setPd] = useState(filters.pd);
@@ -121,18 +123,20 @@ export function TaskMonitorFilters({
         <Label htmlFor="monitor-pd">Perangkat daerah</Label>
         <select
           id="monitor-pd"
-          name="pd"
+          name={perangkatLocked ? undefined : "pd"}
           className={selectClassName}
           value={pd}
+          disabled={perangkatLocked}
           onChange={(event) => void onPerangkatDaerahChange(event.target.value)}
         >
-          <option value="">Semua perangkat daerah</option>
+          {perangkatLocked ? null : <option value="">Semua perangkat daerah</option>}
           {perangkatDaerah.map((item) => (
             <option key={item.id} value={item.id}>
               {item.name}
             </option>
           ))}
         </select>
+        {perangkatLocked ? <input type="hidden" name="pd" value={pd} /> : null}
       </div>
       {options.map((items, index) =>
         items.length > 0 ? (

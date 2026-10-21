@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { displayJabatan } from "@/lib/jabatan-display";
-import { roleLabel } from "@/lib/roles";
+import { OpdUnitPicker } from "@/components/admin/OpdUnitPicker";
+import { isStaffLoginIdentifier, roleAccessLabel } from "@/lib/roles";
 import { formatDateTime } from "@/lib/utils";
 
 const selectClassName =
@@ -17,12 +18,21 @@ const selectClassName =
 type UserRole = "super_admin" | "admin" | "personal";
 type Panel = "detail" | "edit" | "password" | "delete";
 
+type OpdScope = {
+  perangkatDaerah: { id: string; name: string };
+  chain: string[];
+};
+
 export type UserDetail = {
   id: string;
   name: string;
   email: string;
   nip: string;
   role: UserRole;
+  opdAdmin: boolean;
+  superAdmin: boolean;
+  opdUnitId: string | null;
+  opdUnit: { id: string; name: string } | null;
   jabatan: "kepala_kantor" | "kepala_bidang" | "kepala_sub_bidang" | "pelaksana" | null;
   createdAt: string;
   updatedAt: string;
@@ -33,7 +43,9 @@ export type UserDetail = {
     nip: string | null;
     nik: string | null;
     jabatanNama: string | null;
+    unorId: string | null;
     unorNama: string | null;
+    perangkatDaerahId: string | null;
     perangkatDaerahNama: string | null;
   } | null;
 };
@@ -66,6 +78,10 @@ export function UserDetailDialog({
   const [isSelf, setIsSelf] = useState(false);
   const [name, setName] = useState("");
   const [role, setRole] = useState<UserRole>("personal");
+  const [opdAdmin, setOpdAdmin] = useState(false);
+  const [superAdmin, setSuperAdmin] = useState(false);
+  const [opdUnitId, setOpdUnitId] = useState("");
+  const [opdScope, setOpdScope] = useState<OpdScope | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -93,6 +109,7 @@ export function UserDetailDialog({
           return;
         }
         setDetail(data.user);
+        setOpdScope(data.opdScope ?? null);
         setIsSelf(Boolean(data.isSelf));
       })
       .catch(() => {
@@ -111,6 +128,9 @@ export function UserDetailDialog({
     if (!detail) return;
     setName(detail.name);
     setRole(detail.role);
+    setOpdAdmin(detail.opdAdmin);
+    setSuperAdmin(detail.superAdmin);
+    setOpdUnitId(detail.opdUnitId || opdScope?.chain.at(-1) || "");
     setUsername(detail.nip);
     setError("");
     setPanel("edit");
@@ -126,12 +146,25 @@ export function UserDetailDialog({
   async function saveEdit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!detail) return;
+    const grantOpd = role === "personal" && opdAdmin;
+    const grantSuper = role === "personal" && superAdmin;
+    if (grantOpd && !grantSuper && !opdUnitId) {
+      setError("Pilih unit organisasi yang dikelola");
+      return;
+    }
     setSaving(true);
     setError("");
     const res = await fetch(`/api/admin/${detail.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, role, username }),
+      body: JSON.stringify({
+        name,
+        role,
+        username,
+        opdAdmin: grantOpd,
+        superAdmin: grantSuper,
+        opdUnitId: grantOpd && !grantSuper ? opdUnitId : null,
+      }),
     });
     const data = await res.json().catch(() => ({}));
     setSaving(false);
@@ -140,6 +173,7 @@ export function UserDetailDialog({
       return;
     }
     setDetail(data.user);
+    setOpdScope(data.opdScope ?? null);
     setIsSelf(Boolean(data.isSelf));
     setPanel("detail");
     onChanged("Data pengguna berhasil diperbarui");
@@ -202,7 +236,8 @@ export function UserDetailDialog({
           <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Nama" value={detail.name} />
-              <Field label="Role" value={roleLabel[detail.role]} />
+              <Field label="Role" value={roleAccessLabel(detail.role, detail.opdAdmin, detail.superAdmin)} />
+              {detail.opdAdmin && !detail.superAdmin ? <Field label="Unit yang dikelola" value={detail.opdUnit?.name || "-"} /> : null}
               <Field label={detail.role === "personal" ? "NIP / NIK login" : "Username"} value={detail.nip} />
               <Field label="Email" value={detail.email} />
               <Field
@@ -258,19 +293,63 @@ export function UserDetailDialog({
               <Label htmlFor="edit-name">Nama lengkap</Label>
               <Input id="edit-name" value={name} onChange={(event) => setName(event.target.value)} required />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-role">Role</Label>
-              <select
-                id="edit-role"
-                className={selectClassName}
-                value={role}
-                onChange={(event) => setRole(event.target.value as UserRole)}
-              >
-                <option value="super_admin">Super Admin</option>
-                <option value="admin">Admin OPD</option>
-                <option value="personal">Personal</option>
-              </select>
-            </div>
+            {isStaffLoginIdentifier(detail.nip) && detail.role === "personal" ? (
+              <>
+              <label className="flex items-start gap-3 rounded-lg border border-outline-variant px-3 py-3 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={opdAdmin}
+                  onChange={(event) => setOpdAdmin(event.target.checked)}
+                />
+                <span>
+                  <span className="font-medium text-on-surface">Admin OPD</span>
+                  <span className="mt-1 block text-on-surface-variant">
+                    Menambahkan role Admin OPD pada NIP ini. Menu pengguna di footer, Admin OPD di sidebar.
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-3 rounded-lg border border-outline-variant px-3 py-3 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={superAdmin}
+                  onChange={(event) => setSuperAdmin(event.target.checked)}
+                />
+                <span>
+                  <span className="font-medium text-on-surface">Super Admin</span>
+                  <span className="mt-1 block text-on-surface-variant">
+                    Menambahkan role Super Admin pada NIP ini. Menu pengguna di footer, Super Admin di sidebar.
+                  </span>
+                </span>
+              </label>
+              {opdAdmin && !superAdmin && opdScope ? (
+                <OpdUnitPicker
+                  key={opdScope.chain.join("|")}
+                  perangkatDaerah={opdScope.perangkatDaerah}
+                  initialChain={opdScope.chain}
+                  onChange={setOpdUnitId}
+                />
+              ) : null}
+              {opdAdmin && !superAdmin && !opdScope ? (
+                <p className="text-sm text-error">Perangkat daerah pegawai belum tersedia, jadi role Admin OPD belum bisa disimpan.</p>
+              ) : null}
+              </>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="edit-role">Role</Label>
+                <select
+                  id="edit-role"
+                  className={selectClassName}
+                  value={role}
+                  onChange={(event) => setRole(event.target.value as UserRole)}
+                >
+                  <option value="super_admin">Super Admin</option>
+                  <option value="admin">Admin OPD</option>
+                  <option value="personal">Personal</option>
+                </select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="edit-username">{isPersonal ? "NIP / NIK" : "Username"}</Label>
               <Input

@@ -13,6 +13,8 @@ import {
 import { prisma } from "@/lib/prisma";
 import { parseJumlahSatuan } from "@/lib/satuan";
 import { notifyNewPostedTask } from "@/lib/push-notify";
+import { canUseEmployeeApp, isAppAdmin } from "@/lib/roles";
+import { getAdminScope, taskInScopeWhere } from "@/lib/admin-scope";
 import { getCurrentUser } from "@/lib/session";
 import { parseAssignedAt, parseFormDateInput } from "@/lib/utils";
 
@@ -20,6 +22,19 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (isAppAdmin(user.role)) {
+    const scope = await getAdminScope(user);
+    const tasks = await prisma.task.findMany({
+      where: taskInScopeWhere(scope),
+      include: {
+        assignedTo: { select: { name: true } },
+        createdBy: { select: { name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return NextResponse.json(tasks);
   }
 
   const { visibleUnitIds, isLeader } = await getOrgScope(user);
@@ -55,6 +70,9 @@ export async function POST(request: Request) {
   }
 
   const user = await getDbOrgUser(sessionUser.id);
+  if (!canUseEmployeeApp(sessionUser.role)) {
+    return NextResponse.json({ error: "Pengelola tidak membuat tugas pribadi" }, { status: 403 });
+  }
   if (!user?.unitId || !user.unit) {
     return NextResponse.json({ error: "Unit tidak ditemukan" }, { status: 403 });
   }

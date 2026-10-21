@@ -43,7 +43,13 @@ type PegawaiRow = {
 type Option = { id?: string; value?: string; name?: string; label?: string };
 type UnorOption = { id: string; name: string };
 
-export function SuperAdminPegawaiList() {
+export function SuperAdminPegawaiList({
+  subtitle = "Seluruh data pegawai. Saring berdasarkan nama, NIP/NIK, pangkat/golongan, jenis pegawai, dan unit organisasi.",
+  allowAsn = true,
+}: {
+  subtitle?: string;
+  allowAsn?: boolean;
+}) {
   const [rows, setRows] = useState<PegawaiRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -150,7 +156,7 @@ export function SuperAdminPegawaiList() {
     <>
       <PageHeader
         title="Pegawai"
-        subtitle="Seluruh data pegawai. Saring berdasarkan nama, NIP/NIK, pangkat/golongan, jenis pegawai, dan unit organisasi."
+        subtitle={subtitle}
         action={
           <Button type="button" className="shrink-0" onClick={() => setAddOpen(true)}>
             <Plus className="h-4 w-4" />
@@ -323,6 +329,7 @@ export function SuperAdminPegawaiList() {
       <TambahPegawaiDialog
         open={addOpen}
         onOpenChange={setAddOpen}
+        allowAsn={allowAsn}
         onCreated={(text) => {
           setMessage(text);
           setPage(1);

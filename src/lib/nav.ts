@@ -6,6 +6,7 @@ import {
   UserPlus,
   Settings,
   ListChecks,
+  Network,
   type LucideIcon,
 } from "lucide-react";
 import { Role } from "@prisma/client";
@@ -26,6 +27,9 @@ export type AppNavGroup = {
 
 export type NavOptions = {
   isLeader?: boolean;
+  opdAdmin?: boolean;
+  superAdmin?: boolean;
+  surface?: "sidebar" | "footer";
 };
 
 const staffNavItems: AppNavItem[] = [
@@ -41,25 +45,21 @@ const leaderNavItems: AppNavItem[] = [
 ];
 
 const adminNavItems: AppNavItem[] = [
-  { href: "/pegawai", label: "Pegawai", icon: Users },
+  { href: "/dashboard", label: "Dashboard", icon: Home },
+  { href: "/admin/pegawai", label: "Pegawai", icon: Users },
+  { href: "/admin/monitoring", label: "Monitoring", icon: ListChecks },
 ];
 
 const superAdminNavItems: AppNavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/admin/pegawai", label: "Pegawai", icon: Users },
+  { href: "/admin/unit", label: "Unit organisasi", icon: Network },
   { href: "/admin/monitoring", label: "Monitoring", icon: ListChecks },
   { href: "/admin", label: "Pengguna", icon: UserPlus },
   { href: "/setting", label: "Setting", icon: Settings },
 ];
 
-export function getNavGroups(role: Role, options?: NavOptions): AppNavGroup[] {
-  const resolved = coerceRole(role);
-  if (resolved === "super_admin") {
-    return [{ id: "super_admin", label: "Super Admin", items: superAdminNavItems }];
-  }
-  if (resolved === "admin") {
-    return [{ id: "admin", label: null, items: adminNavItems }];
-  }
+function personalGroups(options?: NavOptions): AppNavGroup[] {
   return [
     {
       id: "personal",
@@ -67,6 +67,20 @@ export function getNavGroups(role: Role, options?: NavOptions): AppNavGroup[] {
       items: options?.isLeader ? leaderNavItems : staffNavItems,
     },
   ];
+}
+
+export function getNavGroups(role: Role, options?: NavOptions): AppNavGroup[] {
+  const resolved = coerceRole(role);
+  if (options?.surface === "footer" && resolved === "personal") {
+    return personalGroups(options);
+  }
+  if (resolved === "super_admin" || (resolved === "personal" && options?.superAdmin)) {
+    return [{ id: "super_admin", label: "Super Admin", items: superAdminNavItems }];
+  }
+  if (resolved === "admin" || (resolved === "personal" && options?.opdAdmin)) {
+    return [{ id: "admin", label: options?.opdAdmin ? "Admin OPD" : null, items: adminNavItems }];
+  }
+  return personalGroups(options);
 }
 
 export function getNavItems(role: Role, options?: NavOptions) {

@@ -28,6 +28,8 @@ export const authConfig = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.opdAdmin = Boolean(user.opdAdmin);
+        token.superAdmin = Boolean(user.superAdmin);
         token.jabatan = user.jabatan;
         token.unitId = user.unitId;
         token.nip = user.nip;
@@ -38,6 +40,8 @@ export const authConfig = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as typeof session.user.role;
+        session.user.opdAdmin = Boolean(token.opdAdmin);
+        session.user.superAdmin = Boolean(token.superAdmin);
         session.user.jabatan = (token.jabatan as typeof session.user.jabatan) ?? null;
         session.user.unitId = (token.unitId as string | null) ?? null;
         session.user.nip = token.nip as string;
