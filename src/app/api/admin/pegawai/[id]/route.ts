@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { softDeletePegawai } from "@/lib/admin-pegawai";
 import { getAdminScope, pegawaiRecordInScope, ADMIN_SCOPE_MISSING, unitIdInScope } from "@/lib/admin-scope";
 import { prisma } from "@/lib/prisma";
-import { isPrivilegedRole } from "@/lib/roles";
+import { isProtectedPegawaiAccount } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
 
 const pegawaiDetailSelect = {
@@ -61,12 +61,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params;
   const existing = await prisma.pegawai.findUnique({
     where: { id },
-    select: { id: true, userId: true, unitId: true, unorId: true, user: { select: { unitId: true, role: true } } },
+    select: {
+      id: true,
+      userId: true,
+      unitId: true,
+      unorId: true,
+      user: { select: { unitId: true, role: true, opdAdmin: true, superAdmin: true } },
+    },
   });
   if (!existing || !pegawaiRecordInScope(scope, existing)) {
     return NextResponse.json({ error: "Pegawai tidak ditemukan" }, { status: 404 });
   }
-  if (existing.user && isPrivilegedRole(existing.user.role)) {
+  if (isProtectedPegawaiAccount(existing.user)) {
     return NextResponse.json({ error: "Akun pengelola tidak dapat diubah dari daftar pegawai" }, { status: 403 });
   }
 
