@@ -88,26 +88,45 @@ async function upsertAsnDirectory(nip: string, name: string, address: string) {
   });
 }
 
+export function nextSyncedUnitId(unorId: string | null, localUnitId: string | null): string | null | undefined {
+  if (!unorId) return null;
+  if (!localUnitId) return undefined;
+  return localUnitId;
+}
+
+function simpegPegawaiWrite(pegawai: SimpegPegawai, resolvedUnitId: string | null | undefined) {
+  const data = pegawaiRecordFromSimpeg(pegawai, resolvedUnitId ?? null);
+  if (resolvedUnitId !== undefined) return { create: data, update: data };
+  const { unitId, ...update } = data;
+  void unitId;
+  return { create: data, update };
+}
+
 export async function upsertPegawaiFromSimpeg(pegawai: SimpegPegawai) {
-  const data = pegawaiRecordFromSimpeg(pegawai, str(pegawai.unor_id));
+  const nip = str(pegawai.nip);
+  if (!nip) {
+    throw new Error("NIP Simpeg kosong");
+  }
+  const unorId = str(pegawai.unor_id);
   const removed = await prisma.pegawai.findUnique({
-    where: { nip: data.nip },
+    where: { nip },
     select: { id: true, deletedAt: true },
   });
   if (removed?.deletedAt) return null;
-  const unit = data.unitId
+  const unit = unorId
     ? await prisma.unit.findFirst({
-        where: { OR: [{ id: data.unitId }, { externalId: data.unitId }] },
+        where: { OR: [{ id: unorId }, { externalId: unorId }] },
         select: { id: true },
       })
     : null;
+  const write = simpegPegawaiWrite(pegawai, nextSyncedUnitId(unorId, unit?.id ?? null));
 
   const saved = await prisma.pegawai.upsert({
-    where: { nip: data.nip },
-    create: { ...data, unitId: unit?.id ?? null },
-    update: { ...data, unitId: unit?.id ?? null },
+    where: { nip },
+    create: write.create,
+    update: write.update,
   });
-  await upsertAsnDirectory(data.nip, data.name, data.address);
+  await upsertAsnDirectory(write.create.nip, write.create.name, write.create.address);
   await ensureUserFromPegawai(saved);
   return saved;
 }
@@ -196,11 +215,11 @@ async function syncPegawai(onProgress?: ProgressFn) {
   const first = await fetchSimpegPegawaiPage(1);
   const lastPage = first.lastPage || 1;
   const total = first.total || first.items.length;
-  const unitIds = new Set(
-    (await prisma.unit.findMany({ where: { externalId: { not: null } }, select: { id: true } })).map(
-      (unit) => unit.id,
-    ),
-  );
+  const localIdByKey = new Map<string, string>();
+  for (const unit of await prisma.unit.findMany({ select: { id: true, externalId: true } })) {
+    localIdByKey.set(unit.id, unit.id);
+    if (unit.externalId) localIdByKey.set(unit.externalId, unit.id);
+  }
   let saved = 0;
   const removedNips = new Set(
     (
@@ -227,12 +246,14 @@ async function syncPegawai(onProgress?: ProgressFn) {
           const nip = str(pegawai.nip);
           if (!nip || removedNips.has(nip)) return;
           const unorId = str(pegawai.unor_id);
-          const data = pegawaiRecordFromSimpeg(pegawai, unorId);
-          const unitId = unorId && unitIds.has(unorId) ? unorId : null;
+          const write = simpegPegawaiWrite(
+            pegawai,
+            nextSyncedUnitId(unorId, unorId ? localIdByKey.get(unorId) ?? null : null),
+          );
           await prisma.pegawai.upsert({
             where: { nip },
-            create: { ...data, unitId },
-            update: { ...data, unitId },
+            create: write.create,
+            update: write.update,
           });
         }),
       );
