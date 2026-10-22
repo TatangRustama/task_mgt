@@ -262,9 +262,7 @@ async function syncPegawai(onProgress?: ProgressFn) {
   return saved;
 }
 
-export async function syncSimpeg(onProgress?: ProgressFn) {
-  const unitCount = await syncSimpegUnor(onProgress);
-  const pegawaiCount = await syncPegawai(onProgress);
+async function syncPegawaiAccountsWithProgress(onProgress?: ProgressFn) {
   onProgress?.({
     step: "akun",
     message: "Menyusun akun login dan pimpinan unit...",
@@ -272,6 +270,25 @@ export async function syncSimpeg(onProgress?: ProgressFn) {
   const userCount = await syncPegawaiAccounts((message, current, total) => {
     onProgress?.({ step: "akun", message, current, total });
   });
+  return userCount;
+}
+
+export async function syncSimpegPegawai(onProgress?: ProgressFn) {
+  const pegawaiCount = await syncPegawai(onProgress);
+  const userCount = await syncPegawaiAccountsWithProgress(onProgress);
+  onProgress?.({
+    step: "done",
+    message: `Selesai: ${pegawaiCount} pegawai, ${userCount} akun`,
+    current: userCount,
+    total: userCount,
+  });
+  return { pegawaiCount, userCount };
+}
+
+export async function syncSimpeg(onProgress?: ProgressFn) {
+  const unitCount = await syncSimpegUnor(onProgress);
+  const pegawaiCount = await syncPegawai(onProgress);
+  const userCount = await syncPegawaiAccountsWithProgress(onProgress);
   onProgress?.({
     step: "done",
     message: `Selesai: ${unitCount} unit, ${pegawaiCount} pegawai, ${userCount} akun`,
@@ -279,6 +296,34 @@ export async function syncSimpeg(onProgress?: ProgressFn) {
     total: userCount,
   });
   return { unitCount, pegawaiCount, userCount };
+}
+
+export async function refreshPegawaiFromSimpeg(id: string) {
+  const local = await prisma.pegawai.findUnique({
+    where: { id },
+    select: { id: true, nip: true, jenis: true, deletedAt: true },
+  });
+  if (!local || local.deletedAt) {
+    return { ok: false as const, error: "Pegawai tidak ditemukan", status: 404 };
+  }
+  if (local.jenis !== "asn" || !local.nip) {
+    return {
+      ok: false as const,
+      error: "Hanya pegawai ASN yang dapat diperbarui dari Simpeg",
+      status: 400,
+    };
+  }
+
+  const remote = await fetchSimpegPegawaiByNip(local.nip);
+  if (!remote) {
+    return { ok: false as const, error: "Pegawai tidak ditemukan di Simpeg", status: 404 };
+  }
+
+  const saved = await upsertPegawaiFromSimpeg(remote);
+  if (!saved) {
+    return { ok: false as const, error: "Pegawai tidak ditemukan", status: 404 };
+  }
+  return { ok: true as const, id: saved.id };
 }
 
 export async function lookupOrSyncPegawaiByNip(nip: string) {

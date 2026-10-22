@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Network, Pencil, Trash2 } from "lucide-react";
+import { Network, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { AppLoader } from "@/components/layout/AppLoader";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -53,11 +53,13 @@ export function PegawaiDetailDialog({
   open,
   onOpenChange,
   onChanged,
+  canSync = false,
 }: {
   pegawaiId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onChanged: (message: string) => void;
+  canSync?: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -65,6 +67,7 @@ export function PegawaiDetailDialog({
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
   const [detail, setDetail] = useState<PegawaiDetail | null>(null);
   const [name, setName] = useState("");
@@ -80,6 +83,7 @@ export function PegawaiDetailDialog({
       setDetail(null);
       setEditing(false);
       setConfirmingDelete(false);
+      setSyncing(false);
       setError("");
       return;
     }
@@ -132,6 +136,26 @@ export function PegawaiDetailDialog({
     }
   }
 
+  async function refreshFromSimpeg() {
+    if (!detail) return;
+    setSyncing(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/pegawai/${detail.id}/sync`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.pegawai) {
+        setError(data.error || "Gagal memperbarui dari Simpeg");
+        return;
+      }
+      setDetail(data.pegawai);
+      onChanged(`${data.pegawai.name || detail.name} diperbarui dari Simpeg.`);
+    } catch {
+      setError("Gagal memperbarui dari Simpeg");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   function startEdit() {
     if (!detail) return;
     setName(detail.name);
@@ -181,6 +205,7 @@ export function PegawaiDetailDialog({
           <DialogTitle>{editing ? "Edit pegawai" : "Detail pegawai"}</DialogTitle>
         </DialogHeader>
         {loading ? <AppLoader label="Memuat detail" /> : null}
+        {syncing ? <AppLoader label="Memperbarui dari Simpeg" /> : null}
         {error ? <p className="text-sm text-error">{error}</p> : null}
 
         {!loading && detail && !editing ? (
@@ -234,13 +259,26 @@ export function PegawaiDetailDialog({
               </div>
             ) : (
               <div className="flex flex-wrap gap-2 pb-4">
-                <Button type="button" variant="outline" className="flex-1" onClick={startEdit}>
+                {canSync && detail.jenis === "asn" ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={syncing}
+                    onClick={() => void refreshFromSimpeg()}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    {syncing ? "Memperbarui..." : "Perbarui dari Simpeg"}
+                  </Button>
+                ) : null}
+                <Button type="button" variant="outline" className="flex-1" onClick={startEdit} disabled={syncing}>
                   <Pencil className="h-4 w-4" />
                   Edit pegawai
                 </Button>
                 <Button
                   type="button"
                   className="flex-1"
+                  disabled={syncing}
                   onClick={() => {
                     onOpenChange(false);
                     router.push(`/admin/pegawai/${detail.id}/unor`);
@@ -253,6 +291,7 @@ export function PegawaiDetailDialog({
                   type="button"
                   variant="destructive"
                   className="w-full"
+                  disabled={syncing}
                   onClick={() => setConfirmingDelete(true)}
                 >
                   <Trash2 className="h-4 w-4" />

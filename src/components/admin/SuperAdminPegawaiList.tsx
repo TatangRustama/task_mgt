@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
 import { PegawaiDetailDialog } from "@/components/admin/PegawaiDetailDialog";
 import { TambahPegawaiDialog } from "@/components/admin/TambahPegawaiDialog";
 import { AppLoader } from "@/components/layout/AppLoader";
@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { kepegawaianStatus } from "@/lib/kepegawaian-status";
 import { displayJabatan } from "@/lib/jabatan-display";
 import { USER_PAGE_SIZES } from "@/lib/roles";
-import { formatNip } from "@/lib/utils";
+import { cn, formatNip } from "@/lib/utils";
 
 const PEGAWAI_STATUS_OPTIONS = [
   { value: "cpns", label: "CPNS" },
@@ -67,6 +67,8 @@ export function SuperAdminPegawaiList({
   const [perangkatDaerah, setPerangkatDaerah] = useState<UnorOption[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [messageError, setMessageError] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
 
   const deepestUnor = [...unorSelected].reverse().find((id) => id) || "";
@@ -93,6 +95,24 @@ export function SuperAdminPegawaiList({
     }
     setLoading(false);
   }, [page, pageSize, query, golongan, status, perangkatDaerahId, deepestUnor]);
+
+  async function pullFromSimpeg() {
+    setSyncing(true);
+    setMessageError(false);
+    setMessage("");
+    const res = await fetch("/api/admin/pegawai/sync", { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+    setSyncing(false);
+    if (!res.ok) {
+      setMessageError(true);
+      setMessage(data.error || "Gagal menarik data dari Simpeg PB");
+      return;
+    }
+    setMessage(
+      `Berhasil menarik ${data.pegawaiCount ?? 0} pegawai dan ${data.userCount ?? 0} akun dari Simpeg PB.`,
+    );
+    loadData();
+  }
 
   useEffect(() => {
     fetch("/api/admin/pegawai/options")
@@ -158,10 +178,29 @@ export function SuperAdminPegawaiList({
         title="Pegawai"
         subtitle={subtitle}
         action={
-          <Button type="button" className="shrink-0" onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Tambah pegawai baru
-          </Button>
+          <div className="flex w-full basis-full flex-nowrap items-center gap-2 md:w-auto md:basis-auto">
+            {allowAsn ? (
+              <Button
+                type="button"
+                variant="secondary"
+                className="min-w-0 flex-1 md:flex-none md:shrink-0"
+                onClick={() => void pullFromSimpeg()}
+                disabled={syncing}
+              >
+                <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
+                {syncing ? "Menyinkronkan..." : "Sinkron SIASN"}
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              className="min-w-0 flex-1 md:flex-none md:shrink-0"
+              onClick={() => setAddOpen(true)}
+              disabled={syncing}
+            >
+              <Plus className="h-4 w-4" />
+              Tambah baru
+            </Button>
+          </div>
         }
       />
     <Card>
@@ -170,7 +209,16 @@ export function SuperAdminPegawaiList({
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
         {message ? (
-          <p className="rounded-lg bg-secondary-container px-4 py-2 text-on-secondary-container">{message}</p>
+          <p
+            className={cn(
+              "rounded-lg px-4 py-2",
+              messageError
+                ? "bg-error-container text-error"
+                : "bg-secondary-container text-on-secondary-container",
+            )}
+          >
+            {message}
+          </p>
         ) : null}
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-2">
@@ -321,7 +369,9 @@ export function SuperAdminPegawaiList({
         onOpenChange={(open) => {
           if (!open) setSelectedId(null);
         }}
+        canSync={allowAsn}
         onChanged={(text) => {
+          setMessageError(false);
           setMessage(text);
           loadData();
         }}
@@ -331,6 +381,7 @@ export function SuperAdminPegawaiList({
         onOpenChange={setAddOpen}
         allowAsn={allowAsn}
         onCreated={(text) => {
+          setMessageError(false);
           setMessage(text);
           setPage(1);
           loadData();
