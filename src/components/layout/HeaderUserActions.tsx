@@ -117,7 +117,7 @@ export function HeaderNotifications({ initial }: { initial: UserNotifications })
           role="dialog"
           aria-label="Notifikasi"
           className={cn(
-            "fixed left-3 right-3 top-[4.25rem] z-[60] max-h-[min(24rem,calc(100dvh-5.5rem))] overflow-y-auto rounded-xl border-2 border-secondary-navy bg-surface-container-lowest p-4 text-on-surface shadow-[0_0_0_2px_#fff] md:right-auto md:top-[4.5rem] md:w-[22rem]",
+            "fixed left-3 right-3 top-[4.25rem] z-[60] max-h-[min(24rem,calc(100dvh-5.5rem))] overflow-y-auto rounded-xl border border-outline bg-surface-container-lowest p-4 text-on-surface shadow-[0_12px_32px_rgba(27,33,86,0.12)] md:right-auto md:top-[4.5rem] md:w-[22rem]",
             collapsed
               ? "md:left-[max(0px,calc((100%-80rem)/2))]"
               : "md:left-[max(16rem,calc((100%-80rem)/2+16rem))]",

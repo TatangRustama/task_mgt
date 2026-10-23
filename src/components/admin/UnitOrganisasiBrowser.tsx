@@ -120,7 +120,7 @@ function UnitNode({
           disabled={!selectable}
           onClick={() => selectable && onSelect(node)}
           className={cn(
-            "min-w-0 flex-1 rounded-lg border px-3 py-2 text-left text-sm",
+            "min-w-0 flex-1 rounded-lg border px-3 py-2 text-left text-xs md:text-sm",
             selected
               ? "border-primary-container bg-secondary-container text-on-secondary-container"
               : "border-surface-container-highest bg-surface-container-low text-on-surface",

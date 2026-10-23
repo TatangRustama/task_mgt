@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -48,6 +49,59 @@ function belumMelapor(row: PerangkatDaerahPegawaiRow) {
 function reportPercent(melapor: number, pegawai: number) {
   if (pegawai <= 0) return melapor > 0 ? "100%" : "-";
   return `${Math.round((melapor / pegawai) * 100)}%`;
+}
+
+function ScrollableTable({ children }: { children: ReactNode }) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [scroll, setScroll] = useState({ max: 0, value: 0 });
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+
+    const sync = () => {
+      const max = Math.max(0, el.scrollWidth - el.clientWidth);
+      setScroll({ max, value: Math.min(el.scrollLeft, max) });
+    };
+
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(el);
+    if (el.firstElementChild) observer.observe(el.firstElementChild);
+    el.addEventListener("scroll", sync, { passive: true });
+    return () => {
+      observer.disconnect();
+      el.removeEventListener("scroll", sync);
+    };
+  }, []);
+
+  return (
+    <div className="min-w-0">
+      <div
+        ref={scrollerRef}
+        className="w-full min-w-0 overflow-x-auto max-md:max-h-[min(32rem,calc(100dvh-16rem))] max-md:overflow-y-auto"
+      >
+        {children}
+      </div>
+      {scroll.max > 1 ? (
+        <div className="border-t border-outline-variant px-3 py-2">
+          <input
+            type="range"
+            min={0}
+            max={scroll.max}
+            value={scroll.value}
+            aria-label="Geser tabel ke samping"
+            className="h-8 w-full cursor-pointer accent-primary"
+            onChange={(event) => {
+              const next = Number(event.target.value);
+              if (scrollerRef.current) scrollerRef.current.scrollLeft = next;
+              setScroll((current) => ({ ...current, value: next }));
+            }}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function perangkatName(row: { id: string; name: string }) {
@@ -111,11 +165,11 @@ function TaskRecap({ tasks }: { tasks: PerangkatDaerahRecapRow[] }) {
       {tasks.length === 0 ? (
         <p className="px-3 pb-3 text-sm text-on-surface-variant">Tidak ada tugas pada periode ini.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[44rem] text-left text-sm">
+        <ScrollableTable>
+          <table className="w-full min-w-[44rem] text-left text-[10px]">
             <thead>
-              <tr className="border-y border-outline-variant text-[11px] uppercase tracking-wide text-on-surface-variant">
-                <th className="sticky left-0 bg-surface-container-lowest px-3 py-2 font-medium">Perangkat daerah</th>
+              <tr className="border-y border-outline-variant bg-surface-container-lowest text-[10px] uppercase tracking-wide text-on-surface-variant max-md:sticky max-md:top-0 max-md:z-10">
+                <th className="sticky left-0 z-20 bg-surface-container-lowest px-3 py-2 font-medium">Perangkat daerah</th>
                 <th className="px-3 py-2 font-medium">Status</th>
                 <th className="px-3 py-2 text-right font-medium">Total</th>
                 {COLUMNS.map((column) => (
@@ -159,7 +213,7 @@ function TaskRecap({ tasks }: { tasks: PerangkatDaerahRecapRow[] }) {
               </tr>
             </tfoot>
           </table>
-        </div>
+        </ScrollableTable>
       )}
     </>
   );
@@ -186,11 +240,11 @@ function PegawaiRecap({ rows }: { rows: PerangkatDaerahPegawaiRow[] }) {
       {rows.length === 0 ? (
         <p className="px-3 pb-3 text-sm text-on-surface-variant">Tidak ada pegawai pada periode ini.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[40rem] text-left text-sm">
+        <ScrollableTable>
+          <table className="w-full min-w-[40rem] text-left text-[10px]">
             <thead>
-              <tr className="border-y border-outline-variant text-[11px] uppercase tracking-wide text-on-surface-variant">
-                <th className="sticky left-0 bg-surface-container-lowest px-3 py-2 font-medium">Perangkat daerah</th>
+              <tr className="border-y border-outline-variant bg-surface-container-lowest text-[10px] uppercase tracking-wide text-on-surface-variant max-md:sticky max-md:top-0 max-md:z-10">
+                <th className="sticky left-0 z-20 bg-surface-container-lowest px-3 py-2 font-medium">Perangkat daerah</th>
                 <th className="px-3 py-2 font-medium">Status</th>
                 <th className="px-3 py-2 text-right font-medium">Pegawai</th>
                 <th className="px-3 py-2 text-right font-medium">Melapor</th>
@@ -229,7 +283,7 @@ function PegawaiRecap({ rows }: { rows: PerangkatDaerahPegawaiRow[] }) {
               </tr>
             </tfoot>
           </table>
-        </div>
+        </ScrollableTable>
       )}
     </>
   );
@@ -247,7 +301,7 @@ function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex rounded-md px-1.5 py-0.5 text-[11px] font-semibold",
+        "inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
         active ? "bg-emerald-50 text-emerald-700" : "bg-surface-container text-on-surface-variant",
       )}
     >

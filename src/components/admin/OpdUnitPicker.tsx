@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
 
 const selectClassName =
-  "flex h-11 w-full rounded-lg border border-outline-variant px-3 text-sm focus-visible:outline-none focus-visible:border-primary-container focus-visible:ring-1 focus-visible:ring-primary-container";
+  "flex h-11 w-full rounded-lg border border-outline-variant px-3 text-[11px] md:text-sm focus-visible:outline-none focus-visible:border-primary-container focus-visible:ring-1 focus-visible:ring-primary-container";
 
 type Choice = { id: string; name: string };
 
@@ -77,7 +77,7 @@ export function OpdUnitPicker({
     <div className="space-y-3">
       {levels.map((options, level) => (
         <div key={`${level}-${options[0]?.id ?? "empty"}`} className="space-y-2">
-          <Label htmlFor={`opd-unit-${level}`}>
+          <Label htmlFor={`opd-unit-${level}`} className="text-[11px] md:text-sm">
             {level === 0 ? "Unit yang dikelola" : "Unor di bawahnya"}
           </Label>
           <select
@@ -95,7 +95,7 @@ export function OpdUnitPicker({
           </select>
         </div>
       ))}
-      <p className="text-xs text-on-surface-variant">
+      <p className="text-[11px] text-on-surface-variant md:text-xs">
         Admin OPD mengelola unit yang dipilih beserta seluruh unor di bawahnya.
       </p>
     </div>

@@ -275,7 +275,7 @@ export function SuperAdminPegawaiList({
             {message}
           </p>
         ) : null}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center justify-between gap-2">
           <Button type="button" variant="outline" onClick={openFilter}>
             <SlidersHorizontal className="h-4 w-4" />
             Filter
@@ -285,34 +285,27 @@ export function SuperAdminPegawaiList({
               </span>
             ) : null}
           </Button>
+          <select
+            id="pegawai-page-size"
+            aria-label="Jumlah baris per halaman"
+            className={cn(selectClassName, "h-9 w-20 shrink-0")}
+            value={pageSize}
+            onChange={(event) => {
+              setPageSize(Number(event.target.value));
+              setPage(1);
+            }}
+          >
+            {USER_PAGE_SIZES.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="pegawai-page-size" className="whitespace-nowrap">
-              Tampilkan
-            </Label>
-            <select
-              id="pegawai-page-size"
-              className={`${selectClassName} h-9 w-24`}
-              value={pageSize}
-              onChange={(event) => {
-                setPageSize(Number(event.target.value));
-                setPage(1);
-              }}
-            >
-              {USER_PAGE_SIZES.map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-            <span className="text-on-surface-variant">per halaman</span>
-          </div>
-          <p className="text-on-surface-variant">
-            Halaman {page} dari {totalPages}
-          </p>
-        </div>
+        <p className="text-on-surface-variant">
+          Halaman {page} dari {totalPages}
+        </p>
 
         {loading ? <AppLoader label="Memuat pegawai" /> : null}
         {!loading && rows.length === 0 ? (
