@@ -5,12 +5,12 @@ import { BoardView } from "@/components/board/BoardView";
 import { AppLoader } from "@/components/layout/AppLoader";
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
 import { getBoardPageData } from "@/lib/board";
-import { canDelegate, getDbOrgUser, getOrgScope, isUnitLeader } from "@/lib/org";
+import { canDelegate, getOrgScope } from "@/lib/org";
 import { requireUser } from "@/lib/session";
 
 async function BoardBody({ openDelegasi }: { openDelegasi: boolean }) {
   const user = await requireUser(["personal"]);
-  const { orgUser, isLeader, tasks } = await getBoardPageData(user);
+  const { orgUser, isLeader, activeScope, tasks } = await getBoardPageData(user);
   const isStaffBoard = !isLeader;
 
   if (!user.unitId) {
@@ -25,7 +25,7 @@ async function BoardBody({ openDelegasi }: { openDelegasi: boolean }) {
     <BoardView
       tasks={tasks}
       currentUserId={user.id}
-      canDelegate={orgUser ? canDelegate(orgUser) : false}
+      canDelegate={orgUser ? canDelegate(orgUser, activeScope) : false}
       openDelegasi={openDelegasi}
       emptyTersedia={
         isStaffBoard
@@ -42,9 +42,8 @@ export default async function BoardPage({
   searchParams: Promise<{ delegasi?: string }>;
 }) {
   const [user, params] = await Promise.all([requireUser(["personal"]), searchParams]);
-  const orgUser = await getDbOrgUser(user.id);
-  const { activeScope } = await getOrgScope(user);
-  const isStaffBoard = !(orgUser && isUnitLeader(orgUser));
+  const { orgUser, activeScope, isLeader } = await getOrgScope(user);
+  const isStaffBoard = !isLeader;
 
   return (
     <PageMain>

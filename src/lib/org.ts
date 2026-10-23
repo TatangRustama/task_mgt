@@ -11,7 +11,13 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { compareByPangkatDesc } from "@/lib/golongan";
 import { displayJabatan, jabatanRoleLabel, type PegawaiJabatanSource } from "@/lib/jabatan-display";
-import { KAPASITAS_COOKIE, resolveLeadershipScope, type LeadershipScope } from "@/lib/kapasitas";
+import {
+  KAPASITAS_COOKIE,
+  activeScopeGrantsLeadership,
+  assignmentRulesForScope,
+  resolveLeadershipScope,
+  type LeadershipScope,
+} from "@/lib/kapasitas";
 import type { SessionUser } from "@/lib/session";
 import type { AtasanTaskNotice } from "@/lib/notification-types";
 import { isPrivilegedRole, isSuperAdmin } from "@/lib/roles";
@@ -179,13 +185,7 @@ export function assignmentRules(user: OrgUser, scope: LeadershipScope | null) {
       poolUnit,
     };
   }
-  const poolUnit =
-    scope.unitType === "sub_bidang" ? { id: scope.unitId, name: scope.unitName } : null;
-  return {
-    canUsePool: poolUnit !== null,
-    mustAssignNamed: scope.unitType === "kantor" || scope.unitType === "bidang",
-    poolUnit,
-  };
+  return assignmentRulesForScope(scope, isDefinitiveLeader(user));
 }
 
 export function effectiveJabatan(user: Pick<OrgUser, "role" | "jabatan">): Jabatan | null {
@@ -196,8 +196,11 @@ export function roleFromJabatan(_jabatan: Jabatan | null): Role {
   return "personal";
 }
 
-export function canDelegate(user: OrgUser) {
-  return isSuperAdmin(user.role) || isUnitLeader(user);
+export function canDelegate(user: OrgUser, scope?: LeadershipScope | null) {
+  if (isSuperAdmin(user.role)) return true;
+  if (!isUnitLeader(user)) return false;
+  if (!scope) return true;
+  return activeScopeGrantsLeadership(scope, isDefinitiveLeader(user));
 }
 
 export function canUsePoolAssignment(user: OrgUser) {
@@ -280,11 +283,14 @@ const loadOrgScope = cache(async (
     };
   }
 
-  if (activeScope) {
+  if (activeScope && orgUser) {
+    const leadsScope = activeScopeGrantsLeadership(activeScope, isDefinitiveLeader(orgUser));
     return {
       orgUser,
-      isLeader,
-      visibleUnitIds: await getDescendantUnitIds(activeScope.unitId),
+      isLeader: leadsScope,
+      visibleUnitIds: leadsScope
+        ? await getDescendantUnitIds(activeScope.unitId)
+        : [activeScope.unitId],
       activeScope,
       scopes,
     };

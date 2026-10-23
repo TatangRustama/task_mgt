@@ -79,6 +79,7 @@ export async function getBoardPageData(user: SessionUser) {
   return {
     orgUser,
     isLeader,
+    activeScope,
     tasks: visibleTasks,
   };
 }
