@@ -173,7 +173,7 @@ export function TambahPegawaiDialog({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="top-auto bottom-24 z-[80] max-h-[calc(100dvh-8rem)] translate-y-0 overflow-y-auto pb-6 sm:max-w-lg">
+      <DialogContent className="top-20 z-[80] max-h-[calc(100dvh-11rem)] translate-y-0 overflow-y-auto pb-6 sm:max-w-lg">
         <DialogHeader className="pr-8 text-left">
           <DialogTitle>Tambah pegawai baru</DialogTitle>
         </DialogHeader>

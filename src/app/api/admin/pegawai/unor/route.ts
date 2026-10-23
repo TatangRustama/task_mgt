@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listUnorChildren, listUnorRootsForPerangkatDaerah } from "@/lib/admin-pegawai";
+import { listUnorChildren, listUnorRootsForPerangkatDaerah, listVisibleUnorRoots } from "@/lib/admin-pegawai";
 import { getAdminScope, perangkatDaerahIdsForScope, unitIdInScope } from "@/lib/admin-scope";
 import { requireUser } from "@/lib/session";
 
@@ -21,5 +21,5 @@ export async function GET(request: Request) {
     if (allowed && !allowed.has(perangkatDaerahId)) return NextResponse.json({ items: [] });
     return NextResponse.json({ items: keep(await listUnorRootsForPerangkatDaerah(perangkatDaerahId)) });
   }
-  return NextResponse.json({ items: [] });
+  return NextResponse.json({ items: await listVisibleUnorRoots(scope) });
 }

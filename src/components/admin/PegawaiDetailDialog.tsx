@@ -1,18 +1,17 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Network, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { Network, RefreshCw, Trash2 } from "lucide-react";
 import { AppLoader } from "@/components/layout/AppLoader";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PenugasanPanel } from "@/components/admin/PenugasanPanel";
 import { formatGolonganPangkat } from "@/lib/golongan";
 import { displayJabatan } from "@/lib/jabatan-display";
 import { kepegawaianStatus } from "@/lib/kepegawaian-status";
-import { formatDate, formatNip } from "@/lib/utils";
+import { formatDate, formatNip, cn } from "@/lib/utils";
 
 type PegawaiDetail = {
   id: string;
@@ -62,28 +61,20 @@ export function PegawaiDetailDialog({
   canSync?: boolean;
 }) {
   const router = useRouter();
-  const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState("profil");
   const [detail, setDetail] = useState<PegawaiDetail | null>(null);
-  const [name, setName] = useState("");
-  const [jabatanNama, setJabatanNama] = useState("");
-  const [email, setEmail] = useState("");
-  const [noHp, setNoHp] = useState("");
-  const [address, setAddress] = useState("");
-  const [gelarDepan, setGelarDepan] = useState("");
-  const [gelarBelakang, setGelarBelakang] = useState("");
 
   useEffect(() => {
     if (!open || !pegawaiId) {
       setDetail(null);
-      setEditing(false);
       setConfirmingDelete(false);
       setSyncing(false);
+      setTab("profil");
       setError("");
       return;
     }
@@ -91,8 +82,8 @@ export function PegawaiDetailDialog({
     let cancelled = false;
     setLoading(true);
     setError("");
-    setEditing(false);
     setConfirmingDelete(false);
+    setTab("profil");
     fetch(`/api/admin/pegawai/${pegawaiId}`)
       .then(async (res) => {
         const data = await res.json();
@@ -156,81 +147,61 @@ export function PegawaiDetailDialog({
     }
   }
 
-  function startEdit() {
-    if (!detail) return;
-    setName(detail.name);
-    setJabatanNama(detail.jabatanNama || "");
-    setEmail(detail.email || "");
-    setNoHp(detail.noHp || "");
-    setAddress(detail.address || "");
-    setGelarDepan(detail.gelarDepan || "");
-    setGelarBelakang(detail.gelarBelakang || "");
-    setError("");
-    setEditing(true);
-  }
-
-  async function saveEdit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!detail) return;
-    setSaving(true);
-    setError("");
-    const res = await fetch(`/api/admin/pegawai/${detail.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        jabatanNama,
-        email,
-        noHp,
-        address,
-        gelarDepan,
-        gelarBelakang,
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-    setSaving(false);
-    if (!res.ok) {
-      setError(data.error || "Gagal menyimpan perubahan");
-      return;
-    }
-    setDetail(data.pegawai);
-    setEditing(false);
-    onChanged("Data pegawai berhasil diperbarui");
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="top-auto bottom-24 z-[80] max-h-[calc(100dvh-8rem)] translate-y-0 overflow-y-auto pb-6 sm:max-w-lg md:bottom-24">
+      <DialogContent className="top-20 z-[80] max-h-[calc(100dvh-11rem)] translate-y-0 overflow-y-auto pb-6 sm:max-w-lg">
         <DialogHeader className="pr-8 text-left">
-          <DialogTitle>{editing ? "Edit pegawai" : "Detail pegawai"}</DialogTitle>
+          <DialogTitle>Detail pegawai</DialogTitle>
         </DialogHeader>
         {loading ? <AppLoader label="Memuat detail" /> : null}
         {syncing ? <AppLoader label="Memperbarui dari Simpeg" /> : null}
         {error ? <p className="text-sm text-error">{error}</p> : null}
 
-        {!loading && detail && !editing ? (
+        {!loading && detail ? (
           <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Nama" value={detail.name} />
-              <Field label="Status kepegawaian" value={kepegawaianStatus(detail.jenis, detail.kedudukanHukum)} />
-              <Field label={detail.jenis === "non_asn" ? "NIK" : "NIP"} value={detail.jenis === "non_asn" ? detail.nik : formatNip(detail.nip)} />
-              <Field label="Kedudukan hukum" value={detail.kedudukanHukum} />
-              <Field label="Jabatan" value={displayJabatan(detail)} />
-              <Field label="Jenis jabatan" value={detail.jenisJabatanNama} />
-              <Field label="Pangkat / golongan" value={formatGolonganPangkat(detail.golonganNama)} />
-              <Field label="Unit organisasi" value={detail.unorNama} />
-              <Field label="Perangkat daerah" value={detail.perangkatDaerahNama} />
-              <Field label="Email" value={detail.email} />
-              <Field label="No. HP" value={detail.noHp} />
-              <Field label="Tempat, tanggal lahir" value={[detail.tempatLahir, formatDate(detail.tanggalLahir)].filter((item) => item && item !== "-").join(", ")} />
-              <Field label="Pendidikan" value={detail.tingkatPendidikan} />
-              <Field label="Alamat" value={detail.address} />
-            </div>
-            {detail.userId ? <PenugasanPanel userId={detail.userId} /> : (
-              <p className="text-sm text-on-surface-variant">
-                Pegawai ini belum punya akun, sehingga belum dapat ditunjuk sebagai Plt atau Plh.
-              </p>
-            )}
+            <Tabs value={tab === "tugas" ? "tugas" : "profil"} onValueChange={setTab}>
+              <TabsList>
+                <TabsTrigger value="profil">Profil</TabsTrigger>
+                <TabsTrigger value="tugas">Tugas dan Jabatan</TabsTrigger>
+              </TabsList>
+              <TabsContent value="profil">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Nama" value={detail.name} />
+                  <Field label="Status kepegawaian" value={kepegawaianStatus(detail.jenis, detail.kedudukanHukum)} />
+                  <Field
+                    label={detail.jenis === "non_asn" ? "NIK" : "NIP"}
+                    value={detail.jenis === "non_asn" ? detail.nik : formatNip(detail.nip)}
+                  />
+                  <Field label="Kedudukan hukum" value={detail.kedudukanHukum} />
+                  <Field
+                    label="Tempat, tanggal lahir"
+                    value={[detail.tempatLahir, formatDate(detail.tanggalLahir)].filter((item) => item && item !== "-").join(", ")}
+                  />
+                  <Field label="Pendidikan" value={detail.tingkatPendidikan} />
+                  <Field label="Email" value={detail.email} />
+                  <Field label="No. HP" value={detail.noHp} />
+                  <Field label="Alamat" value={detail.address} />
+                </div>
+              </TabsContent>
+              <TabsContent value="tugas">
+                <div className="space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Jabatan" value={displayJabatan(detail)} />
+                    <Field label="Jenis jabatan" value={detail.jenisJabatanNama} />
+                    <Field label="Pangkat / golongan" value={formatGolonganPangkat(detail.golonganNama)} />
+                    <Field label="Unit organisasi" value={detail.unorNama} />
+                    <Field label="Perangkat daerah" value={detail.perangkatDaerahNama} />
+                  </div>
+                  {detail.userId ? (
+                    <PenugasanPanel userId={detail.userId} />
+                  ) : (
+                    <p className="text-sm text-on-surface-variant">
+                      Pegawai ini belum punya akun, sehingga belum dapat ditunjuk sebagai Plt atau Plh.
+                    </p>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
             {confirmingDelete ? (
               <div className="space-y-3 rounded-lg border border-error/30 bg-error/5 p-3">
                 <p className="text-sm text-on-surface">
@@ -240,6 +211,7 @@ export function PegawaiDetailDialog({
                   <Button
                     type="button"
                     variant="outline"
+                    size="sm"
                     className="flex-1"
                     disabled={deleting}
                     onClick={() => setConfirmingDelete(false)}
@@ -249,6 +221,7 @@ export function PegawaiDetailDialog({
                   <Button
                     type="button"
                     variant="destructive"
+                    size="sm"
                     className="flex-1"
                     disabled={deleting}
                     onClick={removePegawai}
@@ -263,86 +236,42 @@ export function PegawaiDetailDialog({
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full"
+                    size="sm"
+                    className="min-w-0 flex-1"
                     disabled={syncing}
                     onClick={() => void refreshFromSimpeg()}
                   >
-                    <RefreshCw className="h-4 w-4" />
-                    {syncing ? "Memperbarui..." : "Perbarui dari Simpeg"}
+                    <RefreshCw className={cn("h-3.5 w-3.5", syncing && "animate-spin")} />
+                    {syncing ? "Menyinkronkan..." : "Sinkron SIMPEG"}
                   </Button>
                 ) : null}
-                <Button type="button" variant="outline" className="flex-1" onClick={startEdit} disabled={syncing}>
-                  <Pencil className="h-4 w-4" />
-                  Edit pegawai
-                </Button>
                 <Button
                   type="button"
-                  className="flex-1"
+                  size="sm"
+                  className="min-w-0 flex-1"
                   disabled={syncing}
                   onClick={() => {
                     onOpenChange(false);
                     router.push(`/admin/pegawai/${detail.id}/unor`);
                   }}
                 >
-                  <Network className="h-4 w-4" />
+                  <Network className="h-3.5 w-3.5" />
                   Pindah UNOR
                 </Button>
                 <Button
                   type="button"
                   variant="destructive"
+                  size="sm"
                   className="w-full"
                   disabled={syncing}
                   onClick={() => setConfirmingDelete(true)}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3.5 w-3.5" />
                   Hapus pegawai
                 </Button>
               </div>
             )}
           </div>
-        ) : null}
-
-        {!loading && detail && editing ? (
-          <form onSubmit={saveEdit} className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="pegawai-name">Nama lengkap</Label>
-                <Input id="pegawai-name" value={name} onChange={(event) => setName(event.target.value)} required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pegawai-gelar-depan">Gelar depan</Label>
-                <Input id="pegawai-gelar-depan" value={gelarDepan} onChange={(event) => setGelarDepan(event.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pegawai-gelar-belakang">Gelar belakang</Label>
-                <Input id="pegawai-gelar-belakang" value={gelarBelakang} onChange={(event) => setGelarBelakang(event.target.value)} />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="pegawai-jabatan">Jabatan</Label>
-                <Input id="pegawai-jabatan" value={jabatanNama} onChange={(event) => setJabatanNama(event.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pegawai-email">Email</Label>
-                <Input id="pegawai-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pegawai-hp">No. HP</Label>
-                <Input id="pegawai-hp" value={noHp} onChange={(event) => setNoHp(event.target.value)} />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="pegawai-address">Alamat</Label>
-                <Input id="pegawai-address" value={address} onChange={(event) => setAddress(event.target.value)} />
-              </div>
-            </div>
-            <div className="flex gap-2 pb-4">
-              <Button type="button" variant="outline" className="flex-1" disabled={saving} onClick={() => setEditing(false)}>
-                Batal
-              </Button>
-              <Button type="submit" className="flex-1" disabled={saving}>
-                {saving ? "Menyimpan..." : "Simpan"}
-              </Button>
-            </div>
-          </form>
         ) : null}
       </DialogContent>
     </Dialog>

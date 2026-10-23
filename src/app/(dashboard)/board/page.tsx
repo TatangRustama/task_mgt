@@ -5,7 +5,7 @@ import { BoardView } from "@/components/board/BoardView";
 import { AppLoader } from "@/components/layout/AppLoader";
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
 import { getBoardPageData } from "@/lib/board";
-import { canDelegate, getDbOrgUser, isUnitLeader } from "@/lib/org";
+import { canDelegate, getDbOrgUser, getOrgScope, isUnitLeader } from "@/lib/org";
 import { requireUser } from "@/lib/session";
 
 async function BoardBody({ openDelegasi }: { openDelegasi: boolean }) {
@@ -43,6 +43,7 @@ export default async function BoardPage({
 }) {
   const [user, params] = await Promise.all([requireUser(["personal"]), searchParams]);
   const orgUser = await getDbOrgUser(user.id);
+  const { activeScope } = await getOrgScope(user);
   const isStaffBoard = !(orgUser && isUnitLeader(orgUser));
 
   return (
@@ -53,7 +54,9 @@ export default async function BoardPage({
           orgUser?.unit
             ? isStaffBoard
               ? `Kolam ${orgUser.unit.name}: ambil kartu yang tersedia, atau kerjakan tugas yang ditunjuk ke Anda.`
-              : "Pantau, delegasikan, atau selesaikan tugas bersama Tim Kerja"
+              : activeScope
+                ? `Tugas pada jabatan ${activeScope.label}`
+                : "Pantau, delegasikan, atau selesaikan tugas bersama Tim Kerja"
             : "Belum terdaftar di unit"
         }
       />

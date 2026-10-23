@@ -1,4 +1,5 @@
 import {
+  Archive,
   Home,
   Users,
   ClipboardList,
@@ -60,11 +61,15 @@ const superAdminNavItems: AppNavItem[] = [
 ];
 
 function personalGroups(options?: NavOptions): AppNavGroup[] {
+  const items = options?.isLeader ? [...leaderNavItems] : [...staffNavItems];
+  if (options?.isLeader && options.surface === "footer") {
+    items.push({ href: "/laporan", label: "Arsip", icon: Archive });
+  }
   return [
     {
       id: "personal",
       label: null,
-      items: options?.isLeader ? leaderNavItems : staffNavItems,
+      items,
     },
   ];
 }

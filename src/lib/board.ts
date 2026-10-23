@@ -38,20 +38,22 @@ function activeBoardWhere(todayStart: Date): Prisma.TaskWhereInput {
 }
 
 export async function getBoardPageData(user: SessionUser) {
-  const { orgUser, visibleUnitIds, isLeader } = await getOrgScope(user);
+  const { orgUser, visibleUnitIds, isLeader, activeScope } = await getOrgScope(user);
   const todayStart = parseISODate(formatISODate(new Date()));
 
   const visibility: Prisma.TaskWhereInput = isLeader
-    ? {
-        OR: [
-          { assignedToId: user.id },
-          { createdById: user.id },
-          ...(visibleUnitIds.length ? [{ unitId: { in: visibleUnitIds } }] : []),
-          ...(user.unitId
-            ? [{ assignmentMode: "kolam" as const, status: "tersedia" as const, unitId: user.unitId }]
-            : []),
-        ],
-      }
+    ? activeScope
+      ? { unitId: { in: visibleUnitIds } }
+      : {
+          OR: [
+            { assignedToId: user.id },
+            { createdById: user.id },
+            ...(visibleUnitIds.length ? [{ unitId: { in: visibleUnitIds } }] : []),
+            ...(user.unitId
+              ? [{ assignmentMode: "kolam" as const, status: "tersedia" as const, unitId: user.unitId }]
+              : []),
+          ],
+        }
     : {
         OR: [
           { assignedToId: user.id },

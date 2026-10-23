@@ -89,10 +89,11 @@ export async function getLaporanPrintData(
   const year = Number(searchParams.get("year") || selected.getFullYear());
   const unit = searchParams.get("unit") || undefined;
 
-  const { visibleUnitIds, isLeader } = await getOrgScope(user);
+  const { visibleUnitIds, isLeader, activeScope } = await getOrgScope(user);
+  const rootUnitId = activeScope?.unitId ?? user.unitId;
   const board = await getLaporanBoard({
     viewerId: user.id,
-    rootUnitId: user.unitId,
+    rootUnitId,
     visibleUnitIds,
     isLeader,
     focusUnitId: unit,
@@ -103,7 +104,7 @@ export async function getLaporanPrintData(
     detail: "print",
   });
   if (!board) return null;
-  const meta = await getUnitMeta(user.unitId);
+  const meta = await getUnitMeta(rootUnitId);
 
   const day = view === "harian" ? reportDayRange(date) : null;
   const start = day?.start ?? new Date(year, month - 1, 1);

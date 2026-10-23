@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { StarRating } from "@/components/task/StarRating";
 import { useNavigationLoader } from "@/components/layout/NavigationLoader";
 
-export function ReviewForm({ taskId }: { taskId: string }) {
+export function ReviewForm({ taskId, asLabel }: { taskId: string; asLabel?: string | null }) {
   const router = useRouter();
   const { start } = useNavigationLoader();
   const [decision, setDecision] = useState<"disetujui" | "ditolak">("disetujui");
@@ -54,6 +54,9 @@ export function ReviewForm({ taskId }: { taskId: string }) {
     <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-surface-container-highest bg-surface-container-lowest p-4 card-shadow">
       <div>
         <p className="text-sm font-semibold text-on-surface">Persetujuan & penilaian</p>
+        {asLabel ? (
+          <p className="mt-0.5 text-xs font-medium text-secondary">Menilai sebagai {asLabel}</p>
+        ) : null}
         <p className="mt-0.5 text-xs text-on-surface-variant">
           Setujui atau tolak tugas, dan beri bintang saat menyetujui.
         </p>

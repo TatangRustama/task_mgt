@@ -7,9 +7,11 @@ import {
   type Task,
   type User,
 } from "@prisma/client";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { compareByPangkatDesc } from "@/lib/golongan";
-import { displayJabatan, jabatanRoleLabel } from "@/lib/jabatan-display";
+import { displayJabatan, jabatanRoleLabel, type PegawaiJabatanSource } from "@/lib/jabatan-display";
+import { KAPASITAS_COOKIE, resolveLeadershipScope, type LeadershipScope } from "@/lib/kapasitas";
 import type { SessionUser } from "@/lib/session";
 import type { AtasanTaskNotice } from "@/lib/notification-types";
 import { isPrivilegedRole, isSuperAdmin } from "@/lib/roles";
@@ -124,6 +126,68 @@ export function poolUnitFor(user: OrgUser): { id: string; name: string } | null 
   return acting ? { id: acting.unitId, name: actingUnitName(acting) } : null;
 }
 
+export type { LeadershipScope };
+
+type ScopeUser = OrgUser & { pegawai?: PegawaiJabatanSource | null };
+
+export function listLeadershipScopes(user: ScopeUser): LeadershipScope[] {
+  const scopes: LeadershipScope[] = [];
+  if (!isSuperAdmin(user.role) && user.unitId && user.unit?.type) {
+    const unitName = user.unit.name ?? "Unit";
+    const jabatanText = displayJabatan(user.pegawai, user.jabatan);
+    scopes.push({
+      id: "definitif",
+      kind: "definitif",
+      unitId: user.unitId,
+      unitName,
+      unitType: user.unit.type,
+      label: jabatanText !== "-" ? `${jabatanText} · ${unitName}` : unitName,
+    });
+  }
+  for (const item of user.penugasanSementara ?? []) {
+    const unitType = actingUnitType(item);
+    if (!unitType) continue;
+    if (scopes.some((scope) => scope.unitId === item.unitId)) continue;
+    const unitName = actingUnitName(item);
+    scopes.push({
+      id: item.id,
+      kind: item.jenis,
+      unitId: item.unitId,
+      unitName,
+      unitType,
+      label: penugasanLabel(item.jenis, unitName),
+    });
+  }
+  return scopes;
+}
+
+async function readKapasitasCookie() {
+  const store = await cookies();
+  return store.get(KAPASITAS_COOKIE)?.value ?? "";
+}
+
+export async function getActiveLeadershipScope(user: ScopeUser): Promise<LeadershipScope | null> {
+  return resolveLeadershipScope(listLeadershipScopes(user), await readKapasitasCookie());
+}
+
+export function assignmentRules(user: OrgUser, scope: LeadershipScope | null) {
+  if (!scope) {
+    const poolUnit = poolUnitFor(user);
+    return {
+      canUsePool: poolUnit !== null,
+      mustAssignNamed: mustAssignNamed(user),
+      poolUnit,
+    };
+  }
+  const poolUnit =
+    scope.unitType === "sub_bidang" ? { id: scope.unitId, name: scope.unitName } : null;
+  return {
+    canUsePool: poolUnit !== null,
+    mustAssignNamed: scope.unitType === "kantor" || scope.unitType === "bidang",
+    poolUnit,
+  };
+}
+
 export function effectiveJabatan(user: Pick<OrgUser, "role" | "jabatan">): Jabatan | null {
   return user.jabatan ?? null;
 }
@@ -188,14 +252,22 @@ export const getDescendantUnitIds = cache(async (rootId: string): Promise<string
 });
 
 export async function getOrgScope(user: Pick<SessionUser, "id" | "role" | "unitId" | "jabatan">) {
-  return loadOrgScope(user.id, user.role, user.unitId ?? "", user.jabatan ?? "");
+  return loadOrgScope(user.id, user.role, user.unitId ?? "", user.jabatan ?? "", await readKapasitasCookie());
 }
 
-const loadOrgScope = cache(async (userId: string, role: SessionUser["role"], unitId: string, jabatan: string) => {
+const loadOrgScope = cache(async (
+  userId: string,
+  role: SessionUser["role"],
+  unitId: string,
+  jabatan: string,
+  requestedScope: string,
+) => {
   const user = { id: userId, role, unitId: unitId || null, jabatan: (jabatan || null) as SessionUser["jabatan"] };
   const orgUser = await getDbOrgUser(user.id);
   const isLeader = Boolean(orgUser && (isSuperAdmin(user.role) || isUnitLeader(orgUser)));
   const resolvedUnitId = orgUser?.unitId || user.unitId;
+  const scopes = orgUser ? listLeadershipScopes(orgUser) : [];
+  const activeScope = resolveLeadershipScope(scopes, requestedScope);
 
   if (isSuperAdmin(user.role)) {
     const units = await prisma.unit.findMany({ select: { id: true } });
@@ -203,6 +275,18 @@ const loadOrgScope = cache(async (userId: string, role: SessionUser["role"], uni
       orgUser,
       isLeader: true,
       visibleUnitIds: units.map((unit) => unit.id),
+      activeScope: null as LeadershipScope | null,
+      scopes,
+    };
+  }
+
+  if (activeScope) {
+    return {
+      orgUser,
+      isLeader,
+      visibleUnitIds: await getDescendantUnitIds(activeScope.unitId),
+      activeScope,
+      scopes,
     };
   }
 
@@ -224,6 +308,8 @@ const loadOrgScope = cache(async (userId: string, role: SessionUser["role"], uni
     orgUser,
     isLeader,
     visibleUnitIds: [...ids],
+    activeScope: null as LeadershipScope | null,
+    scopes,
   };
 });
 
@@ -253,11 +339,16 @@ function toDirectReport(person: {
   };
 }
 
-export async function getDirectReports(user: OrgUser): Promise<DirectReport[]> {
+export async function getDirectReports(user: OrgUser, onlyUnitId?: string | null): Promise<DirectReport[]> {
   if (isPrivilegedRole(user.role)) return [];
   const unitIds = new Set<string>();
   if (user.unitId && isDefinitiveLeader(user)) unitIds.add(user.unitId);
   for (const item of user.penugasanSementara ?? []) unitIds.add(item.unitId);
+  if (onlyUnitId) {
+    if (!unitIds.has(onlyUnitId)) return [];
+    unitIds.clear();
+    unitIds.add(onlyUnitId);
+  }
   if (!unitIds.size) return [];
   const lists = await Promise.all([...unitIds].map((unitId) => loadDirectReports(user.id, unitId)));
   const byId = new Map<string, DirectReport>();
@@ -433,7 +524,8 @@ const loadAtasan = cache(async (userId: string, unitId: string): Promise<Atasan 
 });
 
 export async function getDirectReportIds(user: OrgUser) {
-  const reports = await getDirectReports(user);
+  const scope = await getActiveLeadershipScope(user);
+  const reports = await getDirectReports(user, scope?.unitId);
   return reports.map((person) => person.id);
 }
 

@@ -26,11 +26,12 @@ async function LaporanBody({
   unit?: string;
 }) {
   const user = await requireUser(["personal"]);
-  const { visibleUnitIds, isLeader } = await getOrgScope(user);
+  const { visibleUnitIds, isLeader, activeScope } = await getOrgScope(user);
+  const rootUnitId = activeScope?.unitId ?? user.unitId;
   const [board, ownBoard] = await Promise.all([
     getLaporanBoard({
       viewerId: user.id,
-      rootUnitId: user.unitId,
+      rootUnitId,
       visibleUnitIds,
       isLeader,
       focusUnitId: unit,
@@ -89,7 +90,7 @@ export default async function LaporanPage({
   }>;
 }) {
   const user = await requireUser(["personal"]);
-  const { isLeader } = await getOrgScope(user);
+  const { isLeader, activeScope } = await getOrgScope(user);
   const params = await searchParams;
   const view: LaporanView =
     params.view === "harian" || params.view === "bulanan" ? params.view : isLeader ? "bulanan" : "harian";
@@ -107,10 +108,14 @@ export default async function LaporanPage({
           subtitle={
             view === "harian"
               ? isLeader
-                ? "Recap kerja bawahan langsung hari ini"
+                ? activeScope
+                  ? `Rekap bawahan sebagai ${activeScope.label}`
+                  : "Recap kerja bawahan langsung hari ini"
                 : "Rekap kerja Anda hari ini"
               : isLeader
-                ? "Rapor bawahan langsung dan unit"
+                ? activeScope
+                  ? `Rapor bawahan sebagai ${activeScope.label}`
+                  : "Rapor bawahan langsung dan unit"
                 : "Rapor kinerja Anda"
           }
         />

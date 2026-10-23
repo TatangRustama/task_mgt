@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Plus, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { PegawaiDetailDialog } from "@/components/admin/PegawaiDetailDialog";
 import { TambahPegawaiDialog } from "@/components/admin/TambahPegawaiDialog";
 import { AppLoader } from "@/components/layout/AppLoader";
 import { PageHeader } from "@/components/layout/PageMain";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,6 +43,28 @@ type PegawaiRow = {
 
 type Option = { id?: string; value?: string; name?: string; label?: string };
 type UnorOption = { id: string; name: string };
+type UnorSelection = [string, string, string];
+
+type PegawaiFilters = {
+  query: string;
+  golongan: string;
+  status: string;
+  perangkatDaerahId: string;
+  unor: UnorSelection;
+};
+
+function emptyFilters(): PegawaiFilters {
+  return { query: "", golongan: "", status: "", perangkatDaerahId: "", unor: ["", "", ""] };
+}
+
+function copyFilters(filters: PegawaiFilters): PegawaiFilters {
+  return { ...filters, unor: [filters.unor[0], filters.unor[1], filters.unor[2]] };
+}
+
+function activeFilterCount(filters: PegawaiFilters) {
+  return [filters.query, filters.golongan, filters.status, filters.perangkatDaerahId, ...filters.unor].filter(Boolean)
+    .length;
+}
 
 export function SuperAdminPegawaiList({
   subtitle = "Seluruh data pegawai. Saring berdasarkan nama, NIP/NIK, pangkat/golongan, jenis pegawai, dan unit organisasi.",
@@ -56,13 +79,10 @@ export function SuperAdminPegawaiList({
   const [pageSize, setPageSize] = useState<number>(USER_PAGE_SIZES[0]);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [searchInput, setSearchInput] = useState("");
-  const [query, setQuery] = useState("");
-  const [golongan, setGolongan] = useState("");
-  const [status, setStatus] = useState("");
-  const [perangkatDaerahId, setPerangkatDaerahId] = useState("");
-  const [unorSelected, setUnorSelected] = useState<string[]>(["", "", ""]);
+  const [draft, setDraft] = useState<PegawaiFilters>(emptyFilters);
+  const [applied, setApplied] = useState<PegawaiFilters>(emptyFilters);
   const [unorOptions, setUnorOptions] = useState<UnorOption[][]>([[], [], []]);
+  const unorRequest = useRef(0);
   const [golonganOptions, setGolonganOptions] = useState<Option[]>([]);
   const [perangkatDaerah, setPerangkatDaerah] = useState<UnorOption[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -70,8 +90,10 @@ export function SuperAdminPegawaiList({
   const [messageError, setMessageError] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
 
-  const deepestUnor = [...unorSelected].reverse().find((id) => id) || "";
+  const appliedCount = activeFilterCount(applied);
+  const deepestUnor = [...applied.unor].reverse().find((id) => id) || "";
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -79,10 +101,10 @@ export function SuperAdminPegawaiList({
       page: String(page),
       pageSize: String(pageSize),
     });
-    if (query) params.set("q", query);
-    if (golongan) params.set("golongan", golongan);
-    if (status) params.set("status", status);
-    if (perangkatDaerahId) params.set("perangkatDaerahId", perangkatDaerahId);
+    if (applied.query) params.set("q", applied.query);
+    if (applied.golongan) params.set("golongan", applied.golongan);
+    if (applied.status) params.set("status", applied.status);
+    if (applied.perangkatDaerahId) params.set("perangkatDaerahId", applied.perangkatDaerahId);
     if (deepestUnor) params.set("unorId", deepestUnor);
     const res = await fetch(`/api/admin/pegawai?${params.toString()}`);
     if (res.ok) {
@@ -94,7 +116,7 @@ export function SuperAdminPegawaiList({
       if (typeof data.pageSize === "number" && data.pageSize !== pageSize) setPageSize(data.pageSize);
     }
     setLoading(false);
-  }, [page, pageSize, query, golongan, status, perangkatDaerahId, deepestUnor]);
+  }, [page, pageSize, applied.query, applied.golongan, applied.status, applied.perangkatDaerahId, deepestUnor]);
 
   async function pullFromSimpeg() {
     setSyncing(true);
@@ -128,48 +150,81 @@ export function SuperAdminPegawaiList({
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const next = searchInput.trim();
-      setQuery((prev) => {
-        if (prev !== next) setPage(1);
-        return next;
-      });
-    }, 300);
-    return () => window.clearTimeout(timer);
-  }, [searchInput]);
-
-  useEffect(() => {
     loadData();
   }, [loadData]);
 
-  async function loadUnorLevel(level: number, parentId: string, perangkatId?: string) {
+  async function fetchUnor(parentId: string, perangkatId?: string) {
     const params = new URLSearchParams();
     if (parentId) params.set("parentId", parentId);
     else if (perangkatId) params.set("perangkatDaerahId", perangkatId);
     const res = await fetch(`/api/admin/pegawai/unor?${params.toString()}`);
     const data = res.ok ? await res.json() : { items: [] };
-    const items: UnorOption[] = data.items ?? [];
-    setUnorOptions((current) => {
-      const next = current.map((list, index) => (index === level ? items : index > level ? [] : list));
-      return next;
-    });
+    return (data.items ?? []) as UnorOption[];
   }
 
-  async function onPerangkatDaerahChange(value: string) {
-    setPerangkatDaerahId(value);
-    setUnorSelected(["", "", ""]);
+  async function loadUnorLevel(level: number, parentId: string, perangkatId?: string) {
+    const request = ++unorRequest.current;
+    const items = await fetchUnor(parentId, perangkatId);
+    if (request !== unorRequest.current) return;
+    setUnorOptions((current) => current.map((list, index) => (index === level ? items : index > level ? [] : list)));
+  }
+
+  async function restoreUnorOptions(perangkatId: string, selected: UnorSelection) {
+    const request = ++unorRequest.current;
+    if (!perangkatId) {
+      setUnorOptions([[], [], []]);
+      return;
+    }
+    const levels: UnorOption[][] = [[], [], []];
+    for (let level = 0; level < MAX_UNOR_LEVELS; level += 1) {
+      const parentId = level === 0 ? "" : selected[level - 1];
+      if (level > 0 && !parentId) break;
+      levels[level] = await fetchUnor(parentId, level === 0 ? perangkatId : undefined);
+      if (request !== unorRequest.current) return;
+      if (!selected[level]) break;
+    }
+    if (request !== unorRequest.current) return;
+    setUnorOptions(levels);
+  }
+
+  function openFilter() {
+    const next = copyFilters(applied);
+    setDraft(next);
+    setFilterOpen(true);
+    void restoreUnorOptions(next.perangkatDaerahId, next.unor);
+  }
+
+  function applyFilters() {
+    setApplied({ ...draft, query: draft.query.trim(), unor: [draft.unor[0], draft.unor[1], draft.unor[2]] });
+    setPage(1);
+    setFilterOpen(false);
+  }
+
+  function clearFilters() {
+    const next = emptyFilters();
+    unorRequest.current += 1;
+    setDraft(next);
+    setApplied(next);
     setUnorOptions([[], [], []]);
     setPage(1);
-    if (value) await loadUnorLevel(0, "", value);
+    setFilterOpen(false);
   }
 
-  async function onUnorChange(level: number, value: string) {
-    setUnorSelected((current) => current.map((id, index) => (index === level ? value : index > level ? "" : id)));
+  function onPerangkatDaerahChange(value: string) {
+    setDraft((current) => ({ ...current, perangkatDaerahId: value, unor: ["", "", ""] }));
+    setUnorOptions([[], [], []]);
+    if (value) void loadUnorLevel(0, "", value);
+  }
+
+  function onUnorChange(level: number, value: string) {
+    setDraft((current) => {
+      const unor: UnorSelection = [current.unor[0], current.unor[1], current.unor[2]];
+      unor[level] = value;
+      for (let index = level + 1; index < MAX_UNOR_LEVELS; index += 1) unor[index] = "";
+      return { ...current, unor };
+    });
     setUnorOptions((current) => current.map((list, index) => (index > level ? [] : list)));
-    setPage(1);
-    if (value && level + 1 < MAX_UNOR_LEVELS) {
-      await loadUnorLevel(level + 1, value);
-    }
+    if (value && level + 1 < MAX_UNOR_LEVELS) void loadUnorLevel(level + 1, value);
   }
 
   return (
@@ -220,92 +275,16 @@ export function SuperAdminPegawaiList({
             {message}
           </p>
         ) : null}
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="pegawai-search">Cari nama / NIP / NIK</Label>
-            <Input
-              id="pegawai-search"
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              placeholder="Masukkan nama, NIP, atau NIK"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="pegawai-golongan">Pangkat / golongan</Label>
-            <select
-              id="pegawai-golongan"
-              className={selectClassName}
-              value={golongan}
-              onChange={(event) => {
-                setGolongan(event.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">Semua pangkat/golongan</option>
-              {golonganOptions.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="pegawai-status">Jenis pegawai</Label>
-            <select
-              id="pegawai-status"
-              className={selectClassName}
-              value={status}
-              onChange={(event) => {
-                setStatus(event.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">Semua jenis</option>
-              {PEGAWAI_STATUS_OPTIONS.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="pegawai-pd">Perangkat daerah</Label>
-            <select
-              id="pegawai-pd"
-              className={selectClassName}
-              value={perangkatDaerahId}
-              onChange={(event) => void onPerangkatDaerahChange(event.target.value)}
-            >
-              <option value="">Semua perangkat daerah</option>
-              {perangkatDaerah.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          {unorOptions.map((items, index) =>
-            items.length > 0 ? (
-              <div key={`unor-${index}`} className="space-y-2">
-                <Label htmlFor={`pegawai-unor-${index}`}>
-                  {index === 0 ? "Unit organisasi" : `Unit organisasi tingkat ${index + 1}`}
-                </Label>
-                <select
-                  id={`pegawai-unor-${index}`}
-                  className={selectClassName}
-                  value={unorSelected[index]}
-                  onChange={(event) => void onUnorChange(index, event.target.value)}
-                >
-                  <option value="">Semua unit tingkat ini</option>
-                  {items.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null,
-          )}
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="button" variant="outline" onClick={openFilter}>
+            <SlidersHorizontal className="h-4 w-4" />
+            Filter
+            {appliedCount > 0 ? (
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-white">
+                {appliedCount}
+              </span>
+            ) : null}
+          </Button>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -376,6 +355,106 @@ export function SuperAdminPegawaiList({
           loadData();
         }}
       />
+      <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader className="pr-8 text-left">
+            <DialogTitle>Filter pegawai</DialogTitle>
+          </DialogHeader>
+          <form
+            className="grid gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              applyFilters();
+            }}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="pegawai-search">Cari nama / NIP / NIK</Label>
+              <Input
+                id="pegawai-search"
+                value={draft.query}
+                onChange={(event) => setDraft((current) => ({ ...current, query: event.target.value }))}
+                placeholder="Masukkan nama, NIP, atau NIK"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pegawai-golongan">Pangkat / golongan</Label>
+              <select
+                id="pegawai-golongan"
+                className={selectClassName}
+                value={draft.golongan}
+                onChange={(event) => setDraft((current) => ({ ...current, golongan: event.target.value }))}
+              >
+                <option value="">Semua pangkat/golongan</option>
+                {golonganOptions.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pegawai-status">Jenis pegawai</Label>
+              <select
+                id="pegawai-status"
+                className={selectClassName}
+                value={draft.status}
+                onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))}
+              >
+                <option value="">Semua jenis</option>
+                {PEGAWAI_STATUS_OPTIONS.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pegawai-pd">Perangkat daerah</Label>
+              <select
+                id="pegawai-pd"
+                className={selectClassName}
+                value={draft.perangkatDaerahId}
+                onChange={(event) => onPerangkatDaerahChange(event.target.value)}
+              >
+                <option value="">Semua perangkat daerah</option>
+                {perangkatDaerah.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {unorOptions.map((items, index) =>
+              items.length > 0 ? (
+                <div key={`unor-${index}`} className="space-y-2">
+                  <Label htmlFor={`pegawai-unor-${index}`}>
+                    {index === 0 ? "Unit organisasi" : `Unit organisasi tingkat ${index + 1}`}
+                  </Label>
+                  <select
+                    id={`pegawai-unor-${index}`}
+                      className={selectClassName}
+                    value={draft.unor[index]}
+                    onChange={(event) => onUnorChange(index, event.target.value)}
+                  >
+                    <option value="">Semua unit tingkat ini</option>
+                    {items.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null,
+            )}
+            <div className="flex flex-wrap justify-end gap-2 pt-1">
+              <Button type="button" variant="outline" onClick={clearFilters}>
+                Bersihkan filter
+              </Button>
+              <Button type="submit">Cari</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
       <TambahPegawaiDialog
         open={addOpen}
         onOpenChange={setAddOpen}

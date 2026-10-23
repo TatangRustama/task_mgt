@@ -34,7 +34,7 @@ export default async function PimpinanPage({
   const month = Number(params.month || selected.getMonth() + 1);
   const year = Number(params.year || selected.getFullYear());
   const view = parseKinerjaView(params.view);
-  const { isLeader } = await getOrgScope(user);
+  const { isLeader, activeScope } = await getOrgScope(user);
 
   if (!isLeader) {
     redirect(laporanHref({ view: "harian", date, month, year }));
@@ -44,7 +44,9 @@ export default async function PimpinanPage({
   const subtitle =
     view === "individu"
       ? "Rekap kerja Anda hari ini"
-      : "Bawahan langsung dan unit yang perlu tindakan hari ini";
+      : activeScope
+        ? `Bawahan pada jabatan ${activeScope.label}`
+        : "Bawahan langsung dan unit yang perlu tindakan hari ini";
 
   return (
     <PageMain className="max-w-3xl space-y-6 print:max-w-none">

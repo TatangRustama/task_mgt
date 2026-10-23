@@ -1,6 +1,6 @@
 import type { Prisma, TaskStatus } from "@prisma/client";
 import { MONITOR_REVIEW_SLA_HOURS } from "@/lib/monitor-types";
-import { getAtasan, getDbOrgUser, getDirectReportIds, getOrgScope, isUnitLeader } from "@/lib/org";
+import { getActiveLeadershipScope, getAtasan, getDbOrgUser, getDirectReportIds, getOrgScope, isUnitLeader } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { isSuperAdmin } from "@/lib/roles";
 import type { SessionUser } from "@/lib/session";
@@ -124,6 +124,7 @@ function emptyLeaderQueue() {
 export async function getHomeDashboard(user: SessionUser): Promise<HomeDashboardData> {
   const orgUser = await getDbOrgUser(user.id);
   const isLeader = Boolean(orgUser && (isSuperAdmin(user.role) || isUnitLeader(orgUser)));
+  const activeScope = orgUser ? await getActiveLeadershipScope(orgUser) : null;
   const slaCutoff = new Date(Date.now() - MONITOR_REVIEW_SLA_HOURS * 60 * 60 * 1000);
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
@@ -153,7 +154,7 @@ export async function getHomeDashboard(user: SessionUser): Promise<HomeDashboard
 
   return {
     firstName: user.name.split(" ")[0],
-    unitName: orgUser?.unit?.name ?? null,
+    unitName: activeScope?.label ?? orgUser?.unit?.name ?? null,
     isLeader,
     completedWeek: staff.completedWeek,
     pending: isLeader ? unitCapaian.pending : staff.pending,

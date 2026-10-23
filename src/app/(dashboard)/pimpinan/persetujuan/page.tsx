@@ -1,7 +1,7 @@
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
 import { Card, CardContent } from "@/components/ui/card";
 import { PendingApprovalList } from "@/components/task/PendingApprovalList";
-import { getDbOrgUser, getDirectReportIds } from "@/lib/org";
+import { getActiveLeadershipScope, getDbOrgUser, getDirectReportIds } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 
@@ -11,6 +11,7 @@ export default async function PersetujuanPage() {
   const user = await requireUser(["personal"]);
 
   const orgUser = await getDbOrgUser(user.id);
+  const activeScope = orgUser ? await getActiveLeadershipScope(orgUser) : null;
   const reportIds = orgUser ? await getDirectReportIds(orgUser) : [];
 
   const tasks =
@@ -38,7 +39,11 @@ export default async function PersetujuanPage() {
     <PageMain className="max-w-3xl space-y-4">
       <PageHeader
         title="Persetujuan"
-        subtitle={`${tasks.length} tugas menunggu review dan penilaian bintang`}
+        subtitle={
+          activeScope
+            ? `${tasks.length} tugas menunggu penilaian sebagai ${activeScope.label}`
+            : `${tasks.length} tugas menunggu review dan penilaian bintang`
+        }
       />
       {tasks.length === 0 ? (
         <Card>
@@ -48,6 +53,7 @@ export default async function PersetujuanPage() {
         </Card>
       ) : (
         <PendingApprovalList
+          asLabel={activeScope?.label}
           tasks={tasks.map((task) => ({
             id: task.id,
             title: task.title,

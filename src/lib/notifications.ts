@@ -1,7 +1,7 @@
 import { Role } from "@prisma/client";
 import { kinerjaHref } from "@/lib/laporan-url";
 import { MONITOR_IDLE_DAYS, MONITOR_REVIEW_SLA_HOURS } from "@/lib/monitor-types";
-import { getDbOrgUser, getDirectReportIds, getNewTasksFromAtasan, isUnitLeader, type OrgUser } from "@/lib/org";
+import { getActiveLeadershipScope, getDbOrgUser, getDirectReportIds, getNewTasksFromAtasan, isUnitLeader, type OrgUser } from "@/lib/org";
 import type { NoticeSection, UserNotifications } from "@/lib/notification-types";
 import { prisma } from "@/lib/prisma";
 import { addDays, formatISODate } from "@/lib/utils";
@@ -218,11 +218,13 @@ export async function getUserNotifications(userId: string, role: Role): Promise<
   const isLeader = orgUser ? isUnitLeader(orgUser) : false;
 
   if (isLeader && orgUser) {
+    const activeScope = await getActiveLeadershipScope(orgUser);
     const reportIds = await getDirectReportIds(orgUser);
     const [pending, perhatian] = await Promise.all([
       getPendingApprovalSection(reportIds),
       getPerhatianSection(orgUser),
     ]);
+    if (activeScope) pending.title = `Menunggu persetujuan · ${activeScope.label}`;
     const sections = [pending, perhatian];
     return { count: sectionTotal(sections), sections };
   }

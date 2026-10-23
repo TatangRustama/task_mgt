@@ -25,7 +25,8 @@ export async function KinerjaBoard({
   focus: MonitorFocus;
 }) {
   const user = await requireUser(["personal"]);
-  const { visibleUnitIds, isLeader } = await getOrgScope(user);
+  const { visibleUnitIds, isLeader, activeScope } = await getOrgScope(user);
+  const rootUnitId = activeScope?.unitId ?? user.unitId;
 
   if (!isLeader) {
     redirect(laporanHref({ view: "harian", date, month, year }));
@@ -67,7 +68,7 @@ export async function KinerjaBoard({
 
   const board = await getMonitorBoard({
     viewerId: user.id,
-    rootUnitId: user.unitId,
+    rootUnitId,
     visibleUnitIds,
     focusUnitId: unit,
   });

@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import {
   canDelegate,
-  canUsePoolAssignment,
+  assignmentRules,
   displayJabatan,
+  getActiveLeadershipScope,
   getAtasan,
   getDbOrgUser,
   getDirectReports,
   jabatanLabel,
-  mustAssignNamed,
-  poolUnitFor,
   unitTypeLabel,
 } from "@/lib/org";
 import { penugasanLabel } from "@/lib/penugasan";
@@ -25,8 +24,10 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const activeScope = await getActiveLeadershipScope(user);
+  const rules = assignmentRules(user, activeScope);
   const [subordinates, atasan] = await Promise.all([
-    canDelegate(user) ? getDirectReports(user) : Promise.resolve([]),
+    canDelegate(user) ? getDirectReports(user, activeScope?.unitId) : Promise.resolve([]),
     getAtasan(user),
   ]);
 
@@ -50,9 +51,10 @@ export async function GET() {
         }
       : null,
     canDelegate: canDelegate(user),
-    canUsePool: canUsePoolAssignment(user),
-    mustAssignNamed: mustAssignNamed(user),
-    poolUnitName: poolUnitFor(user)?.name ?? null,
+    canUsePool: rules.canUsePool,
+    mustAssignNamed: rules.mustAssignNamed,
+    poolUnitName: rules.poolUnit?.name ?? null,
+    activeScope: activeScope ? { id: activeScope.id, label: activeScope.label } : null,
     penugasan: (user.penugasanSementara ?? []).map((item) => ({
       jenis: item.jenis,
       label: penugasanLabel(item.jenis, item.unit.name),

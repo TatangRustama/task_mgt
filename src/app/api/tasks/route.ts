@@ -3,12 +3,11 @@ import { AssignmentMode, TaskPriority, TaskSource } from "@prisma/client";
 import {
   canDelegate,
   canSeeTaskWithScope,
-  canUsePoolAssignment,
+  assignmentRules,
+  getActiveLeadershipScope,
   getDbOrgUser,
   getDirectReports,
   getOrgScope,
-  mustAssignNamed,
-  poolUnitFor,
 } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { parseJumlahSatuan } from "@/lib/satuan";
@@ -37,15 +36,18 @@ export async function GET() {
     return NextResponse.json(tasks);
   }
 
-  const { visibleUnitIds, isLeader } = await getOrgScope(user);
+  const { visibleUnitIds, isLeader, activeScope } = await getOrgScope(user);
   const tasks = await prisma.task.findMany({
-    where: {
-      OR: [
-        ...(visibleUnitIds.length ? [{ unitId: { in: visibleUnitIds } }] : []),
-        { assignedToId: user.id },
-        { createdById: user.id },
-      ],
-    },
+    where:
+      isLeader && activeScope
+        ? { unitId: { in: visibleUnitIds } }
+        : {
+            OR: [
+              ...(visibleUnitIds.length ? [{ unitId: { in: visibleUnitIds } }] : []),
+              { assignedToId: user.id },
+              { createdById: user.id },
+            ],
+          },
     include: {
       assignedTo: { select: { name: true } },
       createdBy: { select: { name: true } },
@@ -101,6 +103,7 @@ export async function POST(request: Request) {
   };
 
   if (source === "mandiri") {
+    const activeScope = await getActiveLeadershipScope(user);
     const task = await prisma.task.create({
       data: {
         title,
@@ -110,7 +113,7 @@ export async function POST(request: Request) {
         priority,
         source,
         assignmentMode: "ditunjuk",
-        unitId: user.unitId,
+        unitId: activeScope?.unitId ?? user.unitId,
         createdById: user.id,
         status: "dikerjakan",
         assignedToId: user.id,
@@ -124,9 +127,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Anda tidak berwenang mendelegasikan tugas" }, { status: 403 });
   }
 
+  const activeScope = await getActiveLeadershipScope(user);
+  const rules = assignmentRules(user, activeScope);
+
   if (assignmentMode === "kolam") {
-    const poolUnit = poolUnitFor(user);
-    if (!canUsePoolAssignment(user) || !poolUnit) {
+    const poolUnit = rules.poolUnit;
+    if (!rules.canUsePool || !poolUnit) {
       return NextResponse.json(
         { error: "Hanya kepala sub bidang yang dapat melempar tugas ke board staf" },
         { status: 403 }
@@ -165,16 +171,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Pilih penerima tugas" }, { status: 400 });
   }
 
-  const reports = await getDirectReports(user);
+  const reports = await getDirectReports(user, activeScope?.unitId);
   const assignee = reports.find((person) => person.id === assignedToId);
   if (!assignee?.unitId) {
     return NextResponse.json(
-      { error: "Penerima harus bawahan langsung Anda" },
+      { error: "Penerima harus bawahan langsung pada jabatan yang dipilih" },
       { status: 400 }
     );
   }
 
-  if (mustAssignNamed(user) && assignmentMode !== "ditunjuk") {
+  if (rules.mustAssignNamed && assignmentMode !== "ditunjuk") {
     return NextResponse.json(
       { error: "Kepala kantor dan kepala bidang wajib menunjuk penerima secara bernama" },
       { status: 400 }

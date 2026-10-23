@@ -2,7 +2,7 @@ import { signOut } from "@/auth";
 import Link from "next/link";
 import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
 import { PageMain } from "@/components/layout/PageMain";
-import { displayJabatan, getAtasan, getDbOrgUser } from "@/lib/org";
+import { displayJabatan, getAtasan, getDbOrgUser, listLeadershipScopes } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { ChevronRight, LogOut, Settings } from "lucide-react";
@@ -13,6 +13,8 @@ export default async function ProfilPage() {
   const orgUser = await getDbOrgUser(user.id);
   const unit = orgUser?.unit ?? (user.unitId ? await prisma.unit.findUnique({ where: { id: user.unitId } }) : null);
   const atasan = orgUser ? await getAtasan(orgUser) : null;
+  const scopes = orgUser ? listLeadershipScopes(orgUser) : [];
+  const otherJabatan = scopes.length > 1 ? scopes.filter((scope) => scope.kind !== "definitif") : [];
 
   const initials = user.name
     .split(" ")
@@ -31,6 +33,18 @@ export default async function ProfilPage() {
         <p className="mt-1 text-center text-sm text-secondary">
           {displayJabatan(orgUser?.pegawai, orgUser?.jabatan)}
         </p>
+        {otherJabatan.length > 0 ? (
+          <div className="mt-3 max-w-md text-center">
+            <p className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Jabatan lain</p>
+            <ul className="mt-1 space-y-1">
+              {otherJabatan.map((scope) => (
+                <li key={scope.id} className="text-sm text-on-surface">
+                  {scope.label}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           <span className="rounded-full border border-outline-variant bg-surface-container-high px-3 py-1 text-xs font-medium text-on-surface-variant">
             NIP: {user.nip}

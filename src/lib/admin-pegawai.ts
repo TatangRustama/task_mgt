@@ -63,7 +63,7 @@ export const PEGAWAI_STATUS_OPTIONS: { value: PegawaiStatusFilter; label: string
   { value: "non_asn", label: "Non-ASN" },
 ];
 
-const unorSelect = { id: true, name: true } as const;
+const unorSelect = { id: true, name: true, pimpinanId: true } as const;
 
 function isStatusFilter(value: string | null | undefined): value is PegawaiStatusFilter {
   return value === "cpns" || value === "pns" || value === "pppk" || value === "non_asn";
@@ -107,6 +107,28 @@ export async function listUnorChildren(parentId: string) {
   });
 }
 
+export async function listUnorRoots() {
+  return prisma.unit.findMany({
+    where: { parentId: null },
+    select: unorSelect,
+    orderBy: { name: "asc" },
+  });
+}
+
+export async function listVisibleUnorRoots(scope: { unrestricted: boolean; unitIds: string[] }) {
+  if (scope.unrestricted) return listUnorRoots();
+  if (scope.unitIds.length === 0) return [];
+  const units = await prisma.unit.findMany({
+    where: { id: { in: scope.unitIds } },
+    select: { id: true, name: true, pimpinanId: true, parentId: true },
+    orderBy: { name: "asc" },
+  });
+  const allowed = new Set(scope.unitIds);
+  return units
+    .filter((unit) => !unit.parentId || !allowed.has(unit.parentId))
+    .map(({ id, name, pimpinanId }) => ({ id, name, pimpinanId }));
+}
+
 export async function listUnorRootsForPerangkatDaerah(perangkatDaerahId: string) {
   const direct = await listUnorChildren(perangkatDaerahId);
   if (direct.length > 0) return direct;
@@ -116,6 +138,7 @@ export async function listUnorRootsForPerangkatDaerah(perangkatDaerahId: string)
     select: {
       id: true,
       name: true,
+      pimpinanId: true,
       parentId: true,
       parent: { select: { perangkatDaerahId: true } },
     },
@@ -125,7 +148,7 @@ export async function listUnorRootsForPerangkatDaerah(perangkatDaerahId: string)
   return units
     .filter((unit) => unit.id !== perangkatDaerahId)
     .filter((unit) => !unit.parentId || unit.parent?.perangkatDaerahId !== perangkatDaerahId)
-    .map((unit) => ({ id: unit.id, name: unit.name }));
+    .map((unit) => ({ id: unit.id, name: unit.name, pimpinanId: unit.pimpinanId }));
 }
 
 export async function collectDescendantUnitIds(rootId: string): Promise<string[]> {

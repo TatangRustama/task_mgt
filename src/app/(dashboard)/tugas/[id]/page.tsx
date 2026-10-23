@@ -9,7 +9,7 @@ import { ManagePostedTaskActions } from "@/components/task/ManagePostedTaskActio
 import { ReviewForm } from "@/components/task/ReviewForm";
 import { StarRating } from "@/components/task/StarRating";
 import { LocationMapView } from "@/components/map/LocationMapView";
-import { assignmentModeLabel, canManagePostedTask, canPickupPoolTask, canReviewTask, canSeeTask, getDbOrgUser } from "@/lib/org";
+import { assignmentModeLabel, canManagePostedTask, canPickupPoolTask, canReviewTask, canSeeTask, getActiveLeadershipScope, getDbOrgUser } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { cn, formatDate, formatDateTime, priorityBarClass, statusLabel } from "@/lib/utils";
 import { formatJumlahSatuan } from "@/lib/satuan";
@@ -50,6 +50,7 @@ export default async function TaskDetailPage({
     task.assignedToId === user.id &&
     (task.status === "dikerjakan" || task.status === "ditolak");
 
+  const activeScope = await getActiveLeadershipScope(orgUser);
   const canReview =
     task.status === "menunggu_approval" && (await canReviewTask(orgUser, task.assignedToId));
 
@@ -141,7 +142,7 @@ export default async function TaskDetailPage({
         ) : null}
 
         {canReview ? (
-          <ReviewForm taskId={task.id} />
+          <ReviewForm taskId={task.id} asLabel={activeScope?.label} />
         ) : null}
 
         {task.review ? (

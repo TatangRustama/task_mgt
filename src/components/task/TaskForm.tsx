@@ -45,6 +45,7 @@ type OrgContext = {
   mustAssignNamed: boolean;
   jabatanLabel: string;
   poolUnitName: string | null;
+  activeScope: { id: string; label: string } | null;
   penugasan: Array<{ jenis: string; label: string }>;
   unit: { name: string; typeLabel: string } | null;
   subordinates: Array<{
@@ -286,16 +287,22 @@ export function TaskFormDialog({
         <form key={task?.id ?? mode} onSubmit={handleSubmit} className="min-w-0 max-w-full space-y-6">
           {mode === "delegasi" ? (
             <div className="min-w-0 space-y-3 rounded-lg border border-outline-variant bg-surface-container-low p-4">
-              {org?.unit ? (
-                <p className="text-xs text-on-surface-variant">
-                  {org.jabatanLabel} · {org.unit.name} ({org.unit.typeLabel})
-                </p>
-              ) : null}
-              {org?.penugasan?.length ? (
-                <p className="text-xs text-on-surface-variant">
-                  {org.penugasan.map((item) => item.label).join(" · ")}
-                </p>
-              ) : null}
+              {org?.activeScope ? (
+                <p className="text-xs text-on-surface-variant">Menugaskan sebagai {org.activeScope.label}</p>
+              ) : (
+                <>
+                  {org?.unit ? (
+                    <p className="text-xs text-on-surface-variant">
+                      {org.jabatanLabel} · {org.unit.name} ({org.unit.typeLabel})
+                    </p>
+                  ) : null}
+                  {org?.penugasan?.length ? (
+                    <p className="text-xs text-on-surface-variant">
+                      {org.penugasan.map((item) => item.label).join(" · ")}
+                    </p>
+                  ) : null}
+                </>
+              )}
               {org?.canUsePool ? (
                 <div className="grid grid-cols-2 gap-2">
                   <Button

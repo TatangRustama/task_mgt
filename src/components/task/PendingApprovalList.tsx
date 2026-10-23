@@ -28,7 +28,13 @@ export type PendingApprovalTask = {
   } | null;
 };
 
-export function PendingApprovalList({ tasks }: { tasks: PendingApprovalTask[] }) {
+export function PendingApprovalList({
+  tasks,
+  asLabel,
+}: {
+  tasks: PendingApprovalTask[];
+  asLabel?: string | null;
+}) {
   const [openId, setOpenId] = useState<string | null>(tasks[0]?.id ?? null);
 
   useEffect(() => {
@@ -100,7 +106,7 @@ export function PendingApprovalList({ tasks }: { tasks: PendingApprovalTask[] })
                   <p className="text-sm text-on-surface-variant">Tidak ada bukti pekerjaan.</p>
                 )}
 
-                <ReviewForm taskId={task.id} />
+                <ReviewForm taskId={task.id} asLabel={asLabel} />
 
                 <p className="text-center text-xs text-on-surface-variant">
                   <Link href={`/tugas/${task.id}`} className="font-medium text-secondary hover:underline">
