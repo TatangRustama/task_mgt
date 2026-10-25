@@ -102,8 +102,9 @@ export async function POST(request: Request) {
     satuan: parsedJumlah.satuan,
   };
 
+  const activeScope = await getActiveLeadershipScope(user);
+
   if (source === "mandiri") {
-    const activeScope = await getActiveLeadershipScope(user);
     const task = await prisma.task.create({
       data: {
         title,
@@ -123,11 +124,10 @@ export async function POST(request: Request) {
     return NextResponse.json(task, { status: 201 });
   }
 
-  if (!canDelegate(user)) {
+  if (!canDelegate(user, activeScope)) {
     return NextResponse.json({ error: "Anda tidak berwenang mendelegasikan tugas" }, { status: 403 });
   }
 
-  const activeScope = await getActiveLeadershipScope(user);
   const rules = assignmentRules(user, activeScope);
 
   if (assignmentMode === "kolam") {

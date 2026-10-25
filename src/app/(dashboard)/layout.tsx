@@ -6,7 +6,7 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { MandiriCreateControl } from "@/components/layout/CreateTaskFab";
 import { EnablePushNotifications } from "@/components/layout/EnablePushNotifications";
 import { JabatanSwitcher } from "@/components/layout/JabatanSwitcher";
-import { getActiveLeadershipScope, getDbOrgUser, isUnitLeader, listLeadershipScopes } from "@/lib/org";
+import { getDbOrgUser, getOrgScope } from "@/lib/org";
 import { canUseEmployeeApp, isAppAdmin, isPersonal, isSuperAdmin } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
 
@@ -17,9 +17,10 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const canCreateMandiri = canUseEmployeeApp(user.role);
   const orgUser = await getDbOrgUser(user.id);
   const pegawai = orgUser?.pegawai;
-  const isLeader = Boolean(orgUser && isUnitLeader(orgUser));
-  const scopes = orgUser && !isSuperAdmin(user.role) ? listLeadershipScopes(orgUser) : [];
-  const activeScope = orgUser && scopes.length > 1 ? await getActiveLeadershipScope(orgUser) : null;
+  const scopeState = await getOrgScope(user);
+  const isLeader = scopeState.isLeader;
+  const scopes = isSuperAdmin(user.role) ? [] : scopeState.scopes;
+  const activeScope = scopes.length > 1 ? scopeState.activeScope : null;
   const pegawaiIdentity =
     pegawai?.jenis === "non_asn" ? `NIK ${pegawai.nik || "-"}` : `NIP ${pegawai?.nip || user.nip}`;
   const identity = isSuperAdmin(user.role)

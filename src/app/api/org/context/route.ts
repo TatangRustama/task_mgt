@@ -27,7 +27,7 @@ export async function GET() {
   const activeScope = await getActiveLeadershipScope(user);
   const rules = assignmentRules(user, activeScope);
   const [subordinates, atasan] = await Promise.all([
-    canDelegate(user) ? getDirectReports(user, activeScope?.unitId) : Promise.resolve([]),
+    canDelegate(user, activeScope) ? getDirectReports(user, activeScope?.unitId) : Promise.resolve([]),
     getAtasan(user),
   ]);
 
@@ -50,7 +50,7 @@ export async function GET() {
           typeLabel: unitTypeLabel[user.unit.type],
         }
       : null,
-    canDelegate: canDelegate(user),
+    canDelegate: canDelegate(user, activeScope),
     canUsePool: rules.canUsePool,
     mustAssignNamed: rules.mustAssignNamed,
     poolUnitName: rules.poolUnit?.name ?? null,

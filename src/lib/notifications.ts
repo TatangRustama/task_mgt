@@ -1,7 +1,8 @@
 import { Role } from "@prisma/client";
 import { kinerjaHref } from "@/lib/laporan-url";
 import { MONITOR_IDLE_DAYS, MONITOR_REVIEW_SLA_HOURS } from "@/lib/monitor-types";
-import { getActiveLeadershipScope, getDbOrgUser, getDirectReportIds, getNewTasksFromAtasan, isUnitLeader, type OrgUser } from "@/lib/org";
+import { activeScopeGrantsLeadership } from "@/lib/kapasitas";
+import { getActiveLeadershipScope, getDbOrgUser, getDirectReportIds, getNewTasksFromAtasan, isDefinitiveLeader, isUnitLeader, type OrgUser } from "@/lib/org";
 import type { NoticeSection, UserNotifications } from "@/lib/notification-types";
 import { prisma } from "@/lib/prisma";
 import { addDays, formatISODate } from "@/lib/utils";
@@ -215,10 +216,14 @@ export async function getUserNotifications(userId: string, role: Role): Promise<
     return { count: 0, sections: [] };
   }
   const orgUser = await getDbOrgUser(userId);
-  const isLeader = orgUser ? isUnitLeader(orgUser) : false;
+  const activeScope = orgUser ? await getActiveLeadershipScope(orgUser) : null;
+  const isLeader = orgUser
+    ? activeScope
+      ? activeScopeGrantsLeadership(activeScope, isDefinitiveLeader(orgUser))
+      : isUnitLeader(orgUser)
+    : false;
 
   if (isLeader && orgUser) {
-    const activeScope = await getActiveLeadershipScope(orgUser);
     const reportIds = await getDirectReportIds(orgUser);
     const [pending, perhatian] = await Promise.all([
       getPendingApprovalSection(reportIds),
