@@ -88,6 +88,13 @@ export function isPrivilegedRole(role: Role) {
   return value === "super_admin" || value === "admin";
 }
 
+export function isProtectedPegawaiAccount(
+  user: { role: Role; opdAdmin?: boolean | null; superAdmin?: boolean | null } | null | undefined,
+) {
+  if (!user) return false;
+  return isPrivilegedRole(user.role) || Boolean(user.opdAdmin) || Boolean(user.superAdmin);
+}
+
 export function hasAllowedRole(userRole: Role, allowed: Role[], opdAdmin = false, superAdmin = false) {
   if (allowed.includes(coerceRole(userRole))) return true;
   if (superAdmin && (allowed.includes("super_admin") || allowed.includes("admin"))) return true;

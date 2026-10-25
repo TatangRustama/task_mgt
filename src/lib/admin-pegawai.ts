@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { isProtectedPegawaiAccount } from "@/lib/roles";
 
 export async function softDeletePegawai(pegawaiId: string, actorId: string) {
   const pegawai = await prisma.pegawai.findUnique({
@@ -9,13 +10,13 @@ export async function softDeletePegawai(pegawaiId: string, actorId: string) {
       name: true,
       userId: true,
       deletedAt: true,
-      user: { select: { role: true } },
+      user: { select: { role: true, opdAdmin: true, superAdmin: true } },
     },
   });
   if (!pegawai || pegawai.deletedAt) {
     return { error: "Pegawai tidak ditemukan", status: 404 as const };
   }
-  if (pegawai.user?.role === "super_admin" || pegawai.user?.role === "admin") {
+  if (isProtectedPegawaiAccount(pegawai.user)) {
     return { error: "Akun pengelola tidak dapat dihapus dari daftar pegawai", status: 409 as const };
   }
   if (pegawai.userId === actorId) {
