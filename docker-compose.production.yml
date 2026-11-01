@@ -12,10 +12,11 @@ services:
       HOSTNAME: 127.0.0.1
       PORT: 3002
       UPLOADS_DIR: /app/public/uploads
+    user: "${TASK_MGT_RUNTIME_USER:-1001:1001}"
     network_mode: host
     volumes:
-      - ./state/uploads:/app/public/uploads
-      - ./state/next-cache:/app/.next/cache
+      - ${TASK_MGT_STATE_DIR:-./state}/uploads:/app/public/uploads
+      - ${TASK_MGT_STATE_DIR:-./state}/next-cache:/app/.next/cache
     healthcheck:
       test:
         - CMD-SHELL

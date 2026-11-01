@@ -71,6 +71,12 @@ NEXTAUTH_URL=http://localhost:3000
 
 Backup lengkap untuk deploy: **`.env.production`**.
 
+### Production state
+
+Docker production menyimpan uploads dan Next cache pada `TASK_MGT_STATE_DIR`.
+Jika tidak diatur, compose memakai `./state`. Set `TASK_MGT_RUNTIME_USER` bila
+state dimiliki oleh user runtime host yang berbeda dari UID default image.
+
 ### Local Docker (optional)
 
 Jika ingin database PostgreSQL lokal tanpa Supabase:
