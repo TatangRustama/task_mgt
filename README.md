@@ -76,6 +76,8 @@ Backup lengkap untuk deploy: **`.env.production`**.
 Docker production menyimpan uploads dan Next cache pada `TASK_MGT_STATE_DIR`.
 Jika tidak diatur, compose memakai `./state`. Set `TASK_MGT_RUNTIME_USER` bila
 state dimiliki oleh user runtime host yang berbeda dari UID default image.
+Set `TASK_MGT_ENV_FILE` untuk memakai file environment produksi yang disimpan
+di luar working tree Git; default-nya tetap `.env.production`.
 
 ### Local Docker (optional)
 
