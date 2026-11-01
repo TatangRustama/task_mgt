@@ -325,6 +325,7 @@ export function printAtasanPenilaian(task: Pick<ReportTask, "score" | "feedback"
 }
 
 export function printPhotoSrc(url: string) {
+  if (url.startsWith("/uploads/")) return url;
   return `/api/reports/evidence-image?url=${encodeURIComponent(url)}`;
 }
 

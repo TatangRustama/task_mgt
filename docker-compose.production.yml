@@ -1,0 +1,42 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: siaptugas:local
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 127.0.0.1
+      PORT: 3002
+      UPLOADS_DIR: /app/public/uploads
+    network_mode: host
+    volumes:
+      - ./state/uploads:/app/public/uploads
+      - ./state/next-cache:/app/.next/cache
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'node -e "fetch(''http://127.0.0.1:3002/api/health'').then(async (response) => { const body = await response.json(); process.exit(response.ok && body.ok ? 0 : 1); }).catch(() => process.exit(1))"'
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: local
+      options:
+        max-size: 50m
+        max-file: "3"
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    profiles:
+      - maintenance
+    env_file:
+      - .env.production
+    network_mode: host
+    command: npx prisma db push

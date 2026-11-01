@@ -25,6 +25,7 @@ function lanDevOrigins() {
 }
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   allowedDevOrigins: lanDevOrigins(),
   serverExternalPackages: ["web-push"],
   async headers() {
