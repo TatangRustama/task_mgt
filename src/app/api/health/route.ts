@@ -26,12 +26,39 @@ export async function GET() {
 
   let databaseOk = false;
   let databaseError: string | null = null;
+  let databaseErrorDetails: any = null;
+  let pgOk = false;
+  let pgError: string | null = null;
+
+  const rawUrl = process.env.DATABASE_URL || "";
+  const sanitizedUrl = rawUrl.replace(/:([^:@]+)@/, ":***@");
+
   if (databaseUrl) {
+    try {
+      const { Pool } = await import("pg");
+      const pool = new Pool({
+        connectionString: rawUrl,
+        ssl: rawUrl.includes("supabase.com") ? { rejectUnauthorized: false } : undefined,
+        connectionTimeoutMillis: 5000,
+      });
+      await pool.query("SELECT 1");
+      await pool.end();
+      pgOk = true;
+    } catch (e: any) {
+      pgError = e?.message || String(e);
+    }
+
     try {
       await prisma.$queryRaw`SELECT 1`;
       databaseOk = true;
-    } catch (error) {
+    } catch (error: any) {
       databaseError = error instanceof Error ? error.message : "Database connection failed";
+      databaseErrorDetails = {
+        message: error?.message,
+        stack: error?.stack,
+        cause: error?.cause,
+        code: error?.code,
+      };
     }
   }
 
@@ -41,6 +68,9 @@ export async function GET() {
       AUTH_SECRET: authSecret,
       DATABASE_URL: databaseUrl,
       DATABASE_OK: databaseOk,
+      DATABASE_TARGET: sanitizedUrl,
+      PG_OK: pgOk,
+      PG_ERROR: pgError,
       SUPABASE_URL: supabaseUrl,
       SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey,
       NEXTAUTH_URL: nextAuthUrl,
@@ -49,6 +79,7 @@ export async function GET() {
       VAPID: Boolean(process.env.VAPID_PUBLIC_KEY?.trim() && process.env.VAPID_PRIVATE_KEY?.trim()),
     },
     databaseError,
+    databaseErrorDetails,
     urlMismatch,
     hint: !databaseOk
       ? "Perbarui DATABASE_URL di .env dengan password database Supabase yang benar, lalu restart dev server."

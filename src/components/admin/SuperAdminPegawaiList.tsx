@@ -311,12 +311,13 @@ export function SuperAdminPegawaiList({
         {!loading && rows.length === 0 ? (
           <p className="text-on-surface-variant">Tidak ada pegawai yang cocok.</p>
         ) : (
-          rows.map((row) => (
+          <div className="space-y-2">
+          {rows.map((row) => (
             <button
               key={row.id}
               type="button"
               onClick={() => setSelectedId(row.id)}
-              className="w-full rounded-lg border border-surface-container-highest bg-surface-container-low p-3 text-left transition hover:border-primary-container hover:bg-surface-container"
+              className="w-full rounded-lg border border-surface-container-highest bg-surface-container-low p-3 text-left text-xs transition hover:border-primary-container hover:bg-surface-container"
             >
               <div className="flex items-start justify-between gap-2">
                 <p className="font-medium text-on-surface">{row.name}</p>
@@ -327,9 +328,10 @@ export function SuperAdminPegawaiList({
               <p className="text-on-surface-variant">
                 {row.jenis === "non_asn" ? `NIK ${row.nik || "-"}` : `NIP ${formatNip(row.nip)}`}
               </p>
-              <p className="text-sm text-on-surface">{displayJabatan(row)}</p>
+              <p className="text-on-surface">{displayJabatan(row)}</p>
             </button>
-          ))
+          ))}
+          </div>
         )}
 
         <PageNumbers page={page} totalPages={totalPages} onChange={setPage} disabled={loading} />

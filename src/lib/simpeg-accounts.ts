@@ -198,9 +198,9 @@ const jabatanRank: Record<Jabatan, number> = {
   pelaksana: 1,
 };
 
-export async function assignUnitLeaders() {
+export async function assignUnitLeaders(targetUnitIds?: string[]) {
   const units = await prisma.unit.findMany({
-    where: { externalId: { not: null } },
+    where: targetUnitIds && targetUnitIds.length > 0 ? { id: { in: targetUnitIds } } : { externalId: { not: null } },
     select: { id: true },
   });
   const members = await prisma.user.findMany({

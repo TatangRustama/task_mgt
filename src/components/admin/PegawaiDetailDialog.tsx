@@ -36,6 +36,7 @@ type PegawaiDetail = {
   unorNama: string | null;
   perangkatDaerahNama: string | null;
   userId: string | null;
+  unit?: { id: string; name: string } | null;
 };
 
 function Field({ label, value }: { label: string; value?: string | null }) {
@@ -147,14 +148,18 @@ export function PegawaiDetailDialog({
     }
   }
 
+  const showLoader = Boolean(open && (loading || (!detail && !error)));
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      {showLoader ? <AppLoader label="Memuat detail" /> : null}
+      {syncing ? <AppLoader label="Memperbarui dari Simpeg" /> : null}
+      {showLoader ? null : (
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="top-20 z-[80] max-h-[calc(100dvh-11rem)] translate-y-0 overflow-y-auto pb-6 sm:max-w-lg">
         <DialogHeader className="pr-8 text-left">
           <DialogTitle>Detail pegawai</DialogTitle>
         </DialogHeader>
-        {loading ? <AppLoader label="Memuat detail" /> : null}
-        {syncing ? <AppLoader label="Memperbarui dari Simpeg" /> : null}
         {error ? <p className="text-sm text-error">{error}</p> : null}
 
         {!loading && detail ? (
@@ -189,7 +194,7 @@ export function PegawaiDetailDialog({
                     <Field label="Jabatan" value={displayJabatan(detail)} />
                     <Field label="Jenis jabatan" value={detail.jenisJabatanNama} />
                     <Field label="Pangkat / golongan" value={formatGolonganPangkat(detail.golonganNama)} />
-                    <Field label="Unit organisasi" value={detail.unorNama} />
+                    <Field label="Unit organisasi" value={detail.unorNama || detail.unit?.name || "-"} />
                     <Field label="Perangkat daerah" value={detail.perangkatDaerahNama} />
                   </div>
                   {detail.userId ? (
@@ -275,5 +280,7 @@ export function PegawaiDetailDialog({
         ) : null}
       </DialogContent>
     </Dialog>
+      )}
+    </>
   );
 }
