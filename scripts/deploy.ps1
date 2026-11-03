@@ -43,4 +43,4 @@ Write-Host "3. Memeriksa status kesehatan aplikasi..." -ForegroundColor Yellow
 ssh -i $SSH_KEY -p $SSH_PORT -o BatchMode=yes "$SSH_USER@$SSH_HOST" "sudo /usr/local/sbin/task-mgt-docker status && curl -s http://127.0.0.1:3002/api/health"
 
 Write-Host "`n=== Deployment Selesai! ===" -ForegroundColor Green
-Write-Host "Aplikasi dapat diakses di: https://siaptugas.dev-ims.net`n" -ForegroundColor Cyan
+Write-Host "Aplikasi dapat diakses di: https://siapkinerja.dev-ims.net/`n" -ForegroundColor Cyan
