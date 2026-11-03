@@ -10,7 +10,7 @@ import {
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { compareByPangkatDesc } from "@/lib/golongan";
-import { displayJabatan, jabatanRoleLabel, type PegawaiJabatanSource } from "@/lib/jabatan-display";
+import { displayJabatan, isKepalaTitle, jabatanRoleLabel, type PegawaiJabatanSource } from "@/lib/jabatan-display";
 import { KAPASITAS_COOKIE, resolveLeadershipScope, type LeadershipScope } from "@/lib/kapasitas";
 import type { SessionUser } from "@/lib/session";
 import type { AtasanTaskNotice } from "@/lib/notification-types";
@@ -71,18 +71,7 @@ export type DirectReport = {
 
 export type Atasan = DirectReport;
 
-export function isKepalaTitle(jabatanNama: string | null | undefined) {
-  const title = (jabatanNama || "").toLowerCase();
-  if (!title) return false;
-  return (
-    title.startsWith("kepala") ||
-    title.startsWith("sekretaris") ||
-    title.startsWith("inspektur") ||
-    title.includes("kepala dinas") ||
-    title.includes("kepala badan") ||
-    title.includes("kepala biro")
-  );
-}
+export { isKepalaTitle };
 
 export function mapPegawaiJabatan(
   jabatanNama: string | null | undefined,
