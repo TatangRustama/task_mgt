@@ -8,7 +8,7 @@ Dokumen ini berisi panduan resmi untuk merilis dan mengunggah pembaruan aplikasi
 
 | Parameter | Konfigurasi | Keterangan |
 | :--- | :--- | :--- |
-| **URL Aplikasi** | [https://siaptugas.dev-ims.net](https://siaptugas.dev-ims.net) | Domain produksi publik |
+| **URL Aplikasi** | [https://siapkinerja.dev-ims.net/](https://siapkinerja.dev-ims.net/) | Domain produksi publik (diperbarui dari domain lama `siaptugas.dev-ims.net`) |
 | **IP Server** | `45.76.154.46` (Vultr) | Server VPS |
 | **SSH Port** | `29453` | Port SSH non-standar |
 | **DevOps User** | `task_mgt_devops` | User pengelola deployment |
@@ -31,7 +31,7 @@ flowchart LR
     B --> C["git push origin prod"]
     C --> D["Server: git pull origin prod"]
     D --> E["Server: task-mgt-docker deploy"]
-    E --> F["Health Check: https://siaptugas.dev-ims.net"]
+    E --> F["Health Check: https://siapkinerja.dev-ims.net/"]
 ```
 
 ---
