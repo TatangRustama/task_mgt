@@ -1,9 +1,19 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Loader2 } from "lucide-react";
 
 export function AppLoader({ label = "Memuat" }: { label?: string }) {
-  return (
+  const [target, setTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setTarget(document.body);
+  }, []);
+
+  const overlay = (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-[#1b2156]/50 print:hidden"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-[#1b2156]/50 print:hidden"
       role="status"
       aria-live="polite"
       aria-label={label}
@@ -14,4 +24,7 @@ export function AppLoader({ label = "Memuat" }: { label?: string }) {
       </div>
     </div>
   );
+
+  if (!target) return overlay;
+  return createPortal(overlay, target);
 }

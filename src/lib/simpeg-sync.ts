@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { ensureUserFromPegawai, syncPegawaiAccounts } from "@/lib/simpeg-accounts";
+import { assignUnitLeaders, ensureUserFromPegawai, syncPegawaiAccounts } from "@/lib/simpeg-accounts";
 import {
   displayPegawaiName,
   fetchSimpegPegawaiByNip,
@@ -40,14 +40,19 @@ async function ensureInstansi() {
   });
 }
 
-export function pegawaiRecordFromSimpeg(pegawai: SimpegPegawai, unitId: string | null) {
+export function pegawaiRecordFromSimpeg(
+  pegawai: SimpegPegawai,
+  unitId: string | null,
+  unitNameFallback?: string | null,
+) {
   const nip = str(pegawai.nip);
   if (!nip) {
     throw new Error("NIP Simpeg kosong");
   }
   const name = displayPegawaiName(pegawai) || nip;
   const tempatLahir = str(pegawai.tempat_lahir);
-  const unorNama = str(pegawai.unor_nama);
+  const unorNama = str(pegawai.unor_nama) || str(unitNameFallback);
+  const jabatanNama = str(pegawai.jabatan_nama) || str(pegawai.jabatan);
 
   return {
     jenis: "asn" as const,
@@ -70,7 +75,7 @@ export function pegawaiRecordFromSimpeg(pegawai: SimpegPegawai, unitId: string |
     jenisJabatanId: str(pegawai.jenis_jabatan_id),
     jenisJabatanNama: str(pegawai.jenis_jabatan_nama),
     jabatanId: str(pegawai.jabatan_id),
-    jabatanNama: str(pegawai.jabatan_nama),
+    jabatanNama,
     unorId: str(pegawai.unor_id),
     unorNama,
     perangkatDaerahId: str(pegawai.perangkat_daerah_id),
@@ -89,26 +94,38 @@ async function upsertAsnDirectory(nip: string, name: string, address: string) {
 }
 
 export async function upsertPegawaiFromSimpeg(pegawai: SimpegPegawai) {
-  const data = pegawaiRecordFromSimpeg(pegawai, str(pegawai.unor_id));
+  const rawUnorId = str(pegawai.unor_id);
+  const unit = rawUnorId
+    ? await prisma.unit.findFirst({
+        where: { OR: [{ id: rawUnorId }, { externalId: rawUnorId }] },
+        select: { id: true, name: true, perangkatDaerahId: true, perangkatDaerahNama: true },
+      })
+    : null;
+
+  const data = pegawaiRecordFromSimpeg(pegawai, unit?.id ?? null, unit?.name ?? null);
+  if (!data.perangkatDaerahId && unit?.perangkatDaerahId) {
+    data.perangkatDaerahId = unit.perangkatDaerahId;
+  }
+  if (!data.perangkatDaerahNama && unit?.perangkatDaerahNama) {
+    data.perangkatDaerahNama = unit.perangkatDaerahNama;
+  }
+
   const removed = await prisma.pegawai.findUnique({
     where: { nip: data.nip },
     select: { id: true, deletedAt: true },
   });
   if (removed?.deletedAt) return null;
-  const unit = data.unitId
-    ? await prisma.unit.findFirst({
-        where: { OR: [{ id: data.unitId }, { externalId: data.unitId }] },
-        select: { id: true },
-      })
-    : null;
 
   const saved = await prisma.pegawai.upsert({
     where: { nip: data.nip },
-    create: { ...data, unitId: unit?.id ?? null },
-    update: { ...data, unitId: unit?.id ?? null },
+    create: data,
+    update: data,
   });
   await upsertAsnDirectory(data.nip, data.name, data.address);
   await ensureUserFromPegawai(saved);
+  if (saved.unitId) {
+    await assignUnitLeaders([saved.unitId]);
+  }
   return saved;
 }
 
@@ -196,10 +213,13 @@ async function syncPegawai(onProgress?: ProgressFn) {
   const first = await fetchSimpegPegawaiPage(1);
   const lastPage = first.lastPage || 1;
   const total = first.total || first.items.length;
-  const unitIds = new Set(
-    (await prisma.unit.findMany({ where: { externalId: { not: null } }, select: { id: true } })).map(
-      (unit) => unit.id,
-    ),
+  const unitMap = new Map(
+    (
+      await prisma.unit.findMany({
+        where: { externalId: { not: null } },
+        select: { id: true, name: true, perangkatDaerahId: true, perangkatDaerahNama: true },
+      })
+    ).map((unit) => [unit.id, unit]),
   );
   let saved = 0;
   const removedNips = new Set(
@@ -227,12 +247,19 @@ async function syncPegawai(onProgress?: ProgressFn) {
           const nip = str(pegawai.nip);
           if (!nip || removedNips.has(nip)) return;
           const unorId = str(pegawai.unor_id);
-          const data = pegawaiRecordFromSimpeg(pegawai, unorId);
-          const unitId = unorId && unitIds.has(unorId) ? unorId : null;
+          const unit = unorId ? unitMap.get(unorId) : null;
+          const unitId = unit?.id ?? null;
+          const data = pegawaiRecordFromSimpeg(pegawai, unitId, unit?.name ?? null);
+          if (!data.perangkatDaerahId && unit?.perangkatDaerahId) {
+            data.perangkatDaerahId = unit.perangkatDaerahId;
+          }
+          if (!data.perangkatDaerahNama && unit?.perangkatDaerahNama) {
+            data.perangkatDaerahNama = unit.perangkatDaerahNama;
+          }
           await prisma.pegawai.upsert({
             where: { nip },
-            create: { ...data, unitId },
-            update: { ...data, unitId },
+            create: data,
+            update: data,
           });
         }),
       );

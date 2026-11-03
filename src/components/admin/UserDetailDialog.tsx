@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { displayJabatan } from "@/lib/jabatan-display";
 import { OpdUnitPicker } from "@/components/admin/OpdUnitPicker";
-import { isStaffLoginIdentifier, roleAccessLabel } from "@/lib/roles";
+import { isStaffLoginIdentifier } from "@/lib/roles";
 import { formatDateTime } from "@/lib/utils";
 
 const selectClassName =
@@ -76,13 +76,11 @@ export function UserDetailDialog({
   const [error, setError] = useState("");
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [isSelf, setIsSelf] = useState(false);
-  const [name, setName] = useState("");
   const [role, setRole] = useState<UserRole>("personal");
   const [opdAdmin, setOpdAdmin] = useState(false);
   const [superAdmin, setSuperAdmin] = useState(false);
   const [opdUnitId, setOpdUnitId] = useState("");
   const [opdScope, setOpdScope] = useState<OpdScope | null>(null);
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const isPersonal = role === "personal";
@@ -126,12 +124,10 @@ export function UserDetailDialog({
 
   function startEdit() {
     if (!detail) return;
-    setName(detail.name);
     setRole(detail.role);
     setOpdAdmin(detail.opdAdmin);
     setSuperAdmin(detail.superAdmin);
     setOpdUnitId(detail.opdUnitId || opdScope?.chain.at(-1) || "");
-    setUsername(detail.nip);
     setError("");
     setPanel("edit");
   }
@@ -158,9 +154,9 @@ export function UserDetailDialog({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        name,
+        name: detail.name,
         role,
-        username,
+        username: detail.nip,
         opdAdmin: grantOpd,
         superAdmin: grantSuper,
         opdUnitId: grantOpd && !grantSuper ? opdUnitId : null,
@@ -214,8 +210,13 @@ export function UserDetailDialog({
     onChanged("Pengguna berhasil dihapus");
   }
 
+  const showLoader = Boolean(open && (loading || (!detail && !error)));
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      {showLoader ? <AppLoader label="Memuat detail" /> : null}
+      {showLoader ? null : (
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader className="pr-8 text-left">
           <DialogTitle>
@@ -229,32 +230,20 @@ export function UserDetailDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {loading ? <AppLoader label="Memuat detail" /> : null}
         {error ? <p className="text-sm text-error">{error}</p> : null}
 
         {!loading && detail && panel === "detail" ? (
           <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-3">
               <Field label="Nama" value={detail.name} />
-              <Field label="Role" value={roleAccessLabel(detail.role, detail.opdAdmin, detail.superAdmin)} />
-              {detail.opdAdmin && !detail.superAdmin ? <Field label="Unit yang dikelola" value={detail.opdUnit?.name || "-"} /> : null}
-              <Field label={detail.role === "personal" ? "NIP / NIK login" : "Username"} value={detail.nip} />
-              <Field label="Email" value={detail.email} />
-              <Field
-                label="Jabatan"
-                value={displayJabatan(detail.pegawai, detail.jabatan)}
-              />
-              <Field label="Unit" value={detail.unit?.name || "-"} />
-              {detail.pegawai ? (
-                <>
-                  <Field label="Jenis pegawai" value={detail.pegawai.jenis === "asn" ? "ASN" : "Non-ASN"} />
-                  <Field label="NIK" value={detail.pegawai.nik || "-"} />
-                  <Field label="Perangkat daerah" value={detail.pegawai.perangkatDaerahNama || "-"} />
-                  <Field label="Unit organisasi" value={detail.pegawai.unorNama || "-"} />
-                </>
-              ) : null}
-              <Field label="Dibuat" value={formatDateTime(detail.createdAt)} />
-              <Field label="Diperbarui" value={formatDateTime(detail.updatedAt)} />
+              <Field label="NIP" value={detail.nip} />
+              <Field label="Jabatan" value={displayJabatan(detail.pegawai, detail.jabatan)} />
+              <Field label="Unit Organisasi" value={detail.pegawai?.unorNama || detail.unit?.name || "-"} />
+              <Field label="Perangkat Daerah" value={detail.pegawai?.perangkatDaerahNama || "-"} />
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Dibuat" value={formatDateTime(detail.createdAt)} />
+                <Field label="Diperbarui" value={formatDateTime(detail.updatedAt)} />
+              </div>
             </div>
             <div className="space-y-2">
               <Button type="button" variant="secondary" className="w-full" onClick={startPassword}>
@@ -289,26 +278,12 @@ export function UserDetailDialog({
 
         {!loading && detail && panel === "edit" ? (
           <form onSubmit={saveEdit} className="space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Nama lengkap</Label>
-              <Input id="edit-name" value={name} onChange={(event) => setName(event.target.value)} required />
+            <div className="space-y-3">
+              <Field label="Nama lengkap" value={detail.name} />
+              <Field label={isPersonal ? "NIP / NIK" : "Username"} value={detail.nip} />
             </div>
             {isStaffLoginIdentifier(detail.nip) && detail.role === "personal" ? (
               <>
-              <label className="flex items-start gap-3 rounded-lg border border-outline-variant px-3 py-3 text-sm">
-                <input
-                  type="checkbox"
-                  className="mt-0.5"
-                  checked={opdAdmin}
-                  onChange={(event) => setOpdAdmin(event.target.checked)}
-                />
-                <span>
-                  <span className="font-medium text-on-surface">Admin OPD</span>
-                  <span className="mt-1 block text-on-surface-variant">
-                    Menambahkan role Admin OPD pada NIP ini. Menu pengguna di footer, Admin OPD di sidebar.
-                  </span>
-                </span>
-              </label>
               <label className="flex items-start gap-3 rounded-lg border border-outline-variant px-3 py-3 text-sm">
                 <input
                   type="checkbox"
@@ -323,17 +298,37 @@ export function UserDetailDialog({
                   </span>
                 </span>
               </label>
-              {opdAdmin && !superAdmin && opdScope ? (
-                <OpdUnitPicker
-                  key={opdScope.chain.join("|")}
-                  perangkatDaerah={opdScope.perangkatDaerah}
-                  initialChain={opdScope.chain}
-                  onChange={setOpdUnitId}
-                />
-              ) : null}
-              {opdAdmin && !superAdmin && !opdScope ? (
-                <p className="text-sm text-error">Perangkat daerah pegawai belum tersedia, jadi role Admin OPD belum bisa disimpan.</p>
-              ) : null}
+              <div className="rounded-lg border border-outline-variant text-sm">
+                <label className="flex items-start gap-3 px-3 py-3">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={opdAdmin}
+                    onChange={(event) => setOpdAdmin(event.target.checked)}
+                  />
+                  <span>
+                    <span className="font-medium text-on-surface">Admin OPD</span>
+                    <span className="mt-1 block text-on-surface-variant">
+                      Menambahkan role Admin OPD pada NIP ini. Menu pengguna di footer, Admin OPD di sidebar.
+                    </span>
+                  </span>
+                </label>
+                {opdAdmin && !superAdmin && opdScope ? (
+                  <div className="border-t border-outline-variant px-3 py-3">
+                    <OpdUnitPicker
+                      key={opdScope.chain.join("|")}
+                      perangkatDaerah={opdScope.perangkatDaerah}
+                      initialChain={opdScope.chain}
+                      onChange={setOpdUnitId}
+                    />
+                  </div>
+                ) : null}
+                {opdAdmin && !superAdmin && !opdScope ? (
+                  <p className="border-t border-outline-variant px-3 py-3 text-sm text-error">
+                    Perangkat daerah pegawai belum tersedia, jadi role Admin OPD belum bisa disimpan.
+                  </p>
+                ) : null}
+              </div>
               </>
             ) : (
               <div className="space-y-2">
@@ -350,15 +345,6 @@ export function UserDetailDialog({
                 </select>
               </div>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="edit-username">{isPersonal ? "NIP / NIK" : "Username"}</Label>
-              <Input
-                id="edit-username"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                required
-              />
-            </div>
             <div className="flex gap-2">
               <Button type="button" variant="outline" className="flex-1" disabled={saving} onClick={() => setPanel("detail")}>
                 Batal
@@ -427,5 +413,7 @@ export function UserDetailDialog({
         ) : null}
       </DialogContent>
     </Dialog>
+      )}
+    </>
   );
 }

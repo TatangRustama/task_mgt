@@ -12,6 +12,19 @@ export type PegawaiJabatanSource = {
   jabatanNama?: string | null;
 };
 
+export function isKepalaTitle(title: string | null | undefined): boolean {
+  if (!title) return false;
+  title = title.toLowerCase().trim();
+  return (
+    title.startsWith("kepala") ||
+    title.startsWith("sekretaris") ||
+    title.startsWith("inspektur") ||
+    title.includes("kepala dinas") ||
+    title.includes("kepala badan") ||
+    title.includes("kepala biro")
+  );
+}
+
 /** Visible jabatan text: nama jabatan for ASN, "-" for Non-ASN. Never "Staf Pelaksana". */
 export function displayJabatan(
   pegawai?: PegawaiJabatanSource | null,

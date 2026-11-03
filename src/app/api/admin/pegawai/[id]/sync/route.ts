@@ -32,8 +32,15 @@ const pegawaiDetailSelect = {
   perangkatDaerahNama: true,
   unitId: true,
   userId: true,
-  unit: { select: { id: true, name: true } },
-  user: { select: { unitId: true, role: true } },
+  unit: { select: { id: true, name: true, pimpinanId: true } },
+  user: {
+    select: {
+      unitId: true,
+      role: true,
+      jabatan: true,
+      ledUnits: { select: { id: true, name: true } },
+    },
+  },
 } as const;
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {

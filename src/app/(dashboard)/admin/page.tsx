@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AppLoader } from "@/components/layout/AppLoader";
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserDetailDialog } from "@/components/admin/UserDetailDialog";
 import { roleAccessLabel, USER_PAGE_SIZES } from "@/lib/roles";
-import { cn } from "@/lib/utils";
 
 const selectClassName =
   "flex h-11 w-full rounded-lg border border-outline-variant px-3 text-sm focus-visible:outline-none focus-visible:border-primary-container focus-visible:ring-1 focus-visible:ring-primary-container";
@@ -42,7 +41,6 @@ function loginId(user: UserRow) {
 export default function AdminPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [message, setMessage] = useState("");
-  const [role, setRole] = useState<UserRole>("personal");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
@@ -51,9 +49,7 @@ export default function AdminPage() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [formOpen, setFormOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const isPersonal = role === "personal";
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -94,30 +90,6 @@ export default function AdminPage() {
     loadData();
   }, [loadData]);
 
-  async function createUser(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-    const res = await fetch("/api/admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: formData.get("name"),
-        username: formData.get("username"),
-        password: formData.get("password"),
-        role,
-      }),
-    });
-    const data = await res.json();
-    setMessage(res.ok ? "User berhasil dibuat" : data.error || "Gagal membuat user");
-    if (res.ok) {
-      form.reset();
-      setRole("personal");
-      setPage(1);
-      loadData();
-    }
-  }
-
   return (
     <PageMain className="max-w-4xl space-y-4">
       <PageHeader
@@ -127,71 +99,6 @@ export default function AdminPage() {
       {message ? (
         <p className="rounded-lg bg-secondary-container px-4 py-2 text-sm text-on-secondary-container">{message}</p>
       ) : null}
-
-      <Card>
-        <CardHeader className="p-0">
-          <button
-            type="button"
-            className="flex w-full items-center justify-between gap-3 rounded-lg p-4 text-left"
-            aria-expanded={formOpen}
-            aria-controls="tambah-user-form"
-            onClick={() => setFormOpen((open) => !open)}
-          >
-            <CardTitle className="text-base">Tambah user</CardTitle>
-            <ChevronDown
-              className={cn(
-                "h-5 w-5 shrink-0 text-on-surface-variant transition-transform",
-                formOpen && "rotate-180",
-              )}
-            />
-          </button>
-        </CardHeader>
-        {formOpen ? (
-          <CardContent id="tambah-user-form">
-            <form onSubmit={createUser} className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nama lengkap</Label>
-                <Input id="name" name="name" required placeholder="Nama lengkap" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <select
-                  id="role"
-                  name="role"
-                  className={selectClassName}
-                  value={role}
-                  onChange={(event) => setRole(event.target.value as UserRole)}
-                >
-                  <option value="personal">Personal</option>
-                  <option value="super_admin">Super Admin</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="username">{isPersonal ? "NIP / NIK" : "Username"}</Label>
-                <Input
-                  id="username"
-                  name="username"
-                  required
-                  placeholder={isPersonal ? "Contoh: 199203032019012003" : "Contoh: superadmin"}
-                  autoComplete="off"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  placeholder="Password"
-                  defaultValue="password123"
-                />
-              </div>
-              <Button type="submit">Simpan user</Button>
-            </form>
-          </CardContent>
-        ) : null}
-      </Card>
 
       <Card>
         <CardHeader>
@@ -258,20 +165,22 @@ export default function AdminPage() {
           {!loading && users.length === 0 ? (
             <p className="text-on-surface-variant">Tidak ada pengguna yang cocok.</p>
           ) : (
-            users.map((user) => (
-              <button
-                key={user.id}
-                type="button"
-                onClick={() => setSelectedUserId(user.id)}
-                className="w-full rounded-lg border border-surface-container-highest bg-surface-container-low p-3 text-left transition hover:border-primary-container hover:bg-surface-container"
-              >
-                <p className="font-medium text-on-surface">{user.name}</p>
-                <p className="text-on-surface-variant">
-                  {roleAccessLabel(user.role, user.opdAdmin, user.superAdmin)}
-                  {user.opdAdmin && !user.superAdmin && user.opdUnit?.name ? ` · ${user.opdUnit.name}` : ""} · {loginId(user)}
-                </p>
-              </button>
-            ))
+            <div className="space-y-2">
+              {users.map((user) => (
+                <button
+                  key={user.id}
+                  type="button"
+                  onClick={() => setSelectedUserId(user.id)}
+                  className="w-full rounded-lg border border-surface-container-highest bg-surface-container-low p-3 text-left transition hover:border-primary-container hover:bg-surface-container"
+                >
+                  <p className="font-medium text-on-surface">{user.name}</p>
+                  <p className="text-on-surface-variant">
+                    {roleAccessLabel(user.role, user.opdAdmin, user.superAdmin)}
+                    {user.opdAdmin && !user.superAdmin && user.opdUnit?.name ? ` · ${user.opdUnit.name}` : ""} · {loginId(user)}
+                  </p>
+                </button>
+              ))}
+            </div>
           )}
 
           <PageNumbers page={page} totalPages={totalPages} onChange={setPage} disabled={loading} />

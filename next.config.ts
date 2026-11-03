@@ -27,7 +27,7 @@ function lanDevOrigins() {
 const nextConfig: NextConfig = {
   output: "standalone",
   allowedDevOrigins: lanDevOrigins(),
-  serverExternalPackages: ["web-push"],
+  serverExternalPackages: ["web-push", "@prisma/client", "@prisma/adapter-pg", "pg"],
   async headers() {
     return [
       {

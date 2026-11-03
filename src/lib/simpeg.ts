@@ -32,9 +32,10 @@ export type SimpegPegawai = {
   jenis_jabatan_id: string | null;
   jenis_jabatan_nama: string | null;
   jabatan_id: string | null;
-  jabatan_nama: string | null;
+  jabatan_nama?: string | null;
+  jabatan?: string | null;
   unor_id: string | null;
-  unor_nama: string | null;
+  unor_nama?: string | null;
   perangkat_daerah_id: string | null;
   perangkat_daerah_nama: string | null;
 };
