@@ -53,6 +53,13 @@ export async function GET() {
     }
 
     try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "tanggalKinerja" TEXT;
+        CREATE INDEX IF NOT EXISTS "Task_unitId_tanggalKinerja_idx" ON "Task"("unitId", "tanggalKinerja");
+        UPDATE "Task"
+        SET "tanggalKinerja" = TO_CHAR("completedAt" AT TIME ZONE 'Asia/Jayapura', 'YYYY-MM-DD')
+        WHERE "completedAt" IS NOT NULL AND "tanggalKinerja" IS NULL;
+      `);
       await prisma.$queryRaw`SELECT 1`;
       databaseOk = true;
     } catch (error: any) {
