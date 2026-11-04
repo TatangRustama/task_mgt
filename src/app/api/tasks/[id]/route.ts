@@ -6,7 +6,7 @@ import { hasSuperAdminAccess, isAppAdmin } from "@/lib/roles";
 import { getAdminScope, taskRecordInScope } from "@/lib/admin-scope";
 import { parseJumlahSatuan } from "@/lib/satuan";
 import { getCurrentUser, type SessionUser } from "@/lib/session";
-import { parseAssignedAt, parseDateTimeLocal, parseFormDateInput } from "@/lib/utils";
+import { formatISODate, isISODate, parseAssignedAt, parseDateTimeLocal, parseFormDateInput } from "@/lib/utils";
 
 export async function GET(
   _request: Request,
@@ -113,6 +113,12 @@ export async function PATCH(
     return NextResponse.json({ error: parsedJumlah.error }, { status: 400 });
   }
 
+  let tanggalKinerja: string | null | undefined;
+  if ("tanggalKinerja" in body) {
+    const rawTk = String(body.tanggalKinerja || "").trim();
+    tanggalKinerja = isISODate(rawTk) ? rawTk : null;
+  }
+
   let completedAt: Date | null | undefined;
   if (hasSuperAdminAccess(user) && "completedAt" in body) {
     if (body.completedAt) {
@@ -136,6 +142,7 @@ export async function PATCH(
       jumlahIntervensi: parsedJumlah.jumlahIntervensi,
       satuan: parsedJumlah.satuan,
       ...(completedAt !== undefined ? { completedAt } : {}),
+      ...(tanggalKinerja !== undefined ? { tanggalKinerja } : {}),
     },
   });
 

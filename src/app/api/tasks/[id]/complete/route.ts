@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { parseJumlahSatuan } from "@/lib/satuan";
 import { getCurrentUser } from "@/lib/session";
 import { saveUploadedFile } from "@/lib/upload";
+import { formatISODate, isISODate } from "@/lib/utils";
 
 export async function POST(
   request: Request,
@@ -50,6 +51,11 @@ export async function POST(
     return NextResponse.json({ error: "Maksimal 3 foto" }, { status: 400 });
   }
 
+  const rawTanggalKinerja = String(formData.get("tanggalKinerja") || "").trim();
+  const tanggalKinerja = isISODate(rawTanggalKinerja)
+    ? rawTanggalKinerja
+    : formatISODate(new Date());
+
   try {
     const photoUrls = await Promise.all(photos.map((photo) => saveUploadedFile(photo)));
 
@@ -78,6 +84,7 @@ export async function POST(
         data: {
           status: "menunggu_approval",
           completedAt: new Date(),
+          tanggalKinerja,
           jumlahIntervensi: parsedJumlah.jumlahIntervensi,
           satuan: parsedJumlah.satuan,
         },

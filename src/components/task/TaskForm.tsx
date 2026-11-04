@@ -243,6 +243,7 @@ export function TaskFormDialog({
       const completeBody = evidence.toFormData();
       completeBody.append("jumlahIntervensi", jumlah);
       completeBody.append("satuan", satuan);
+      completeBody.append("tanggalKinerja", assignedAt || formatISODate(new Date()));
       const completeRes = await fetch(`/api/tasks/${created.id}/complete`, {
         method: "POST",
         body: completeBody,

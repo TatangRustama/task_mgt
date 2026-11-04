@@ -82,7 +82,11 @@ export function calendarDay(value: string | Date | null | undefined) {
 export function completedOnReportDate(
   completedAt: string | Date | null | undefined,
   reportDate: string,
+  tanggalKinerja?: string | null,
 ) {
+  if (tanggalKinerja && isISODate(tanggalKinerja)) {
+    return tanggalKinerja === reportDate;
+  }
   return calendarDay(completedAt) === reportDate;
 }
 
