@@ -104,31 +104,33 @@ export function MonthlyTaskPrintReport({
         empty="Tidak ada tugas pada periode ini."
       />
 
-      <p className="print-printed-on">dicetak pada : {formatPrintedOnDate()}</p>
-      <div className="print-sign">
-        <div>
-          <p>Mengetahui atasan langsung,</p>
-          <p className="print-sign-jabatan">{print.atasan?.jabatan || "Atasan langsung"}</p>
-          <div className="print-sign-space">
-            <span>ttd</span>
+      <div className="print-sign-block">
+        <p className="print-printed-on">dicetak pada : {formatPrintedOnDate()}</p>
+        <div className="print-sign">
+          <div>
+            <p>Mengetahui atasan langsung,</p>
+            <p className="print-sign-jabatan">{print.atasan?.jabatan || "Atasan langsung"}</p>
+            <div className="print-sign-space">
+              <span>ttd</span>
+            </div>
+            <p className="print-sign-name">{print.atasan?.name || "_________________________"}</p>
+            <p className="print-sign-nip">NIP. {print.atasan?.nip || "-"}</p>
           </div>
-          <p className="print-sign-name">{print.atasan?.name || "_________________________"}</p>
-          <p className="print-sign-nip">NIP. {print.atasan?.nip || "-"}</p>
-        </div>
-        <div className="print-sign-qr">
-          {print.qrDataUrl ? (
-            <img src={print.qrDataUrl} alt={`QR validasi laporan ${print.reportId}`} className="print-qr" />
-          ) : null}
-          <p className="print-report-id">ID laporan: {print.reportId}</p>
-        </div>
-        <div>
-          <p>Dibuat oleh,</p>
-          <p className="print-sign-jabatan">{print.author.jabatan}</p>
-          <div className="print-sign-space">
-            <span>ttd</span>
+          <div className="print-sign-qr">
+            {print.qrDataUrl ? (
+              <img src={print.qrDataUrl} alt={`QR validasi laporan ${print.reportId}`} className="print-qr" />
+            ) : null}
+            <p className="print-report-id">ID laporan: {print.reportId}</p>
           </div>
-          <p className="print-sign-name">{print.author.name}</p>
-          <p className="print-sign-nip">NIP. {print.author.nip}</p>
+          <div>
+            <p>Dibuat oleh,</p>
+            <p className="print-sign-jabatan">{print.author.jabatan}</p>
+            <div className="print-sign-space">
+              <span>ttd</span>
+            </div>
+            <p className="print-sign-name">{print.author.name}</p>
+            <p className="print-sign-nip">NIP. {print.author.nip}</p>
+          </div>
         </div>
       </div>
 
@@ -157,17 +159,17 @@ export function PrintTaskTable({
           <th className="col-hasil">Hasil/ Paraf</th>
         </tr>
       </thead>
-      <tbody>
-        {tasks.length === 0 ? (
+      {tasks.length === 0 ? (
+        <tbody>
           <tr>
             <td colSpan={5} className="print-empty-cell">
               {empty}
             </td>
           </tr>
-        ) : (
-          <MonthlyTaskDayRows tasks={tasks} authorName={authorName} />
-        )}
-      </tbody>
+        </tbody>
+      ) : (
+        <MonthlyTaskDayRows tasks={tasks} authorName={authorName} />
+      )}
     </table>
   );
 }
