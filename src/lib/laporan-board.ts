@@ -223,14 +223,14 @@ function toPerson(
   includeIdle: boolean,
   reportDate?: string,
 ): LaporanPerson {
-  const onThisDay = (completedAt: string | null | undefined) =>
+  const onThisDay = (task: { completedAt?: string | null; tanggalKinerja?: string | null }) =>
     view === "harian" && reportDate
-      ? completedOnReportDate(completedAt, reportDate)
-      : inRange(completedAt, start, end);
+      ? completedOnReportDate(task.completedAt, reportDate, task.tanggalKinerja)
+      : inRange(task.completedAt, start, end);
   const approved = tasks.filter(
     (task) =>
       task.status === "disetujui" &&
-      (view === "harian" ? onThisDay(task.completedAt) : inRange(assessedAt(task), start, end)),
+      (view === "harian" ? onThisDay(task) : inRange(assessedAt(task), start, end)),
   );
   const rejected = tasks.filter(
     (task) => task.status === "ditolak" && inRange(assessedAt(task) || task.createdAt, start, end),
@@ -238,7 +238,7 @@ function toPerson(
   const waiting = tasks.filter(
     (task) =>
       task.status === "menunggu_approval" &&
-      (view !== "harian" || onThisDay(task.completedAt)),
+      (view !== "harian" || onThisDay(task)),
   );
   const inProgress = tasks.filter(
     (task) =>
@@ -518,7 +518,7 @@ export async function getLaporanBoard(options: LaporanBoardOptions): Promise<Lap
       (task) =>
         task.status === "disetujui" &&
         (options.view === "harian"
-          ? completedOnReportDate(task.completedAt, options.date)
+          ? completedOnReportDate(task.completedAt, options.date, task.tanggalKinerja)
           : inRange(assessedAt(task), start, end)),
     );
     const rejected = unitTasks.filter(
@@ -527,7 +527,7 @@ export async function getLaporanBoard(options: LaporanBoardOptions): Promise<Lap
     const waiting = unitTasks.filter(
       (task) =>
         task.status === "menunggu_approval" &&
-        (options.view !== "harian" || completedOnReportDate(task.completedAt, options.date)),
+        (options.view !== "harian" || completedOnReportDate(task.completedAt, options.date, task.tanggalKinerja)),
     );
     const scores = scoreStats(approved);
     const completedCounts = unitPeople.filter((person) => person.isStaff).map((person) => person.completed);

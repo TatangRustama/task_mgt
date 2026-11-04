@@ -22,6 +22,7 @@ export type ReportTask = {
   createdByName: string;
   jumlahIntervensi: number | null;
   satuan: string | null;
+  tanggalKinerja?: string | null;
   printRole?: "selesai" | "dikerjakan";
 };
 

@@ -30,6 +30,8 @@ async function loadMonthlyPrintTasks(
   start: Date,
   end: Date,
   completedOnly = false,
+  targetDate?: string,
+  monthPrefix?: string,
 ) {
   const rows = await prisma.task.findMany({
     where: {
@@ -37,9 +39,15 @@ async function loadMonthlyPrintTasks(
         where,
         { status: { not: "dibatalkan" } },
         completedOnly
-          ? { completedAt: { gte: start, lt: end } }
+          ? {
+              OR: [
+                ...(targetDate ? [{ tanggalKinerja: targetDate }] : []),
+                { completedAt: { gte: start, lt: end } },
+              ],
+            }
           : {
               OR: [
+                ...(monthPrefix ? [{ tanggalKinerja: { startsWith: monthPrefix } }] : []),
                 { completedAt: { gte: start, lt: end } },
                 { assignedAt: { gte: start, lt: end }, completedAt: { gte: end } },
               ],
@@ -119,23 +127,26 @@ export async function getLaporanPrintData(
     ),
   ];
   const completedOnly = view === "harian";
+  const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
   const [leaderTasks, tasks] = await Promise.all([
     isLeader
-      ? loadMonthlyPrintTasks({ assignedToId: user.id }, start, end, completedOnly)
+      ? loadMonthlyPrintTasks({ assignedToId: user.id }, start, end, completedOnly, date, monthPrefix)
       : Promise.resolve([]),
     isLeader
       ? unitAssigneeIds.length
-        ? loadMonthlyPrintTasks({ assignedToId: { in: unitAssigneeIds } }, start, end, completedOnly)
+        ? loadMonthlyPrintTasks({ assignedToId: { in: unitAssigneeIds } }, start, end, completedOnly, date, monthPrefix)
         : Promise.resolve([])
       : loadMonthlyPrintTasks(
           { OR: [{ assignedToId: user.id }, { createdById: user.id }] },
           start,
           end,
           completedOnly,
+          date,
+          monthPrefix,
         ),
   ]);
-  const onReportDate = (task: { completedAt?: string | Date | null }) =>
-    !completedOnly || completedOnReportDate(task.completedAt, date);
+  const onReportDate = (task: { completedAt?: string | Date | null; tanggalKinerja?: string | null }) =>
+    !completedOnly || completedOnReportDate(task.completedAt, date, task.tanggalKinerja);
   leaderTasks.splice(0, leaderTasks.length, ...leaderTasks.filter(onReportDate));
   tasks.splice(0, tasks.length, ...tasks.filter(onReportDate));
   const ownPrinted = isLeader ? leaderTasks : tasks.filter((task) => task.assigneeId === user.id);

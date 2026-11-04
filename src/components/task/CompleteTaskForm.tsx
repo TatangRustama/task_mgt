@@ -7,6 +7,7 @@ import { EvidenceFields, useEvidenceCapture } from "@/components/task/EvidenceCa
 import { InterventionFields } from "@/components/task/InterventionFields";
 import { useNavigationLoader } from "@/components/layout/NavigationLoader";
 import { parseJumlahSatuan } from "@/lib/satuan";
+import { formatISODate } from "@/lib/utils";
 
 export function CompleteTaskForm({
   taskId,
@@ -26,6 +27,7 @@ export function CompleteTaskForm({
   const [jumlah, setJumlah] = useState(jumlahIntervensi != null ? String(jumlahIntervensi) : "");
   const [satuanValue, setSatuanValue] = useState(satuan ?? "");
   const evidence = useEvidenceCapture(true);
+  const [tanggalKinerja, setTanggalKinerja] = useState(formatISODate(new Date()));
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -47,6 +49,7 @@ export function CompleteTaskForm({
     const body = evidence.toFormData();
     body.append("jumlahIntervensi", jumlah);
     body.append("satuan", satuanValue);
+    body.append("tanggalKinerja", tanggalKinerja);
     const res = await fetch(`/api/tasks/${taskId}/complete`, {
       method: "POST",
       body,
@@ -67,6 +70,21 @@ export function CompleteTaskForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-on-surface-variant">
+          Tanggal Kinerja
+        </label>
+        <input
+          type="date"
+          value={tanggalKinerja}
+          onChange={(e) => setTanggalKinerja(e.target.value)}
+          className="box-border flex h-9 w-full min-w-0 rounded-lg border border-outline bg-surface-container-lowest px-3 text-sm text-on-surface focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary"
+          required
+        />
+        <p className="text-[11px] text-on-surface-variant/80">
+          Sesuai tanggal pelaksanaan tugas di wilayah kerja Anda.
+        </p>
+      </div>
       <InterventionFields
         jumlah={jumlah}
         satuan={satuanValue}

@@ -186,6 +186,7 @@ model Task {
   assignedAt       DateTime       @default(now())
   deadline         DateTime?
   completedAt    DateTime?
+  tanggalKinerja String?
   deletedAt      DateTime?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
@@ -200,6 +201,7 @@ model Task {
   @@index([unitId, createdAt])
   @@index([unitId, assignedAt])
   @@index([unitId, completedAt])
+  @@index([unitId, tanggalKinerja])
   @@index([assignedToId])
   @@index([assignedToId, status])
   @@index([createdById])

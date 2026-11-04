@@ -90,6 +90,7 @@ export function mapTask(task: {
   assignedAt?: Date | null;
   completedAt: Date | null;
   deadline: Date | null;
+  tanggalKinerja?: string | null;
   assignedTo: { id: string; name: string } | null;
   createdBy: { name: string };
   evidence: { address: string; notes: string; photoUrls?: string[] } | null;
@@ -109,6 +110,7 @@ export function mapTask(task: {
     assignedAt: (task.assignedAt ?? task.createdAt).toISOString(),
     completedAt: task.completedAt?.toISOString() || null,
     deadline: task.deadline?.toISOString() || null,
+    tanggalKinerja: task.tanggalKinerja ?? null,
     reviewedAt: task.review?.reviewedAt.toISOString() || null,
     score: task.rating?.stars ?? normalizeStars(task.review?.score),
     address: task.evidence?.address || null,
@@ -280,14 +282,22 @@ export async function getDailyReport(
 
   const tasks = await prisma.task.findMany({
     where: {
-      AND: [scopeFilter, { completedAt: { gte: start, lt: end } }],
+      AND: [
+        scopeFilter,
+        {
+          OR: [
+            { tanggalKinerja: options.date },
+            { tanggalKinerja: null, completedAt: { gte: start, lt: end } },
+          ],
+        },
+      ],
       status: { not: "dibatalkan" },
     },
     include: options.detail === "print" || options.detail === undefined ? taskPrintInclude : taskUiInclude,
     orderBy: { completedAt: "asc" },
   });
 
-  const mapped = tasks.map(mapTask).filter((task) => completedOnReportDate(task.completedAt, options.date));
+  const mapped = tasks.map(mapTask).filter((task) => completedOnReportDate(task.completedAt, options.date, task.tanggalKinerja));
   const meta = await getUnitMeta(options.unitId);
 
   return {
@@ -306,6 +316,7 @@ export async function getMonthlyCalendar(
 
   const start = new Date(options.year, options.month - 1, 1);
   const end = new Date(options.year, options.month, 1);
+  const monthPrefix = `${options.year}-${String(options.month).padStart(2, "0")}`;
 
   const tasks = await prisma.task.findMany({
     where: {
@@ -316,6 +327,7 @@ export async function getMonthlyCalendar(
             { assignedAt: { gte: start, lt: end } },
             { createdAt: { gte: start, lt: end } },
             { completedAt: { gte: start, lt: end } },
+            { tanggalKinerja: { startsWith: monthPrefix } },
           ],
         },
       ],
@@ -339,8 +351,8 @@ export async function getMonthlyCalendar(
     if (recap.has(postedKey)) {
       recap.get(postedKey)!.posted += 1;
     }
-    if (task.completedAt) {
-      const completedKey = formatISODate(task.completedAt);
+    if (task.tanggalKinerja || task.completedAt) {
+      const completedKey = task.tanggalKinerja || formatISODate(task.completedAt!);
       if (recap.has(completedKey)) {
         recap.get(completedKey)!.completed += 1;
       }
