@@ -1,7 +1,7 @@
 import { dailyReportFilename, monthlyReportFilename } from "@/lib/report-filename";
 
-const PDF_MARGIN_X_MM = 14;
-const PDF_MARGIN_Y_MM = 12;
+const PDF_MARGIN_X_MM = 8;
+const PDF_MARGIN_Y_MM = 8;
 
 export function printPdfFilename(options: {
   view: "harian" | "bulanan";
@@ -54,9 +54,11 @@ function applyPrintCloneStyles(el: HTMLElement) {
 const KEEP_TOGETHER_SELECTOR = [
   ".print-kop",
   ".print-title",
+  ".print-wfh-date",
   ".print-subtitle",
   ".print-section-label",
   ".print-id",
+  ".print-identity-table",
   ".print-sign",
   ".print-wfh-sign",
   ".print-printed-on",
@@ -116,18 +118,8 @@ function collectPageBreakLayout(root: HTMLElement, canvas: HTMLCanvasElement) {
   return { blocks, lines, scale };
 }
 
-function cutsThroughText(y: number, lines: CanvasBox[]) {
-  return lines.some((line) => line.top < y - 0.75 && line.bottom > y + 0.75);
-}
-
-function withInkPad(y: number, lines: CanvasBox[], idealEnd: number, scale: number) {
-  const pad = Math.max(1, scale * 0.75);
-  const nextTop = lines
-    .map((line) => line.top)
-    .filter((top) => top >= y - 0.5)
-    .sort((a, b) => a - b)[0];
-  const limit = nextTop == null ? y + pad : nextTop;
-  return Math.min(idealEnd, Math.max(y, Math.min(y + pad, limit)));
+function cutsThroughText(y: number, lines: CanvasBox[], pad = 1.5) {
+  return lines.some((line) => line.top < y - pad && line.bottom > y + pad);
 }
 
 export function chooseSliceHeight(
@@ -142,46 +134,70 @@ export function chooseSliceHeight(
   if (remaining <= pageHeightPx) return remaining;
 
   const idealEnd = sourceY + pageHeightPx;
-  const minSlice = Math.min(pageHeightPx * 0.2, Math.max(24, scale * 16));
+  const pad = Math.max(1.5, scale * 0.75);
+  const minSlice = Math.min(pageHeightPx * 0.2, Math.max(30, scale * 20));
 
-  const movable = blocks
-    .filter((block) => {
-      const height = block.bottom - block.top;
-      return (
-        height > 1 &&
-        height <= pageHeightPx &&
-        block.top < idealEnd - 1 &&
-        block.bottom > idealEnd + 1 &&
-        block.top >= sourceY + minSlice
-      );
-    })
-    .sort((a, b) => b.bottom - b.top - (a.bottom - a.top));
+  // 1. Break before an atomic block that crosses idealEnd (e.g. table row, signature block)
+  const crossingBlocks = blocks
+    .filter(
+      (b) =>
+        b.top >= sourceY + minSlice &&
+        b.top < idealEnd - pad &&
+        b.bottom > idealEnd + pad &&
+        b.bottom - b.top <= pageHeightPx,
+    )
+    .sort((a, b) => b.top - a.top);
 
-  for (const block of movable) {
-    if (!cutsThroughText(block.top, lines)) return block.top - sourceY;
+  for (const block of crossingBlocks) {
+    if (!cutsThroughText(block.top, lines, pad)) {
+      return block.top - sourceY;
+    }
   }
 
-  const lineCandidates = lines
-    .flatMap((line) => [line.top, line.bottom])
-    .filter((y) => y > sourceY + minSlice && y <= idealEnd)
+  // 2. Break at the bottom of the last block fitting before idealEnd
+  const fittingBlockEnds = blocks
+    .map((b) => b.bottom)
+    .filter((bottom) => bottom >= sourceY + minSlice && bottom <= idealEnd)
     .sort((a, b) => b - a);
 
-  for (const y of lineCandidates) {
-    const end = withInkPad(y, lines, idealEnd, scale);
-    if (end <= sourceY + minSlice) continue;
-    if (!cutsThroughText(end, lines)) return end - sourceY;
+  for (const bottom of fittingBlockEnds) {
+    const cutY = Math.min(idealEnd, bottom);
+    if (!cutsThroughText(cutY, lines, pad)) {
+      return cutY - sourceY;
+    }
   }
 
-  const blockEnds = blocks
-    .map((block) => block.bottom)
-    .filter((bottom) => bottom > sourceY + minSlice && bottom <= idealEnd)
+  // 3. Break in text gaps between lines
+  const fittingLineGaps = lines
+    .flatMap((l) => [l.bottom + pad, l.top - pad])
+    .filter((y) => y >= sourceY + minSlice && y <= idealEnd)
     .sort((a, b) => b - a);
 
-  for (const bottom of blockEnds) {
-    if (!cutsThroughText(bottom, lines)) return bottom - sourceY;
+  for (const y of fittingLineGaps) {
+    if (!cutsThroughText(y, lines, pad)) {
+      return y - sourceY;
+    }
   }
 
-  return pageHeightPx;
+  // 4. Safe fallback: find the line that crosses idealEnd and break BEFORE its top
+  const lineCrossing = lines
+    .filter((l) => l.top >= sourceY + minSlice && l.top < idealEnd && l.bottom > idealEnd)
+    .sort((a, b) => a.top - b.top)[0];
+
+  if (lineCrossing && lineCrossing.top - pad > sourceY + minSlice) {
+    return lineCrossing.top - pad - sourceY;
+  }
+
+  // 5. Ultimate fallback: last line completely fitting before idealEnd
+  const lastFittingLine = lines
+    .filter((l) => l.bottom >= sourceY + minSlice && l.bottom <= idealEnd)
+    .sort((a, b) => b.bottom - a.bottom)[0];
+
+  if (lastFittingLine) {
+    return Math.min(pageHeightPx, lastFittingLine.bottom + pad - sourceY);
+  }
+
+  return Math.max(minSlice, pageHeightPx - Math.round(20 * scale));
 }
 
 function addCanvasPages(
@@ -261,6 +277,11 @@ async function captureSection(
       const cloned = clonedEl ?? _doc.querySelector<HTMLElement>(".print-root");
       if (!cloned) return;
       applyPrintCloneStyles(cloned);
+      for (const img of cloned.querySelectorAll("img")) {
+        if (!img.complete || img.naturalWidth === 0) {
+          img.style.display = "none";
+        }
+      }
     },
   });
 }
