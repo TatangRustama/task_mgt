@@ -23,6 +23,10 @@ export function BottomNav({
   const items = getNavItems(role, { isLeader, opdAdmin, superAdmin, surface: "footer" });
   const pinned = (opdAdmin || superAdmin) && role === "personal";
 
+  if (items.length === 0) {
+    return null;
+  }
+
   function renderItem({ href, label, icon: Icon }: AppNavItem) {
     const active = isNavActive(pathname, href);
     return (
