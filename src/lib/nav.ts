@@ -74,6 +74,15 @@ function personalGroups(options?: NavOptions): AppNavGroup[] {
 export function getNavGroups(role: Role, options?: NavOptions): AppNavGroup[] {
   const resolved = coerceRole(role);
 
+  // Footer bar hanya menampilkan menu Home, Board, Kinerja, dan Laporan.
+  // Menu Admin OPD dan Super Admin hanya ada pada sidebar.
+  if (options?.surface === "footer") {
+    if (resolved !== "personal") {
+      return [];
+    }
+    return personalGroups(options);
+  }
+
   if (resolved === "personal") {
     const groups: AppNavGroup[] = personalGroups(options);
     if (options?.superAdmin) {
