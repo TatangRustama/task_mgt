@@ -138,30 +138,36 @@ export async function getDailyLaporanPrintContext(options: {
     atasanOrg ? personFromUser(atasanOrg.id, customAtasanJabatan) : Promise.resolve(null),
   ]);
 
-  const report = await prisma.dailyTaskReport.upsert({
+  let report = await prisma.dailyTaskReport.findFirst({
     where: {
-      userId_date_scopeKind: {
-        userId: options.userId,
-        date: options.date,
-        scopeKind,
-      },
-    },
-    create: {
       userId: options.userId,
       date: options.date,
       scopeKind,
-      penugasanSementaraId,
-      unitId: scope?.unitId ?? orgUser?.unitId ?? null,
-      atasanId: atasanOrg?.id ?? null,
-      taskIds: options.taskIds,
-    },
-    update: {
-      penugasanSementaraId,
-      unitId: scope?.unitId ?? orgUser?.unitId ?? null,
-      atasanId: atasanOrg?.id ?? null,
-      taskIds: options.taskIds,
     },
   });
+  if (report) {
+    report = await prisma.dailyTaskReport.update({
+      where: { id: report.id },
+      data: {
+        penugasanSementaraId,
+        unitId: scope?.unitId ?? orgUser?.unitId ?? null,
+        atasanId: atasanOrg?.id ?? null,
+        taskIds: options.taskIds,
+      },
+    });
+  } else {
+    report = await prisma.dailyTaskReport.create({
+      data: {
+        userId: options.userId,
+        date: options.date,
+        scopeKind,
+        penugasanSementaraId,
+        unitId: scope?.unitId ?? orgUser?.unitId ?? null,
+        atasanId: atasanOrg?.id ?? null,
+        taskIds: options.taskIds,
+      },
+    });
+  }
   const { validationUrl, qrDataUrl } = await validationQr(report.id);
 
   return {
@@ -212,32 +218,38 @@ export async function getLaporanPrintContext(options: {
     atasanOrg ? personFromUser(atasanOrg.id, customAtasanJabatan) : Promise.resolve(null),
   ]);
 
-  const report = await prisma.monthlyTaskReport.upsert({
+  let report = await prisma.monthlyTaskReport.findFirst({
     where: {
-      userId_month_year_scopeKind: {
-        userId: options.userId,
-        month: options.month,
-        year: options.year,
-        scopeKind,
-      },
-    },
-    create: {
       userId: options.userId,
       month: options.month,
       year: options.year,
       scopeKind,
-      penugasanSementaraId,
-      unitId: scope?.unitId ?? orgUser?.unitId ?? null,
-      atasanId: atasanOrg?.id ?? null,
-      taskIds: options.taskIds,
-    },
-    update: {
-      penugasanSementaraId,
-      unitId: scope?.unitId ?? orgUser?.unitId ?? null,
-      atasanId: atasanOrg?.id ?? null,
-      taskIds: options.taskIds,
     },
   });
+  if (report) {
+    report = await prisma.monthlyTaskReport.update({
+      where: { id: report.id },
+      data: {
+        penugasanSementaraId,
+        unitId: scope?.unitId ?? orgUser?.unitId ?? null,
+        atasanId: atasanOrg?.id ?? null,
+        taskIds: options.taskIds,
+      },
+    });
+  } else {
+    report = await prisma.monthlyTaskReport.create({
+      data: {
+        userId: options.userId,
+        month: options.month,
+        year: options.year,
+        scopeKind,
+        penugasanSementaraId,
+        unitId: scope?.unitId ?? orgUser?.unitId ?? null,
+        atasanId: atasanOrg?.id ?? null,
+        taskIds: options.taskIds,
+      },
+    });
+  }
 
   const { validationUrl, qrDataUrl } = await validationQr(report.id);
 

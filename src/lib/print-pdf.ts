@@ -303,7 +303,7 @@ async function captureSection(
 export async function downloadPrintPdf(filename: string) {
   const source = document.querySelector<HTMLElement>(".print-wfh.print-root")
     ?? document.querySelector<HTMLElement>(".print-root");
-  if (!source) return;
+  if (!source) throw new Error("Elemen dokumen cetak belum siap di halaman.");
 
   const html2canvas = (await import("html2canvas")).default;
   const { jsPDF } = await import("jspdf");
@@ -332,7 +332,7 @@ export async function downloadPrintPdf(filename: string) {
         ? await captureSection(html2canvas, lampiranRoot)
         : null;
 
-    if (!mainCanvas.width || !mainCanvas.height) return;
+    if (!mainCanvas.width || !mainCanvas.height) throw new Error("Gagal mengambil gambar halaman laporan.");
 
     const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
     addCanvasPages(pdf, mainCanvas, false, clone);
