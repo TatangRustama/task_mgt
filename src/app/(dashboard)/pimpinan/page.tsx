@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Archive } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
 import { KinerjaBoard } from "@/components/pimpinan/KinerjaBoard";
 import { AppLoader } from "@/components/layout/AppLoader";
@@ -58,8 +58,8 @@ export default async function PimpinanPage({
             href="/laporan"
             className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-600 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
           >
-            <Archive className="h-4 w-4" />
-            Arsip
+            <BarChart3 className="h-4 w-4" />
+            Laporan
           </Link>
         }
       />
