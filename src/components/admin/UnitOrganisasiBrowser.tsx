@@ -2,16 +2,18 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, RefreshCw } from "lucide-react";
+import { Check, ChevronRight, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageMain";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { deriveNamaJabatan } from "@/lib/jabatan-display";
 import { cn } from "@/lib/utils";
 
 export type OrgUnit = {
   id: string;
   name: string;
+  namaJabatan: string | null;
   parentId: string | null;
   parentName: string | null;
   type: string;
@@ -57,6 +59,7 @@ function buildForest(units: OrgUnit[]): TreeNode[] {
     .map(([id, group]) => ({
       id: `pd:${id}`,
       name: group.label,
+      namaJabatan: null,
       parentId: null,
       parentName: null,
       type: "kantor",
@@ -73,6 +76,7 @@ function buildForest(units: OrgUnit[]): TreeNode[] {
 function nodeMatches(node: TreeNode, query: string): boolean {
   if (!query) return true;
   if (node.name.toLowerCase().includes(query)) return true;
+  if (node.namaJabatan?.toLowerCase().includes(query)) return true;
   return node.children.some((child) => nodeMatches(child, query));
 }
 
@@ -93,7 +97,10 @@ function UnitNode({
   onToggle: (id: string) => void;
   onSelect: (node: TreeNode) => void;
 }) {
-  const selfMatches = !query || node.name.toLowerCase().includes(query);
+  const selfMatches =
+    !query ||
+    node.name.toLowerCase().includes(query) ||
+    Boolean(node.namaJabatan?.toLowerCase().includes(query));
   if (query && !forceShow && !nodeMatches(node, query)) return null;
   const hasChildren = node.children.length > 0;
   const open = Boolean(query) || expanded.has(node.id);
@@ -131,6 +138,7 @@ function UnitNode({
           {selectable ? (
             <span className={cn("block text-xs", selected ? "text-on-secondary-container/80" : "text-on-surface-variant")}>
               {typeLabel[node.type] || node.type}
+              {node.namaJabatan ? ` · ${node.namaJabatan}` : ""}
               {node.pegawaiCount > 0 ? ` · ${node.pegawaiCount} pegawai` : ""}
             </span>
           ) : null}
@@ -173,13 +181,58 @@ export function UnitOrganisasiBrowser({ units }: { units: OrgUnit[] }) {
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState("");
   const [syncError, setSyncError] = useState(false);
-  const forest = useMemo(() => buildForest(units), [units]);
+  const [jabatanOverrides, setJabatanOverrides] = useState<Record<string, string>>({});
+  const [draftJabatan, setDraftJabatan] = useState("");
+  const [savingJabatan, setSavingJabatan] = useState(false);
+  const [jabatanSaved, setJabatanSaved] = useState(false);
+
+  const effectiveUnits = useMemo(
+    () =>
+      units.map((u) =>
+        jabatanOverrides[u.id] !== undefined
+          ? { ...u, namaJabatan: jabatanOverrides[u.id] }
+          : u,
+      ),
+    [units, jabatanOverrides],
+  );
+  const forest = useMemo(() => buildForest(effectiveUnits), [effectiveUnits]);
   const foldedQuery = query.trim().toLowerCase();
-  const selected = units.find((unit) => unit.id === selectedId) ?? null;
-  const childCount = selected ? units.filter((unit) => unit.parentId === selected.id).length : 0;
+  const selected = effectiveUnits.find((unit) => unit.id === selectedId) ?? null;
+  const childCount = selected ? effectiveUnits.filter((unit) => unit.parentId === selected.id).length : 0;
   const perangkatDaerahCount = new Set(
-    units.map((unit) => unit.perangkatDaerahId).filter((id): id is string => Boolean(id)),
+    effectiveUnits.map((unit) => unit.perangkatDaerahId).filter((id): id is string => Boolean(id)),
   ).size;
+
+  function selectUnit(node: TreeNode) {
+    setSelectedId(node.id);
+    setDraftJabatan(node.namaJabatan || deriveNamaJabatan(node.name));
+    setJabatanSaved(false);
+  }
+
+  async function saveNamaJabatan() {
+    if (!selected) return;
+    setSavingJabatan(true);
+    setJabatanSaved(false);
+    setSyncError(false);
+    setSyncMessage("");
+    const res = await fetch(`/api/admin/unit/${encodeURIComponent(selected.id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ namaJabatan: draftJabatan }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSavingJabatan(false);
+    if (!res.ok) {
+      setSyncError(true);
+      setSyncMessage(data.error || "Gagal menyimpan nama jabatan unit");
+      return;
+    }
+    const savedValue = data.unit?.namaJabatan ?? draftJabatan;
+    setJabatanOverrides((prev) => ({ ...prev, [selected.id]: savedValue }));
+    setDraftJabatan(savedValue);
+    setJabatanSaved(true);
+    router.refresh();
+  }
 
   async function pullFromSimpeg() {
     setSyncing(true);
@@ -224,7 +277,7 @@ export function UnitOrganisasiBrowser({ units }: { units: OrgUnit[] }) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            Seluruh unit ({units.length}
+            Seluruh unit ({effectiveUnits.length}
             {perangkatDaerahCount > 0 ? ` · ${perangkatDaerahCount} perangkat daerah` : ""})
           </CardTitle>
         </CardHeader>
@@ -232,13 +285,38 @@ export function UnitOrganisasiBrowser({ units }: { units: OrgUnit[] }) {
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Cari nama unit atau perangkat daerah"
+            placeholder="Cari nama unit, jabatan, atau perangkat daerah"
             aria-label="Cari unit organisasi"
           />
           {selected ? (
             <div className="grid gap-3 rounded-lg border border-outline-variant bg-surface-container-lowest p-3 sm:grid-cols-2">
-              <DetailField label="Nama" value={selected.name} />
+              <DetailField label="Nama Unit" value={selected.name} />
               <DetailField label="Jenis" value={typeLabel[selected.type] || selected.type} />
+              <div className="sm:col-span-2 space-y-1">
+                <p className="text-xs text-on-surface-variant">
+                  Nama Jabatan Struktural (digunakan untuk Plt./Plh. & Pimpinan Unit)
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    value={draftJabatan}
+                    onChange={(event) => {
+                      setDraftJabatan(event.target.value);
+                      setJabatanSaved(false);
+                    }}
+                    placeholder={deriveNamaJabatan(selected.name)}
+                    className="h-8 flex-1 text-sm"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => void saveNamaJabatan()}
+                    disabled={savingJabatan}
+                  >
+                    {jabatanSaved ? <Check className="h-3.5 w-3.5" /> : null}
+                    {savingJabatan ? "Menyimpan..." : jabatanSaved ? "Tersimpan" : "Simpan"}
+                  </Button>
+                </div>
+              </div>
               <DetailField label="Induk" value={selected.parentName || "-"} />
               <DetailField label="Perangkat daerah" value={selected.perangkatDaerahNama || "-"} />
               <DetailField label="Eselon" value={selected.eselonId || "-"} />
@@ -252,7 +330,7 @@ export function UnitOrganisasiBrowser({ units }: { units: OrgUnit[] }) {
           ) : (
             <p className="text-on-surface-variant">Pilih satu unit untuk melihat detailnya.</p>
           )}
-          {units.length === 0 ? (
+          {effectiveUnits.length === 0 ? (
             <p className="text-on-surface-variant">Belum ada unit organisasi.</p>
           ) : (
             <div className="max-h-[60vh] space-y-1 overflow-y-auto rounded-lg border border-outline-variant p-2">
@@ -271,7 +349,7 @@ export function UnitOrganisasiBrowser({ units }: { units: OrgUnit[] }) {
                       return next;
                     });
                   }}
-                  onSelect={(node) => setSelectedId(node.id)}
+                  onSelect={selectUnit}
                 />
               ))}
             </div>

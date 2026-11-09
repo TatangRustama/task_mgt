@@ -77,6 +77,7 @@ model Instansi {
 model Unit {
   id                  String    @id @default(cuid())
   name                String
+  namaJabatan         String?   @map("nama_jabatan")
   instansiId          String
   parentId            String?
   type                UnitType  @default(bidang)
@@ -151,6 +152,9 @@ model PenugasanSementara {
   updatedAt DateTime       @updatedAt
   user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   unit      Unit           @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  tasks     Task[]
+  monthlyReports MonthlyTaskReport[]
+  dailyReports   DailyTaskReport[]
 
   @@index([userId])
   @@index([unitId])
@@ -196,6 +200,9 @@ model Task {
   evidence       TaskEvidence?
   review         TaskReview?
   rating         TaskRating?
+  scopeKind            String?        @default("definitif")
+  penugasanSementaraId String?
+  penugasanSementara   PenugasanSementara? @relation(fields: [penugasanSementaraId], references: [id], onDelete: SetNull)
 
   @@index([unitId, status])
   @@index([unitId, createdAt])
@@ -204,6 +211,8 @@ model Task {
   @@index([unitId, tanggalKinerja])
   @@index([assignedToId])
   @@index([assignedToId, status])
+  @@index([assignedToId, scopeKind])
+  @@index([unitId, scopeKind])
   @@index([createdById])
   @@index([assignmentMode, status])
 }
@@ -247,34 +256,44 @@ model TaskRating {
 }
 
 model MonthlyTaskReport {
-  id        String   @id @default(cuid())
-  userId    String
-  month     Int
-  year      Int
-  atasanId  String?
-  taskIds   String[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation("ReportAuthor", fields: [userId], references: [id], onDelete: Cascade)
-  atasan    User?    @relation("ReportAtasan", fields: [atasanId], references: [id], onDelete: SetNull)
+  id                   String              @id @default(cuid())
+  userId               String
+  month                Int
+  year                 Int
+  scopeKind            String              @default("definitif")
+  penugasanSementaraId String?
+  unitId               String?
+  atasanId             String?
+  taskIds              String[]
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  user                 User                @relation("ReportAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  atasan               User?               @relation("ReportAtasan", fields: [atasanId], references: [id], onDelete: SetNull)
+  penugasanSementara   PenugasanSementara? @relation(fields: [penugasanSementaraId], references: [id], onDelete: SetNull)
 
-  @@unique([userId, month, year])
+  @@unique([userId, month, year, scopeKind])
   @@index([userId])
+  @@index([userId, scopeKind])
 }
 
 model DailyTaskReport {
-  id        String   @id @default(cuid())
-  userId    String
-  date      String
-  atasanId  String?
-  taskIds   String[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation("DailyReportAuthor", fields: [userId], references: [id], onDelete: Cascade)
-  atasan    User?    @relation("DailyReportAtasan", fields: [atasanId], references: [id], onDelete: SetNull)
+  id                   String              @id @default(cuid())
+  userId               String
+  date                 String
+  scopeKind            String              @default("definitif")
+  penugasanSementaraId String?
+  unitId               String?
+  atasanId             String?
+  taskIds              String[]
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  user                 User                @relation("DailyReportAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  atasan               User?               @relation("DailyReportAtasan", fields: [atasanId], references: [id], onDelete: SetNull)
+  penugasanSementara   PenugasanSementara? @relation(fields: [penugasanSementaraId], references: [id], onDelete: SetNull)
 
-  @@unique([userId, date])
+  @@unique([userId, date, scopeKind])
   @@index([userId])
+  @@index([userId, scopeKind])
 }
 
 model AsnDirectory {

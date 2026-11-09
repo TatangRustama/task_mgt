@@ -15,4 +15,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - **Deployment Target Branch:** `prod` (GitHub `origin/prod`)
 - **Database:** PostgreSQL lokal `127.0.0.1:5432/task_mgt` di server
 - **Container Service:** Docker Compose `task_mgt-app-1` via `/usr/local/sbin/task-mgt-docker`
+- **Training / Testing Domain:** `https://kinerjapb.pondokmatoa.id/` (versi online training untuk uji coba team)
+- **Training Server:** cPanel hosting Node.js (Passenger) di `ftp.pondokmatoa.id` (user: `kinerjapb@pondokmatoa.id`, webroot: `/home/pondokm8/public_html/kinerjapb.pondokmatoa.id` & `/home/pondokm8/kinerjapb.pondokmatoa.id`)
+- **Database Training:** PostgreSQL cPanel lokal di server `203.161.184.75` (internal `127.0.0.1:5432/pondokm8_siapkinerja_test`, user: `pondokm8_tugasharian`)
+- **Database Backup / Seed Source:** Supabase PostgreSQL Cloud
 

@@ -1,5 +1,6 @@
 import { UnitOrganisasiBrowser, type OrgUnit } from "@/components/admin/UnitOrganisasiBrowser";
 import { PageMain } from "@/components/layout/PageMain";
+import { deriveNamaJabatan } from "@/lib/jabatan-display";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 
@@ -11,6 +12,7 @@ export default async function UnitOrganisasiPage() {
       select: {
         id: true,
         name: true,
+        namaJabatan: true,
         parentId: true,
         type: true,
         eselonId: true,
@@ -36,6 +38,7 @@ export default async function UnitOrganisasiPage() {
   const rows: OrgUnit[] = units.map((unit) => ({
     id: unit.id,
     name: unit.name,
+    namaJabatan: unit.namaJabatan?.trim() || deriveNamaJabatan(unit.name) || null,
     parentId: unit.parentId,
     parentName: unit.parent?.name ?? null,
     type: unit.type,

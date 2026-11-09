@@ -25,6 +25,34 @@ export function isKepalaTitle(title: string | null | undefined): boolean {
   );
 }
 
+/** Derive structural leadership position title (nama jabatan struktural) from a Unit Organisasi name. */
+export function deriveNamaJabatan(unitName: string | null | undefined): string {
+  const trimmed = (unitName ?? "").trim();
+  if (!trimmed) return "";
+  const lower = trimmed.toLowerCase();
+  const isUpper = trimmed === trimmed.toUpperCase();
+
+  if (lower.startsWith("inspektorat")) {
+    const rest = trimmed.slice("inspektorat".length);
+    return `${isUpper ? "INSPEKTUR" : "Inspektur"}${rest}`;
+  }
+
+  if (lower.startsWith("sekretariat")) {
+    const rest = trimmed.slice("sekretariat".length);
+    return `${isUpper ? "SEKRETARIS" : "Sekretaris"}${rest}`;
+  }
+
+  if (
+    lower.startsWith("kepala ") ||
+    lower.startsWith("sekretaris") ||
+    lower.startsWith("inspektur")
+  ) {
+    return trimmed;
+  }
+
+  return `${isUpper ? "KEPALA" : "Kepala"} ${trimmed}`;
+}
+
 /** Visible jabatan text: nama jabatan for ASN, "-" for Non-ASN. Never "Staf Pelaksana". */
 export function displayJabatan(
   pegawai?: PegawaiJabatanSource | null,

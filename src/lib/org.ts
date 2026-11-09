@@ -40,14 +40,16 @@ export type OrgUser = Pick<User, "id" | "role" | "jabatan" | "unitId"> & {
     parentId: string | null;
     pimpinanId: string | null;
     name?: string;
+    namaJabatan?: string | null;
   } | null;
   penugasanSementara?: Array<{
     id: string;
     jenis: ActingAssignment["jenis"];
     unitId: string;
     unitName?: string;
+    unitNamaJabatan?: string | null;
     unitType?: UnitType;
-    unit?: { name: string; type: UnitType } | null;
+    unit?: { name: string; namaJabatan?: string | null; type: UnitType } | null;
   }>;
 };
 
@@ -107,6 +109,10 @@ function actingUnitName(item: NonNullable<OrgUser["penugasanSementara"]>[number]
   return item.unitName ?? item.unit?.name ?? "Unit";
 }
 
+function actingUnitNamaJabatan(item: NonNullable<OrgUser["penugasanSementara"]>[number]) {
+  return item.unitNamaJabatan ?? item.unit?.namaJabatan ?? null;
+}
+
 export function poolUnitFor(user: OrgUser): { id: string; name: string } | null {
   if (isDefinitiveLeader(user) && user.unit?.type === "sub_bidang" && user.unitId) {
     return { id: user.unitId, name: user.unit.name ?? "Sub Bidang" };
@@ -129,6 +135,7 @@ export function listLeadershipScopes(user: ScopeUser): LeadershipScope[] {
       kind: "definitif",
       unitId: user.unitId,
       unitName,
+      unitNamaJabatan: user.unit.namaJabatan ?? null,
       unitType: user.unit.type,
       label: jabatanText !== "-" ? `${jabatanText} · ${unitName}` : unitName,
     });
@@ -138,13 +145,15 @@ export function listLeadershipScopes(user: ScopeUser): LeadershipScope[] {
     if (!unitType) continue;
     if (scopes.some((scope) => scope.unitId === item.unitId)) continue;
     const unitName = actingUnitName(item);
+    const unitNamaJabatan = actingUnitNamaJabatan(item);
     scopes.push({
       id: item.id,
       kind: item.jenis,
       unitId: item.unitId,
       unitName,
+      unitNamaJabatan,
       unitType,
-      label: penugasanLabel(item.jenis, unitName),
+      label: penugasanLabel(item.jenis, unitName, unitNamaJabatan),
     });
   }
   return scopes;
@@ -203,7 +212,7 @@ export const getDbOrgUser = cache(async (userId: string) => {
     where: { id: userId },
     include: {
       unit: {
-        select: { id: true, type: true, parentId: true, pimpinanId: true, name: true },
+        select: { id: true, type: true, parentId: true, pimpinanId: true, name: true, namaJabatan: true },
       },
       pegawai: { select: { jenis: true, jabatanNama: true, nik: true, nip: true } },
       penugasanSementara: {
@@ -212,7 +221,7 @@ export const getDbOrgUser = cache(async (userId: string) => {
           id: true,
           jenis: true,
           unitId: true,
-          unit: { select: { name: true, type: true } },
+          unit: { select: { name: true, namaJabatan: true, type: true } },
         },
         orderBy: { mulai: "desc" },
       },
@@ -373,6 +382,7 @@ const loadDirectReports = cache(async (userId: string, unitId: string): Promise<
       select: {
         id: true,
         name: true,
+        namaJabatan: true,
         pimpinanId: true,
         pimpinan: { select: personSelect },
       },
@@ -423,7 +433,7 @@ const loadDirectReports = cache(async (userId: string, unitId: string): Promise<
         toDirectReport({
           ...acting.user,
           unit: { name: unit.name },
-          jabatanLabel: penugasanLabel(acting.jenis, unit.name),
+          jabatanLabel: penugasanLabel(acting.jenis, unit.name, unit.namaJabatan),
         }),
       );
       continue;
@@ -437,8 +447,20 @@ const loadDirectReports = cache(async (userId: string, unitId: string): Promise<
   return Array.from(byId.values()).sort(compareByPangkatDesc);
 });
 
-export async function getAtasan(user: OrgUser): Promise<Atasan | null> {
+export async function getAtasan(user: OrgUser, scope?: LeadershipScope | null): Promise<Atasan | null> {
+  if (scope && scope.kind !== "definitif") {
+    return getAtasanForScope(user, scope);
+  }
   return loadAtasan(user.id, user.unitId ?? "");
+}
+
+export async function getAtasanForScope(user: OrgUser, scope: LeadershipScope): Promise<Atasan | null> {
+  const pltUnit = await prisma.unit.findUnique({
+    where: { id: scope.unitId },
+    select: { id: true, parentId: true, name: true },
+  });
+  if (!pltUnit?.parentId) return null;
+  return loadAtasanFromParent(user.id, pltUnit.parentId);
 }
 
 const atasanPersonSelect = {
@@ -468,7 +490,7 @@ async function atasanFromPenugasan(unitId: string, unitName: string, userId: str
   return toDirectReport({
     ...acting.user,
     unit: { name: unitName },
-    jabatanLabel: penugasanLabel(acting.jenis, unitName),
+    jabatanLabel: penugasanLabel(acting.jenis, unitName, acting.unit.namaJabatan),
   });
 }
 
@@ -488,10 +510,35 @@ const loadAtasan = cache(async (userId: string, unitId: string): Promise<Atasan 
   const acting = await atasanFromPenugasan(unit.id, unit.name, userId);
   if (acting) return acting;
 
-  let parentId = unit.parentId;
-  while (parentId) {
-    const parent = await prisma.unit.findUnique({
-      where: { id: parentId },
+  if (!unit.parentId) return null;
+  return findParentAtasan(userId, unit.parentId);
+});
+
+type ParentUnitRow = {
+  id: string;
+  parentId: string | null;
+  pimpinanId: string | null;
+  name: string;
+  pimpinan: {
+    id: string;
+    name: string;
+    jabatan: Jabatan | null;
+    unitId: string | null;
+    nip: string | null;
+    pegawai: {
+      golonganNama: string | null;
+      jabatanNama: string | null;
+      jenis: string | null;
+      nip: string | null;
+    } | null;
+  } | null;
+};
+
+async function findParentAtasan(userId: string, startParentId: string): Promise<Atasan | null> {
+  let currentId: string | null = startParentId;
+  while (currentId) {
+    const parent: ParentUnitRow | null = await prisma.unit.findUnique({
+      where: { id: currentId },
       select: {
         id: true,
         parentId: true,
@@ -506,11 +553,12 @@ const loadAtasan = cache(async (userId: string, unitId: string): Promise<Atasan 
     }
     const parentActing = await atasanFromPenugasan(parent.id, parent.name, userId);
     if (parentActing) return parentActing;
-    parentId = parent.parentId;
+    currentId = parent.parentId;
   }
-
   return null;
-});
+}
+
+const loadAtasanFromParent = cache(findParentAtasan);
 
 export async function getDirectReportIds(user: OrgUser) {
   const scope = await getActiveLeadershipScope(user);
@@ -596,11 +644,43 @@ export function canDeletePostedTask(
   return canManagePostedTask(user, task);
 }
 
-export async function canReviewTask(user: OrgUser, assignedToId: string | null) {
-  if (!assignedToId) return false;
+export async function canReviewTask(
+  user: OrgUser,
+  assignedToId: string | null,
+  taskUnitId?: string | null,
+) {
+  if (!assignedToId || assignedToId === user.id) return false;
   if (isSuperAdmin(user.role)) return true;
-  const reportIds = await getDirectReportIds(user);
-  return reportIds.includes(assignedToId);
+
+  // 1. If taskUnitId is provided:
+  if (taskUnitId) {
+    // Is user the definitive leader of taskUnitId or Plt of taskUnitId?
+    const isDirectLeader =
+      (user.unitId === taskUnitId && isDefinitiveLeader(user)) ||
+      (user.penugasanSementara ?? []).some((item) => item.unitId === taskUnitId);
+    if (isDirectLeader) {
+      const isMember = await prisma.user.findFirst({
+        where: { id: assignedToId, unitId: taskUnitId, deletedAt: null },
+        select: { id: true },
+      });
+      if (isMember) return true;
+    }
+
+    // Is user leader of an ancestor unit of taskUnitId?
+    const { visibleUnitIds, isLeader } = await getOrgScope(user);
+    if (isLeader && visibleUnitIds.includes(taskUnitId)) {
+      const reports = await getDirectReports(user);
+      if (reports.some((r) => r.id === assignedToId)) return true;
+    }
+  }
+
+  // 2. Active leadership scope direct reports
+  const activeReportIds = await getDirectReportIds(user);
+  if (activeReportIds.includes(assignedToId)) return true;
+
+  // 3. Any direct report across any of user's scopes
+  const allReports = await getDirectReports(user);
+  return allReports.some((r) => r.id === assignedToId);
 }
 
 export function assignmentModeLabel(mode: AssignmentMode) {

@@ -8,6 +8,7 @@ import {
   getDbOrgUser,
   getDirectReports,
   jabatanLabel,
+  listLeadershipScopes,
   unitTypeLabel,
 } from "@/lib/org";
 import { penugasanLabel } from "@/lib/penugasan";
@@ -28,7 +29,7 @@ export async function GET() {
   const rules = assignmentRules(user, activeScope);
   const [subordinates, atasan] = await Promise.all([
     canDelegate(user) ? getDirectReports(user, activeScope?.unitId) : Promise.resolve([]),
-    getAtasan(user),
+    getAtasan(user, activeScope),
   ]);
 
   return NextResponse.json({
@@ -57,7 +58,7 @@ export async function GET() {
     activeScope: activeScope ? { id: activeScope.id, label: activeScope.label } : null,
     penugasan: (user.penugasanSementara ?? []).map((item) => ({
       jenis: item.jenis,
-      label: penugasanLabel(item.jenis, item.unit.name),
+      label: penugasanLabel(item.jenis, item.unit.name, item.unit.namaJabatan),
     })),
     atasan,
     subordinates,

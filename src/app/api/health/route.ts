@@ -55,6 +55,33 @@ export async function GET() {
         UPDATE "Task"
         SET "tanggalKinerja" = TO_CHAR("completedAt" AT TIME ZONE 'Asia/Jayapura', 'YYYY-MM-DD')
         WHERE "completedAt" IS NOT NULL AND "tanggalKinerja" IS NULL;
+
+        ALTER TABLE "Unit" ADD COLUMN IF NOT EXISTS "nama_jabatan" TEXT;
+        ALTER TABLE "Unit" ADD COLUMN IF NOT EXISTS "namaJabatan" TEXT;
+        ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "scopeKind" TEXT DEFAULT 'definitif';
+        ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "penugasanSementaraId" TEXT;
+        ALTER TABLE "MonthlyTaskReport" ADD COLUMN IF NOT EXISTS "scopeKind" TEXT NOT NULL DEFAULT 'definitif';
+        ALTER TABLE "MonthlyTaskReport" ADD COLUMN IF NOT EXISTS "penugasanSementaraId" TEXT;
+        ALTER TABLE "MonthlyTaskReport" ADD COLUMN IF NOT EXISTS "unitId" TEXT;
+        ALTER TABLE "DailyTaskReport" ADD COLUMN IF NOT EXISTS "scopeKind" TEXT NOT NULL DEFAULT 'definitif';
+        ALTER TABLE "DailyTaskReport" ADD COLUMN IF NOT EXISTS "penugasanSementaraId" TEXT;
+        ALTER TABLE "DailyTaskReport" ADD COLUMN IF NOT EXISTS "unitId" TEXT;
+
+        UPDATE "Unit"
+        SET 
+          "nama_jabatan" = CASE
+            WHEN UPPER("name") LIKE 'INSPEKTORAT%' THEN 'INSPEKTUR' || SUBSTRING("name" FROM 12)
+            WHEN UPPER("name") LIKE 'SEKRETARIAT%' THEN 'SEKRETARIS' || SUBSTRING("name" FROM 12)
+            WHEN UPPER("name") LIKE 'KEPALA %' OR UPPER("name") LIKE 'SEKRETARIS%' OR UPPER("name") LIKE 'INSPEKTUR%' OR UPPER("name") LIKE 'DIREKTUR%' OR UPPER("name") LIKE 'GUBERNUR%' OR UPPER("name") LIKE 'STAF AHLI%' OR UPPER("name") LIKE 'ASISTEN%' THEN "name"
+            ELSE 'KEPALA ' || "name"
+          END,
+          "namaJabatan" = CASE
+            WHEN UPPER("name") LIKE 'INSPEKTORAT%' THEN 'INSPEKTUR' || SUBSTRING("name" FROM 12)
+            WHEN UPPER("name") LIKE 'SEKRETARIAT%' THEN 'SEKRETARIS' || SUBSTRING("name" FROM 12)
+            WHEN UPPER("name") LIKE 'KEPALA %' OR UPPER("name") LIKE 'SEKRETARIS%' OR UPPER("name") LIKE 'INSPEKTUR%' OR UPPER("name") LIKE 'DIREKTUR%' OR UPPER("name") LIKE 'GUBERNUR%' OR UPPER("name") LIKE 'STAF AHLI%' OR UPPER("name") LIKE 'ASISTEN%' THEN "name"
+            ELSE 'KEPALA ' || "name"
+          END
+        WHERE "nama_jabatan" IS NULL OR TRIM("nama_jabatan") = '';
       `);
       await prisma.$queryRaw`SELECT 1`;
       databaseOk = true;

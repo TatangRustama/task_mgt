@@ -10,7 +10,7 @@ import type {
   PrintUnitReviewRow,
 } from "@/lib/laporan-print-view";
 import { displayJabatan } from "@/lib/jabatan-display";
-import { getOrgScope } from "@/lib/org";
+import { getOrgScope, getDbOrgUser, listLeadershipScopes } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { getUnitMeta, mapTask } from "@/lib/reports";
 import type { ReportTask } from "@/lib/report-types";
@@ -98,7 +98,15 @@ export async function getLaporanPrintData(
   const unit = searchParams.get("unit") || undefined;
 
   const { visibleUnitIds, isLeader, activeScope } = await getOrgScope(user);
-  const rootUnitId = activeScope?.unitId ?? user.unitId;
+  const orgUser = await getDbOrgUser(user.id);
+  const scopes = orgUser ? listLeadershipScopes(orgUser) : [];
+  const requestedScopeParam = searchParams.get("scope");
+  const currentScope = requestedScopeParam
+    ? scopes.find((s) => s.id === requestedScopeParam || s.kind === requestedScopeParam) ?? activeScope
+    : activeScope;
+
+  const scopeKind = currentScope?.kind || "definitif";
+  const rootUnitId = currentScope?.unitId ?? user.unitId;
   const board = await getLaporanBoard({
     viewerId: user.id,
     rootUnitId,
@@ -128,16 +136,39 @@ export async function getLaporanPrintData(
   ];
   const completedOnly = view === "harian";
   const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
+
+  const scopeTaskFilter: Prisma.TaskWhereInput =
+    scopeKind !== "definitif"
+      ? {
+          OR: [
+            { scopeKind },
+            ...(rootUnitId ? [{ unitId: rootUnitId }] : []),
+          ],
+        }
+      : { OR: [{ scopeKind: "definitif" }, { scopeKind: null }] };
+
   const [leaderTasks, tasks] = await Promise.all([
     isLeader
-      ? loadMonthlyPrintTasks({ assignedToId: user.id }, start, end, completedOnly, date, monthPrefix)
+      ? loadMonthlyPrintTasks(
+          { AND: [{ assignedToId: user.id }, scopeTaskFilter] },
+          start,
+          end,
+          completedOnly,
+          date,
+          monthPrefix,
+        )
       : Promise.resolve([]),
     isLeader
       ? unitAssigneeIds.length
         ? loadMonthlyPrintTasks({ assignedToId: { in: unitAssigneeIds } }, start, end, completedOnly, date, monthPrefix)
         : Promise.resolve([])
       : loadMonthlyPrintTasks(
-          { OR: [{ assignedToId: user.id }, { createdById: user.id }] },
+          {
+            AND: [
+              { OR: [{ assignedToId: user.id }, { createdById: user.id }] },
+              scopeTaskFilter,
+            ],
+          },
           start,
           end,
           completedOnly,
@@ -159,6 +190,8 @@ export async function getLaporanPrintData(
       instansiName: meta.instansiName,
       agencyName: meta.agencyName,
       taskIds: [...new Set([...leaderTasks, ...tasks].map((task) => task.id))],
+      scopeKind,
+      scope: currentScope,
     });
     return {
       view,
@@ -182,6 +215,8 @@ export async function getLaporanPrintData(
     instansiName: meta.instansiName,
     agencyName: meta.agencyName,
     taskIds: [...new Set([...leaderTasks, ...tasks].map((task) => task.id))],
+    scopeKind,
+    scope: currentScope,
   });
 
   const rows: PrintUnitReviewRow[] = [

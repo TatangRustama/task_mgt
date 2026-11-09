@@ -1,3 +1,4 @@
+import { deriveNamaJabatan } from "@/lib/jabatan-display";
 import { prisma } from "@/lib/prisma";
 import { assignUnitLeaders, ensureUserFromPegawai, syncPegawaiAccounts } from "@/lib/simpeg-accounts";
 import {
@@ -135,6 +136,10 @@ export async function syncSimpegUnor(onProgress?: ProgressFn) {
   const instansi = await ensureInstansi();
   const now = new Date();
   const ids = new Set(items.map((item) => item.id).filter(Boolean));
+  const existingUnits = await prisma.unit.findMany({
+    select: { id: true, namaJabatan: true },
+  });
+  const existingJabatanMap = new Map(existingUnits.map((u) => [u.id, u.namaJabatan]));
 
   onProgress?.({
     step: "unor",
@@ -150,12 +155,15 @@ export async function syncSimpegUnor(onProgress?: ProgressFn) {
         const id = str(unor.id);
         const name = str(unor.nama_unit) || id;
         if (!id || !name) return Promise.resolve();
+        const derivedJabatan = deriveNamaJabatan(name);
+        const currentJabatan = existingJabatanMap.get(id);
         return prisma.unit.upsert({
           where: { id },
           create: {
             id,
             externalId: id,
             name,
+            namaJabatan: derivedJabatan || null,
             instansiId: instansi.id,
             parentId: null,
             type: mapEselonToUnitType(str(unor.eselon_id), name),
@@ -168,6 +176,7 @@ export async function syncSimpegUnor(onProgress?: ProgressFn) {
           update: {
             externalId: id,
             name,
+            ...(currentJabatan?.trim() ? {} : { namaJabatan: derivedJabatan || null }),
             instansiId: instansi.id,
             type: mapEselonToUnitType(str(unor.eselon_id), name),
             eselonId: str(unor.eselon_id),

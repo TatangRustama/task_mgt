@@ -21,7 +21,7 @@ export async function GET(request: Request) {
         name: { contains: q, mode: "insensitive" },
         ...(scope.unrestricted ? {} : { id: { in: scope.unitIds } }),
       },
-      select: { id: true, name: true, type: true, pimpinanId: true },
+      select: { id: true, name: true, namaJabatan: true, type: true, pimpinanId: true },
       orderBy: { name: "asc" },
       take: 8,
     });
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
       jenis: true,
       mulai: true,
       surat: true,
-      unit: { select: { id: true, name: true, type: true } },
+      unit: { select: { id: true, name: true, namaJabatan: true, type: true } },
     },
     orderBy: { mulai: "desc" },
   });
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     items: items.map((item) => ({
       ...item,
-      label: penugasanLabel(item.jenis, item.unit.name),
+      label: penugasanLabel(item.jenis, item.unit.name, item.unit.namaJabatan),
     })),
   });
 }
@@ -71,7 +71,10 @@ export async function POST(request: Request) {
 
   const [user, unit, existing] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { id: true, unitId: true } }),
-    prisma.unit.findUnique({ where: { id: unitId }, select: { id: true, name: true, pimpinanId: true } }),
+    prisma.unit.findUnique({
+      where: { id: unitId },
+      select: { id: true, name: true, namaJabatan: true, pimpinanId: true },
+    }),
     prisma.penugasanSementara.findFirst({
       where: { unitId, ...activePenugasanWhere() },
       select: { id: true },
@@ -103,7 +106,7 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json(
-    { ...created, label: penugasanLabel(created.jenis, unit.name) },
+    { ...created, label: penugasanLabel(created.jenis, unit.name, unit.namaJabatan) },
     { status: 201 },
   );
 }

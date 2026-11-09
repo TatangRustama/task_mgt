@@ -2,7 +2,8 @@ import QRCode from "qrcode";
 import { headers } from "next/headers";
 import { formatGolonganPangkat } from "@/lib/golongan";
 import { displayJabatan } from "@/lib/jabatan-display";
-import { getAtasan, getDbOrgUser } from "@/lib/org";
+import { getAtasan, getDbOrgUser, type LeadershipScope } from "@/lib/org";
+import { penugasanLabel } from "@/lib/penugasan";
 import { prisma } from "@/lib/prisma";
 import { mapTask } from "@/lib/reports";
 import { completedOnReportDate, formatNip, formatWfhReportDate, getMonthYearLabel, reportDayRange } from "@/lib/utils";
@@ -57,6 +58,7 @@ export async function getRequestOrigin() {
 async function personFromUserId(
   userId: string,
   fallback?: { name: string; nip: string; jabatan: PrintPerson["jabatan"] },
+  customJabatan?: string,
 ): Promise<PrintPerson | null> {
   const [pegawai, user] = await Promise.all([
     prisma.pegawai.findUnique({
@@ -75,21 +77,25 @@ async function personFromUserId(
     name: pegawai?.name || user?.name || fallback?.name || "-",
     nip: formatNip(pegawai?.nip || user?.nip || fallback?.nip || "-"),
     pangkatGolongan: formatGolonganPangkat(pegawai?.golonganNama),
-    jabatan: displayJabatan(pegawai, user?.jabatan),
+    jabatan: customJabatan || displayJabatan(pegawai, user?.jabatan),
   };
 }
 
-async function personFromUser(userId: string) {
+async function personFromUser(userId: string, customJabatan?: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { name: true, nip: true, jabatan: true, deletedAt: true },
   });
   if (!user || user.deletedAt) return null;
-  return personFromUserId(userId, {
-    name: user.name || "-",
-    nip: user.nip || "-",
-    jabatan: user.jabatan ?? "-",
-  });
+  return personFromUserId(
+    userId,
+    {
+      name: user.name || "-",
+      nip: user.nip || "-",
+      jabatan: customJabatan || user.jabatan || "-",
+    },
+    customJabatan,
+  );
 }
 
 async function validationQr(reportId: string) {
@@ -109,28 +115,49 @@ export async function getDailyLaporanPrintContext(options: {
   instansiName: string;
   agencyName: string;
   taskIds: string[];
+  scopeKind?: string;
+  penugasanSementaraId?: string | null;
+  scope?: LeadershipScope | null;
 }): Promise<DailyLaporanPrintContext> {
   const orgUser = await getDbOrgUser(options.userId);
-  const atasanOrg = orgUser ? await getAtasan(orgUser) : null;
+  const scope = options.scope;
+  const scopeKind = options.scopeKind || scope?.kind || "definitif";
+  const penugasanSementaraId = options.penugasanSementaraId ?? (scope && scope.kind !== "definitif" ? scope.id : null);
+  const atasanOrg = orgUser ? await getAtasan(orgUser, scope) : null;
+  const customAuthorJabatan =
+    scope && scope.kind !== "definitif"
+      ? penugasanLabel(scope.kind, scope.unitName, scope.unitNamaJabatan)
+      : undefined;
+  const customAtasanJabatan =
+    atasanOrg?.jabatanLabel && atasanOrg.jabatanLabel !== "-"
+      ? atasanOrg.jabatanLabel
+      : undefined;
+
   const [author, atasan] = await Promise.all([
-    personFromUser(options.userId),
-    atasanOrg ? personFromUser(atasanOrg.id) : Promise.resolve(null),
+    personFromUser(options.userId, customAuthorJabatan),
+    atasanOrg ? personFromUser(atasanOrg.id, customAtasanJabatan) : Promise.resolve(null),
   ]);
 
   const report = await prisma.dailyTaskReport.upsert({
     where: {
-      userId_date: {
+      userId_date_scopeKind: {
         userId: options.userId,
         date: options.date,
+        scopeKind,
       },
     },
     create: {
       userId: options.userId,
       date: options.date,
+      scopeKind,
+      penugasanSementaraId,
+      unitId: scope?.unitId ?? orgUser?.unitId ?? null,
       atasanId: atasanOrg?.id ?? null,
       taskIds: options.taskIds,
     },
     update: {
+      penugasanSementaraId,
+      unitId: scope?.unitId ?? orgUser?.unitId ?? null,
       atasanId: atasanOrg?.id ?? null,
       taskIds: options.taskIds,
     },
@@ -162,30 +189,51 @@ export async function getLaporanPrintContext(options: {
   instansiName: string;
   agencyName: string;
   taskIds: string[];
+  scopeKind?: string;
+  penugasanSementaraId?: string | null;
+  scope?: LeadershipScope | null;
 }): Promise<LaporanPrintContext> {
   const orgUser = await getDbOrgUser(options.userId);
-  const atasanOrg = orgUser ? await getAtasan(orgUser) : null;
+  const scope = options.scope;
+  const scopeKind = options.scopeKind || scope?.kind || "definitif";
+  const penugasanSementaraId = options.penugasanSementaraId ?? (scope && scope.kind !== "definitif" ? scope.id : null);
+  const atasanOrg = orgUser ? await getAtasan(orgUser, scope) : null;
+  const customAuthorJabatan =
+    scope && scope.kind !== "definitif"
+      ? penugasanLabel(scope.kind, scope.unitName, scope.unitNamaJabatan)
+      : undefined;
+  const customAtasanJabatan =
+    atasanOrg?.jabatanLabel && atasanOrg.jabatanLabel !== "-"
+      ? atasanOrg.jabatanLabel
+      : undefined;
+
   const [author, atasan] = await Promise.all([
-    personFromUser(options.userId),
-    atasanOrg ? personFromUser(atasanOrg.id) : Promise.resolve(null),
+    personFromUser(options.userId, customAuthorJabatan),
+    atasanOrg ? personFromUser(atasanOrg.id, customAtasanJabatan) : Promise.resolve(null),
   ]);
 
   const report = await prisma.monthlyTaskReport.upsert({
     where: {
-      userId_month_year: {
+      userId_month_year_scopeKind: {
         userId: options.userId,
         month: options.month,
         year: options.year,
+        scopeKind,
       },
     },
     create: {
       userId: options.userId,
       month: options.month,
       year: options.year,
+      scopeKind,
+      penugasanSementaraId,
+      unitId: scope?.unitId ?? orgUser?.unitId ?? null,
       atasanId: atasanOrg?.id ?? null,
       taskIds: options.taskIds,
     },
     update: {
+      penugasanSementaraId,
+      unitId: scope?.unitId ?? orgUser?.unitId ?? null,
       atasanId: atasanOrg?.id ?? null,
       taskIds: options.taskIds,
     },
@@ -237,10 +285,28 @@ async function loadValidatedTasks(userId: string, taskIds: string[], start: Date
 }
 
 export async function getValidasiLaporan(id: string) {
-  const monthly = await prisma.monthlyTaskReport.findUnique({ where: { id } });
-  const daily = monthly ? null : await prisma.dailyTaskReport.findUnique({ where: { id } });
+  const monthly = await prisma.monthlyTaskReport.findUnique({
+    where: { id },
+    include: { penugasanSementara: { include: { unit: true } } },
+  });
+  const daily = monthly
+    ? null
+    : await prisma.dailyTaskReport.findUnique({
+        where: { id },
+        include: { penugasanSementara: { include: { unit: true } } },
+      });
   const report = monthly ?? daily;
   if (!report) return null;
+
+  const scopeKind = report.scopeKind || "definitif";
+  const customJabatan =
+    scopeKind !== "definitif" && report.penugasanSementara?.unit?.name
+      ? penugasanLabel(
+          report.penugasanSementara.jenis,
+          report.penugasanSementara.unit.name,
+          report.penugasanSementara.unit.namaJabatan,
+        )
+      : undefined;
 
   const day = monthly ? null : reportDayRange(daily!.date);
   const start = monthly ? new Date(monthly.year, monthly.month - 1, 1) : day!.start;
@@ -252,7 +318,7 @@ export async function getValidasiLaporan(id: string) {
       )
     : loaded;
   const [author, atasan] = await Promise.all([
-    personFromUser(report.userId),
+    personFromUser(report.userId, customJabatan),
     report.atasanId ? personFromUser(report.atasanId) : Promise.resolve(null),
   ]);
   if (!author) return null;
@@ -260,6 +326,8 @@ export async function getValidasiLaporan(id: string) {
   return {
     kind: monthly ? ("bulanan" as const) : ("harian" as const),
     reportId: report.id,
+    scopeKind,
+    scopeLabel: customJabatan || "Definitif",
     periodLabel: monthly
       ? getMonthYearLabel(monthly.month, monthly.year)
       : formatWfhReportDate(daily!.date),
