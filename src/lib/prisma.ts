@@ -1,6 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Prisma, PrismaClient } from "@prisma/client";
-import { Pool } from "pg";
 
 const SOFT_DELETE_MODELS = new Set(["User", "Pegawai", "Task"]);
 const SOFT_DELETE_LISTS = new Set([
@@ -53,13 +52,12 @@ function createPrismaClient() {
     throw new Error("DATABASE_URL is not set");
   }
 
-  const pool = new Pool({
+  const adapter = new PrismaPg({
     connectionString,
     ssl: connectionString.includes("supabase.com")
       ? { rejectUnauthorized: false }
       : undefined,
   });
-  const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter }).$extends(softDeleteExtension());
 }
 

@@ -23,6 +23,7 @@ export type TaskCardData = {
   completedAt?: Date | string | null;
   jumlahIntervensi?: number | null;
   satuan?: string | null;
+  scopeKind?: string | null;
 };
 
 export function TaskCard({
@@ -43,6 +44,11 @@ export function TaskCard({
       <div className={cn("absolute inset-y-0 left-0 w-2", priorityBarClass[task.priority] ?? "bg-tertiary")} />
       <Link href={`/tugas/${task.id}`} className="flex flex-1 flex-col gap-1 p-3 pl-5">
         <div className="mb-0.5 flex flex-wrap gap-1">
+          {task.scopeKind && task.scopeKind !== "definitif" ? (
+            <Badge variant="outline" className="border-secondary text-secondary uppercase font-bold text-[10px] px-1.5 py-0">
+              {task.scopeKind}
+            </Badge>
+          ) : null}
           <Badge variant={task.source}>{task.source}</Badge>
           {task.assignmentMode === "kolam" ? <Badge variant="kolam">kolam</Badge> : null}
           {task.assignmentMode === "ditunjuk" && task.source === "delegasi" ? (

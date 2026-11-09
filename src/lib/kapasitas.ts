@@ -5,6 +5,7 @@ export type LeadershipScope = {
   kind: "definitif" | "plt" | "plh";
   unitId: string;
   unitName: string;
+  unitNamaJabatan?: string | null;
   unitType: "kantor" | "bidang" | "sub_bidang";
   label: string;
 };

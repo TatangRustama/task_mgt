@@ -1,4 +1,5 @@
 import type { PenugasanJenis, Prisma, UnitType } from "@prisma/client";
+import { deriveNamaJabatan } from "@/lib/jabatan-display";
 import { prisma } from "@/lib/prisma";
 
 export const penugasanJenisLabel: Record<PenugasanJenis, string> = {
@@ -11,6 +12,7 @@ export type ActingAssignment = {
   jenis: PenugasanJenis;
   unitId: string;
   unitName: string;
+  unitNamaJabatan?: string | null;
   unitType: UnitType;
 };
 
@@ -21,28 +23,34 @@ export function activePenugasanWhere(now = new Date()): Prisma.PenugasanSementar
   };
 }
 
-export function penugasanLabel(jenis: PenugasanJenis, unitName: string) {
-  return `${penugasanJenisLabel[jenis]}. ${unitName}`;
+export function penugasanLabel(
+  jenis: PenugasanJenis,
+  unitName: string,
+  namaJabatan?: string | null,
+) {
+  const title = namaJabatan?.trim() || deriveNamaJabatan(unitName) || unitName;
+  return `${penugasanJenisLabel[jenis]}. ${title}`;
 }
 
 const actingSelect = {
   id: true,
   jenis: true,
   unitId: true,
-  unit: { select: { id: true, name: true, type: true } },
+  unit: { select: { id: true, name: true, namaJabatan: true, type: true } },
 } as const;
 
 function toActing(row: {
   id: string;
   jenis: PenugasanJenis;
   unitId: string;
-  unit: { name: string; type: UnitType };
+  unit: { name: string; namaJabatan?: string | null; type: UnitType };
 }): ActingAssignment {
   return {
     id: row.id,
     jenis: row.jenis,
     unitId: row.unitId,
     unitName: row.unit.name,
+    unitNamaJabatan: row.unit.namaJabatan ?? null,
     unitType: row.unit.type,
   };
 }

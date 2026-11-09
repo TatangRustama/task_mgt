@@ -49,6 +49,11 @@ export default async function ValidasiLaporanPage({
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Badge variant="disetujui">Terverifikasi</Badge>
+        {data.scopeLabel ? (
+          <Badge variant="outline" className="border-secondary text-secondary">
+            {data.scopeLabel}
+          </Badge>
+        ) : null}
         <p className="text-xs text-tertiary">ID laporan: {reportId}</p>
       </div>
 

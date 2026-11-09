@@ -104,6 +104,8 @@ export async function POST(request: Request) {
 
   if (source === "mandiri") {
     const activeScope = await getActiveLeadershipScope(user);
+    const scopeKind = activeScope?.kind ?? "definitif";
+    const penugasanSementaraId = activeScope && activeScope.kind !== "definitif" ? activeScope.id : null;
     const task = await prisma.task.create({
       data: {
         title,
@@ -114,6 +116,8 @@ export async function POST(request: Request) {
         source,
         assignmentMode: "ditunjuk",
         unitId: activeScope?.unitId ?? user.unitId,
+        scopeKind,
+        penugasanSementaraId,
         createdById: user.id,
         status: "dikerjakan",
         assignedToId: user.id,
@@ -128,6 +132,8 @@ export async function POST(request: Request) {
   }
 
   const activeScope = await getActiveLeadershipScope(user);
+  const scopeKind = activeScope?.kind ?? "definitif";
+  const penugasanSementaraId = activeScope && activeScope.kind !== "definitif" ? activeScope.id : null;
   const rules = assignmentRules(user, activeScope);
 
   if (assignmentMode === "kolam") {
@@ -149,6 +155,8 @@ export async function POST(request: Request) {
         source,
         assignmentMode: "kolam",
         unitId: poolUnit.id,
+        scopeKind,
+        penugasanSementaraId,
         createdById: user.id,
         status: "tersedia",
         assignedToId: null,
@@ -197,6 +205,8 @@ export async function POST(request: Request) {
       source,
       assignmentMode: "ditunjuk",
       unitId: assignee.unitId,
+      scopeKind,
+      penugasanSementaraId,
       createdById: user.id,
       status: "dikerjakan",
       assignedToId: assignee.id,

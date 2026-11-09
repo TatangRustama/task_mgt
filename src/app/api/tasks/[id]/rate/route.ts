@@ -28,7 +28,7 @@ export async function POST(
     return NextResponse.json({ error: "Tugas ini tidak dapat dinilai" }, { status: 400 });
   }
 
-  if (!(await canReviewTask(user, task.assignedToId))) {
+  if (!(await canReviewTask(user, task.assignedToId, task.unitId))) {
     return NextResponse.json({ error: "Anda hanya dapat menilai bawahan langsung" }, { status: 403 });
   }
 

@@ -52,7 +52,7 @@ export default async function TaskDetailPage({
 
   const activeScope = await getActiveLeadershipScope(orgUser);
   const canReview =
-    task.status === "menunggu_approval" && (await canReviewTask(orgUser, task.assignedToId));
+    task.status === "menunggu_approval" && (await canReviewTask(orgUser, task.assignedToId, task.unitId));
 
   return (
     <PageMain className="max-w-3xl space-y-4">
@@ -62,6 +62,11 @@ export default async function TaskDetailPage({
           <div className={cn("absolute inset-y-0 left-0 w-2", priorityBarClass[task.priority] ?? "bg-tertiary")} />
           <CardHeader className="pl-6">
             <div className="flex flex-wrap gap-2">
+              {task.scopeKind && task.scopeKind !== "definitif" ? (
+                <Badge variant="outline" className="border-secondary text-secondary uppercase font-bold text-xs">
+                  {task.scopeKind}
+                </Badge>
+              ) : null}
               <Badge variant={task.source}>{task.source}</Badge>
               <Badge variant={task.assignmentMode}>{assignmentModeLabel(task.assignmentMode)}</Badge>
               <Badge variant={task.priority}>{task.priority}</Badge>

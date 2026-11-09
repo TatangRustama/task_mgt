@@ -38,7 +38,7 @@ export function LoginForm() {
       setError(
         (code && LOGIN_ERROR_MESSAGES[code]) ||
           checkData.error ||
-          "NIP/NIK atau password salah",
+          "NIP dan Password salah. periksa kembali",
       );
       return;
     }
@@ -92,7 +92,11 @@ export function LoginForm() {
               autoComplete="current-password"
             />
           </div>
-          {error ? <p className="text-sm text-error">{error}</p> : null}
+          {error ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-center text-sm font-medium text-red-600">
+              {error}
+            </div>
+          ) : null}
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Masuk..." : "Masuk"}
           </Button>

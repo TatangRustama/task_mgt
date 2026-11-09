@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { Jabatan, Role, UnitType } from "@prisma/client";
+import { deriveNamaJabatan } from "@/lib/jabatan-display";
 import { mapPegawaiJabatan } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 
@@ -201,14 +202,19 @@ const jabatanRank: Record<Jabatan, number> = {
 export async function assignUnitLeaders(targetUnitIds?: string[]) {
   const units = await prisma.unit.findMany({
     where: targetUnitIds && targetUnitIds.length > 0 ? { id: { in: targetUnitIds } } : { externalId: { not: null } },
-    select: { id: true },
+    select: { id: true, name: true, namaJabatan: true },
   });
   const members = await prisma.user.findMany({
     where: {
       unitId: { in: units.map((unit) => unit.id) },
       role: { notIn: ["super_admin", "admin"] },
     },
-    select: { id: true, unitId: true, jabatan: true },
+    select: {
+      id: true,
+      unitId: true,
+      jabatan: true,
+      pegawai: { select: { jabatanNama: true } },
+    },
   });
 
   const byUnit = new Map<string, typeof members>();
@@ -228,9 +234,12 @@ export async function assignUnitLeaders(targetUnitIds?: string[]) {
         )[0];
         const pimpinanId =
           leader && leader.jabatan && leader.jabatan !== "pelaksana" ? leader.id : null;
+        const leaderJabatanNama = pimpinanId ? leader?.pegawai?.jabatanNama?.trim() : null;
+        const namaJabatan =
+          unit.namaJabatan?.trim() || leaderJabatanNama || deriveNamaJabatan(unit.name) || null;
         return prisma.unit.update({
           where: { id: unit.id },
-          data: { pimpinanId },
+          data: { pimpinanId, namaJabatan },
         });
       }),
     );
