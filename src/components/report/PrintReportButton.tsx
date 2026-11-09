@@ -13,6 +13,7 @@ import type { LaporanView, ReportTask } from "@/lib/report-types";
 type PrintPrepare = {
   prepareAndPrint: () => void;
   busy: boolean;
+  error?: string | null;
 };
 
 const PrintPrepareContext = createContext<PrintPrepare | null>(null);
@@ -20,15 +21,22 @@ const PrintPrepareContext = createContext<PrintPrepare | null>(null);
 export function PrintReportButton() {
   const print = useContext(PrintPrepareContext);
   return (
-    <Button
-      variant="outline"
-      className="w-full no-print"
-      disabled={print?.busy}
-      onClick={() => print?.prepareAndPrint()}
-    >
-      <Printer className="h-4 w-4" />
-      {print?.busy ? "Menyiapkan PDF..." : "Cetak Laporan"}
-    </Button>
+    <div className="w-full space-y-2 no-print">
+      <Button
+        variant="outline"
+        className="w-full"
+        disabled={print?.busy}
+        onClick={() => print?.prepareAndPrint()}
+      >
+        <Printer className="h-4 w-4" />
+        {print?.busy ? "Menyiapkan PDF..." : "Cetak Laporan"}
+      </Button>
+      {print?.error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-center text-xs font-medium text-red-600">
+          {print.error}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -108,6 +116,7 @@ export function LaporanPrintProvider({
   children: React.ReactNode;
 }) {
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [harian, setHarian] = useState<{
     print: DailyLaporanPrintContext;
     tasks: ReportTask[];
@@ -128,6 +137,7 @@ export function LaporanPrintProvider({
   useEffect(() => {
     setHarian(null);
     setBulanan(null);
+    setError(null);
   }, [view, date, month, year, unit]);
 
   async function savePdf(authorName: string, reportView: "harian" | "bulanan") {
@@ -151,6 +161,7 @@ export function LaporanPrintProvider({
     const authorName =
       view === "harian" ? harian?.print.author.name : bulanan?.print.author.name;
     if (!authorName) {
+      setError("Data pembuat laporan tidak ditemukan.");
       setBusy(false);
       return;
     }
@@ -158,6 +169,10 @@ export function LaporanPrintProvider({
     (async () => {
       try {
         await savePdf(authorName, view);
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err?.message || "Gagal mencetak PDF. Silakan coba kembali.");
+        }
       } finally {
         if (!cancelled) setBusy(false);
       }
@@ -170,6 +185,7 @@ export function LaporanPrintProvider({
   async function prepareAndPrint() {
     if (busy) return;
 
+    setError(null);
     setBusy(true);
     pendingPrint.current = true;
     setHarian(null);
@@ -184,6 +200,12 @@ export function LaporanPrintProvider({
     try {
       const res = await fetch(`/api/reports/print-context?${params.toString()}`);
       if (!res.ok) {
+        let msg = "Gagal memuat data cetak laporan.";
+        try {
+          const errData = await res.json();
+          if (errData?.error) msg = errData.error;
+        } catch {}
+        setError(msg);
         pendingPrint.current = false;
         setBusy(false);
         return;
@@ -207,14 +229,15 @@ export function LaporanPrintProvider({
           lampiranTasks: data.lampiranTasks ?? [],
         });
       }
-    } catch {
+    } catch (err: any) {
+      setError(err?.message || "Terjadi kesalahan saat menyiapkan dokumen laporan.");
       pendingPrint.current = false;
       setBusy(false);
     }
   }
 
   return (
-    <PrintPrepareContext.Provider value={{ prepareAndPrint, busy }}>
+    <PrintPrepareContext.Provider value={{ prepareAndPrint, busy, error }}>
       {children}
       {harian ? (
         <DailyWfhPrintReport

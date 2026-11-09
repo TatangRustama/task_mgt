@@ -70,6 +70,31 @@ export async function GET() {
         ALTER TABLE "DailyTaskReport" ADD COLUMN IF NOT EXISTS "scopeKind" TEXT NOT NULL DEFAULT 'definitif';
         ALTER TABLE "DailyTaskReport" ADD COLUMN IF NOT EXISTS "penugasanSementaraId" TEXT;
         ALTER TABLE "DailyTaskReport" ADD COLUMN IF NOT EXISTS "unitId" TEXT;
+        UPDATE "MonthlyTaskReport" SET "scopeKind" = 'definitif' WHERE "scopeKind" IS NULL;
+        UPDATE "DailyTaskReport" SET "scopeKind" = 'definitif' WHERE "scopeKind" IS NULL;
+
+        DELETE FROM "DailyTaskReport" a
+        USING "DailyTaskReport" b
+        WHERE a."userId" = b."userId"
+          AND a."date" = b."date"
+          AND a."scopeKind" = b."scopeKind"
+          AND a."id" < b."id";
+
+        ALTER TABLE "DailyTaskReport" DROP CONSTRAINT IF EXISTS "DailyTaskReport_userId_date_key";
+        DROP INDEX IF EXISTS "DailyTaskReport_userId_date_key";
+        CREATE UNIQUE INDEX IF NOT EXISTS "DailyTaskReport_userId_date_scopeKind_key" ON "DailyTaskReport"("userId", "date", "scopeKind");
+
+        DELETE FROM "MonthlyTaskReport" a
+        USING "MonthlyTaskReport" b
+        WHERE a."userId" = b."userId"
+          AND a."month" = b."month"
+          AND a."year" = b."year"
+          AND a."scopeKind" = b."scopeKind"
+          AND a."id" < b."id";
+
+        ALTER TABLE "MonthlyTaskReport" DROP CONSTRAINT IF EXISTS "MonthlyTaskReport_userId_month_year_key";
+        DROP INDEX IF EXISTS "MonthlyTaskReport_userId_month_year_key";
+        CREATE UNIQUE INDEX IF NOT EXISTS "MonthlyTaskReport_userId_month_year_scopeKind_key" ON "MonthlyTaskReport"("userId", "month", "year", "scopeKind");
 
         UPDATE "Unit"
         SET 
