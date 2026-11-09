@@ -1,5 +1,4 @@
 import {
-  Archive,
   Home,
   Users,
   ClipboardList,
@@ -43,6 +42,7 @@ const leaderNavItems: AppNavItem[] = [
   { href: "/mandiri", label: "Home", icon: Home },
   { href: "/board", label: "Board", icon: ClipboardList },
   { href: "/pimpinan", label: "Kinerja", icon: Users },
+  { href: "/laporan", label: "Laporan", icon: BarChart3 },
 ];
 
 const adminNavItems: AppNavItem[] = [
@@ -62,9 +62,6 @@ const superAdminNavItems: AppNavItem[] = [
 
 function personalGroups(options?: NavOptions): AppNavGroup[] {
   const items = options?.isLeader ? [...leaderNavItems] : [...staffNavItems];
-  if (options?.isLeader && options.surface === "footer") {
-    items.push({ href: "/laporan", label: "Arsip", icon: Archive });
-  }
   return [
     {
       id: "personal",
@@ -76,15 +73,25 @@ function personalGroups(options?: NavOptions): AppNavGroup[] {
 
 export function getNavGroups(role: Role, options?: NavOptions): AppNavGroup[] {
   const resolved = coerceRole(role);
-  if (options?.surface === "footer" && resolved === "personal") {
-    return personalGroups(options);
+
+  if (resolved === "personal") {
+    const groups: AppNavGroup[] = personalGroups(options);
+    if (options?.superAdmin) {
+      groups.push({ id: "super_admin", label: "Super Admin", items: superAdminNavItems });
+    } else if (options?.opdAdmin) {
+      groups.push({ id: "admin", label: "Admin OPD", items: adminNavItems });
+    }
+    return groups;
   }
-  if (resolved === "super_admin" || (resolved === "personal" && options?.superAdmin)) {
+
+  if (resolved === "super_admin") {
     return [{ id: "super_admin", label: "Super Admin", items: superAdminNavItems }];
   }
-  if (resolved === "admin" || (resolved === "personal" && options?.opdAdmin)) {
-    return [{ id: "admin", label: options?.opdAdmin ? "Admin OPD" : null, items: adminNavItems }];
+
+  if (resolved === "admin") {
+    return [{ id: "admin", label: null, items: adminNavItems }];
   }
+
   return personalGroups(options);
 }
 
