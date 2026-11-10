@@ -265,9 +265,7 @@ export function TaskFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "box-border content-start min-w-0 gap-2 overflow-x-hidden overflow-y-auto",
-          "left-[max(0.5rem,env(safe-area-inset-left))] right-[max(0.5rem,env(safe-area-inset-right))] top-18 bottom-[max(0.5rem,env(safe-area-inset-bottom))] h-auto w-auto max-h-none max-w-none translate-x-0 translate-y-0",
-          "sm:left-1/2 sm:right-auto sm:top-20 sm:bottom-auto sm:max-h-[calc(100vh-6rem)] sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:translate-y-0",
+          "max-h-[88dvh] w-[calc(100%-1.5rem)] sm:max-w-xl overflow-y-auto pb-6",
         )}
       >
         <DialogHeader className="min-w-0 pr-8 text-left">
