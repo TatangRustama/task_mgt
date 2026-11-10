@@ -64,20 +64,28 @@ function authHeader() {
   return `Bearer ${token}`;
 }
 
-async function simpegGet(path: string) {
+async function simpegGet(path: string, retries = 2): Promise<unknown> {
   const url = `${simpegBaseUrl()}${path}`;
-  const res = await fetch(url, {
-    headers: {
-      Authorization: authHeader(),
-      Accept: "application/json",
-    },
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`Simpeg ${path} gagal (${res.status})${body ? `: ${body.slice(0, 180)}` : ""}`);
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      const res = await fetch(url, {
+        headers: {
+          Authorization: authHeader(),
+          Accept: "application/json",
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`Simpeg ${path} gagal (${res.status})${body ? `: ${body.slice(0, 180)}` : ""}`);
+      }
+      return await res.json();
+    } catch (err) {
+      if (attempt === retries) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+    }
   }
-  return res.json();
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -153,7 +161,8 @@ export async function fetchSimpegPegawaiPage(page: number) {
 }
 
 export async function fetchSimpegPegawaiByNip(nip: string) {
-  const encoded = encodeURIComponent(nip.trim());
+  const clean = nip.replace(/\D/g, "").trim();
+  const encoded = encodeURIComponent(clean || nip.trim());
   const json = await simpegGet(`/api/external/pegawai/${encoded}`);
   return unwrapPegawai(json);
 }

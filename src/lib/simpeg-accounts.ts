@@ -112,6 +112,7 @@ export async function syncPegawaiAccounts(onProgress?: (message: string, current
       email: true,
       jabatanNama: true,
       unitId: true,
+      userId: true,
     },
     orderBy: { nip: "asc" },
   });
@@ -122,7 +123,15 @@ export async function syncPegawaiAccounts(onProgress?: (message: string, current
   });
   const unitTypes = new Map(units.map((unit) => [unit.id, unit.type]));
   const existingUsers = await prisma.user.findMany({
-    select: { nip: true, email: true, id: true, role: true },
+    select: {
+      nip: true,
+      email: true,
+      id: true,
+      role: true,
+      name: true,
+      jabatan: true,
+      unitId: true,
+    },
   });
   const byNip = new Map(existingUsers.map((user) => [user.nip, user]));
   const takenEmails = new Set(existingUsers.map((user) => user.email.toLowerCase()));
@@ -130,17 +139,19 @@ export async function syncPegawaiAccounts(onProgress?: (message: string, current
   let processed = 0;
   onProgress?.("Membuat akun login pegawai...", 0, pegawai.length);
 
-  for (const group of chunk(pegawai, 8)) {
+  for (const group of chunk(pegawai, 25)) {
     await Promise.all(
       group.map(async (row) => {
         const nip = row.nip?.trim();
         if (!nip) return;
         const existing = byNip.get(nip);
         if (existing && isProtectedUser(existing)) {
-          await prisma.pegawai.update({
-            where: { id: row.id },
-            data: { userId: existing.id },
-          });
+          if (row.userId !== existing.id) {
+            await prisma.pegawai.update({
+              where: { id: row.id },
+              data: { userId: existing.id },
+            });
+          }
           return;
         }
 
@@ -148,19 +159,34 @@ export async function syncPegawaiAccounts(onProgress?: (message: string, current
         const role = "personal";
 
         if (existing) {
-          await prisma.user.update({
-            where: { id: existing.id },
-            data: {
-              name: row.name,
-              role,
-              jabatan,
-              unitId: row.unitId,
-            },
-          });
-          await prisma.pegawai.update({
-            where: { id: row.id },
-            data: { userId: existing.id },
-          });
+          const userNeedsUpdate =
+            existing.name !== row.name ||
+            existing.role !== role ||
+            existing.jabatan !== jabatan ||
+            existing.unitId !== row.unitId;
+
+          if (userNeedsUpdate) {
+            await prisma.user.update({
+              where: { id: existing.id },
+              data: {
+                name: row.name,
+                role,
+                jabatan,
+                unitId: row.unitId,
+              },
+            });
+            existing.name = row.name;
+            existing.role = role;
+            existing.jabatan = jabatan;
+            existing.unitId = row.unitId;
+          }
+
+          if (row.userId !== existing.id) {
+            await prisma.pegawai.update({
+              where: { id: row.id },
+              data: { userId: existing.id },
+            });
+          }
           return;
         }
 
@@ -202,7 +228,7 @@ const jabatanRank: Record<Jabatan, number> = {
 export async function assignUnitLeaders(targetUnitIds?: string[]) {
   const units = await prisma.unit.findMany({
     where: targetUnitIds && targetUnitIds.length > 0 ? { id: { in: targetUnitIds } } : { externalId: { not: null } },
-    select: { id: true, name: true, namaJabatan: true },
+    select: { id: true, name: true, namaJabatan: true, pimpinanId: true },
   });
   const members = await prisma.user.findMany({
     where: {
@@ -225,23 +251,31 @@ export async function assignUnitLeaders(targetUnitIds?: string[]) {
     byUnit.set(member.unitId, list);
   }
 
-  for (const group of chunk(units, 40)) {
+  const updates: { id: string; pimpinanId: string | null; namaJabatan: string | null }[] = [];
+  for (const unit of units) {
+    const people = byUnit.get(unit.id) ?? [];
+    const leader = [...people].sort(
+      (a, b) => jabatanRank[b.jabatan ?? "pelaksana"] - jabatanRank[a.jabatan ?? "pelaksana"],
+    )[0];
+    const pimpinanId =
+      leader && leader.jabatan && leader.jabatan !== "pelaksana" ? leader.id : null;
+    const leaderJabatanNama = pimpinanId ? leader?.pegawai?.jabatanNama?.trim() : null;
+    const namaJabatan =
+      unit.namaJabatan?.trim() || leaderJabatanNama || deriveNamaJabatan(unit.name) || null;
+
+    if (unit.pimpinanId !== pimpinanId || unit.namaJabatan !== namaJabatan) {
+      updates.push({ id: unit.id, pimpinanId, namaJabatan });
+    }
+  }
+
+  for (const group of chunk(updates, 40)) {
     await Promise.all(
-      group.map((unit) => {
-        const people = byUnit.get(unit.id) ?? [];
-        const leader = [...people].sort(
-          (a, b) => jabatanRank[b.jabatan ?? "pelaksana"] - jabatanRank[a.jabatan ?? "pelaksana"],
-        )[0];
-        const pimpinanId =
-          leader && leader.jabatan && leader.jabatan !== "pelaksana" ? leader.id : null;
-        const leaderJabatanNama = pimpinanId ? leader?.pegawai?.jabatanNama?.trim() : null;
-        const namaJabatan =
-          unit.namaJabatan?.trim() || leaderJabatanNama || deriveNamaJabatan(unit.name) || null;
-        return prisma.unit.update({
-          where: { id: unit.id },
-          data: { pimpinanId, namaJabatan },
-        });
-      }),
+      group.map((row) =>
+        prisma.unit.update({
+          where: { id: row.id },
+          data: { pimpinanId: row.pimpinanId, namaJabatan: row.namaJabatan },
+        }),
+      ),
     );
   }
 }

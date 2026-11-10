@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PenugasanPanel } from "@/components/admin/PenugasanPanel";
 import { formatGolonganPangkat } from "@/lib/golongan";
-import { displayJabatan, isKepalaTitle } from "@/lib/jabatan-display";
+import { displayJabatan, isKepalaTitle, jabatanRoleLabel } from "@/lib/jabatan-display";
 import { kepegawaianStatus } from "@/lib/kepegawaian-status";
 import { formatDate, formatNip, cn } from "@/lib/utils";
 
@@ -36,12 +36,29 @@ type PegawaiDetail = {
   unorNama: string | null;
   perangkatDaerahNama: string | null;
   userId: string | null;
-  unit?: { id: string; name: string; pimpinanId?: string | null } | null;
+  unit?: {
+    id: string;
+    name: string;
+    pimpinanId?: string | null;
+    namaJabatan?: string | null;
+    perangkatDaerahNama?: string | null;
+  } | null;
   user?: {
     unitId: string | null;
     role: string;
     jabatan?: "kepala_kantor" | "kepala_bidang" | "kepala_sub_bidang" | "pelaksana" | null;
+    unit?: { id: string; name: string; perangkatDaerahNama?: string | null } | null;
     ledUnits?: { id: string; name: string }[];
+    assignedTasks?: {
+      id: string;
+      title: string;
+      status: string;
+      priority: string;
+      deadline?: string | null;
+    }[];
+    _count?: {
+      assignedTasks?: number;
+    };
   } | null;
 };
 
@@ -234,12 +251,34 @@ export function PegawaiDetailDialog({
                   <TabsContent value="tugas">
                     <div className="space-y-4">
                       <div className="grid gap-3 sm:grid-cols-2">
-                        <Field label="Jabatan" value={displayJabatan(detail)} />
+                        <Field
+                          label="Jabatan"
+                          value={
+                            displayJabatan(detail, detail.user?.jabatan) !== "-"
+                              ? displayJabatan(detail, detail.user?.jabatan)
+                              : detail.unit?.namaJabatan ||
+                                (detail.user?.jabatan ? jabatanRoleLabel[detail.user.jabatan] : null) ||
+                                detail.jenisJabatanNama ||
+                                "-"
+                          }
+                        />
                         <Field label="Jenis jabatan" value={detail.jenisJabatanNama} />
                         <Field label="Pangkat / golongan" value={formatGolonganPangkat(detail.golonganNama)} />
-                        <Field label="Unit organisasi" value={detail.unorNama || detail.unit?.name || "-"} />
-                        <Field label="Perangkat daerah" value={detail.perangkatDaerahNama} />
+                        <Field
+                          label="Unit organisasi"
+                          value={detail.unorNama || detail.unit?.name || detail.user?.unit?.name || "-"}
+                        />
+                        <Field
+                          label="Perangkat daerah"
+                          value={
+                            detail.perangkatDaerahNama ||
+                            detail.unit?.perangkatDaerahNama ||
+                            detail.user?.unit?.perangkatDaerahNama ||
+                            "-"
+                          }
+                        />
                       </div>
+
                       {detail.userId ? (
                         <PenugasanPanel userId={detail.userId} />
                       ) : (
@@ -247,6 +286,43 @@ export function PegawaiDetailDialog({
                           Pegawai ini belum punya akun, sehingga belum dapat ditunjuk sebagai Plt atau Plh.
                         </p>
                       )}
+
+                      <div className="space-y-2 rounded-lg border border-outline-variant bg-surface-container-lowest p-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold text-on-surface">Tugas Kinerja Pegawai</p>
+                          <span className="text-xs text-on-surface-variant">
+                            Total: {detail.user?._count?.assignedTasks ?? detail.user?.assignedTasks?.length ?? 0} tugas
+                          </span>
+                        </div>
+                        {detail.user?.assignedTasks && detail.user.assignedTasks.length > 0 ? (
+                          <div className="space-y-1.5 pt-1">
+                            {detail.user.assignedTasks.map((t) => (
+                              <div
+                                key={t.id}
+                                className="flex items-center justify-between rounded-md border border-outline-variant/60 bg-surface-container-low px-2.5 py-1.5 text-xs"
+                              >
+                                <span className="font-medium text-on-surface line-clamp-1">{t.title}</span>
+                                <span
+                                  className={cn(
+                                    "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold capitalize",
+                                    t.status === "selesai" || t.status === "disetujui"
+                                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                      : t.status === "berjalan"
+                                      ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+                                      : "bg-surface-container-highest text-on-surface-variant",
+                                  )}
+                                >
+                                  {t.status}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-on-surface-variant">
+                            Belum ada tugas kinerja yang ditugaskan kepada pegawai ini.
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </TabsContent>
                 </Tabs>

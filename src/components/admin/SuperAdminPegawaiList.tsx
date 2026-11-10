@@ -122,18 +122,24 @@ export function SuperAdminPegawaiList({
     setSyncing(true);
     setMessageError(false);
     setMessage("");
-    const res = await fetch("/api/admin/pegawai/sync", { method: "POST" });
-    const data = await res.json().catch(() => ({}));
-    setSyncing(false);
-    if (!res.ok) {
+    try {
+      const res = await fetch("/api/admin/pegawai/sync", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMessageError(true);
+        setMessage(data.error || "Gagal menarik data dari Simpeg PB");
+        return;
+      }
+      setMessage(
+        `Berhasil menarik ${data.pegawaiCount ?? 0} pegawai dan ${data.userCount ?? 0} akun dari Simpeg PB.`,
+      );
+      loadData();
+    } catch {
       setMessageError(true);
-      setMessage(data.error || "Gagal menarik data dari Simpeg PB");
-      return;
+      setMessage("Terjadi kesalahan jaringan atau waktu habis saat menyinkronkan data SIMPEG.");
+    } finally {
+      setSyncing(false);
     }
-    setMessage(
-      `Berhasil menarik ${data.pegawaiCount ?? 0} pegawai dan ${data.userCount ?? 0} akun dari Simpeg PB.`,
-    );
-    loadData();
   }
 
   useEffect(() => {
@@ -243,7 +249,7 @@ export function SuperAdminPegawaiList({
                 disabled={syncing}
               >
                 <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
-                {syncing ? "Menyinkronkan..." : "Sinkron SIASN"}
+                {syncing ? "Menyinkronkan..." : "Sinkron SIMPEG"}
               </Button>
             ) : null}
             <Button
@@ -308,6 +314,7 @@ export function SuperAdminPegawaiList({
         </p>
 
         {loading ? <AppLoader label="Memuat pegawai" /> : null}
+        {syncing ? <AppLoader label="Menyinkronkan data SIMPEG..." /> : null}
         {!loading && rows.length === 0 ? (
           <p className="text-on-surface-variant">Tidak ada pegawai yang cocok.</p>
         ) : (
