@@ -102,7 +102,7 @@ export function ManagePostedTaskActions({
       />
 
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-sm max-h-[88dvh] overflow-y-auto">
           <DialogHeader className="text-left">
             <DialogTitle>Hapus tugas?</DialogTitle>
             <p className="text-sm text-on-surface-variant">

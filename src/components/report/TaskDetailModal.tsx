@@ -122,11 +122,11 @@ export function TaskDetailModal({
     <>
     {showLoader ? <AppLoader /> : null}
     <Dialog open={open && !showLoader} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-hidden p-0">
+      <DialogContent className="max-h-[88dvh] overflow-hidden p-0 sm:max-w-xl">
         {view ? (
           <>
             <div className={cn("h-1.5", priorityBarClass[view.priority] ?? "bg-tertiary")} />
-            <div className="max-h-[85vh] space-y-4 overflow-y-auto p-6">
+            <div className="max-h-[calc(88dvh-1.5rem)] space-y-4 overflow-y-auto p-6">
               <DialogHeader>
                 <DialogTitle className="text-sm">Rincian tugas</DialogTitle>
                 <div className="flex flex-wrap gap-1 pr-6">

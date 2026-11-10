@@ -214,7 +214,7 @@ export function PegawaiDetailDialog({
       {syncing ? <AppLoader label="Memperbarui dari Simpeg" /> : null}
       {showLoader ? null : (
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="top-20 z-[80] max-h-[calc(100dvh-11rem)] translate-y-0 overflow-y-auto pb-6 sm:max-w-lg">
+          <DialogContent className="max-h-[88dvh] sm:max-w-xl overflow-y-auto pb-6">
             <DialogHeader className="pr-8 text-left">
               <DialogTitle>Detail pegawai</DialogTitle>
             </DialogHeader>
@@ -250,6 +250,28 @@ export function PegawaiDetailDialog({
                   </TabsContent>
                   <TabsContent value="tugas">
                     <div className="space-y-4">
+                      {detail.jenis === "asn" && detail.nip && canSync ? (
+                        <div className="flex flex-col gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="space-y-0.5">
+                            <p className="text-xs font-semibold text-primary">Sinkron SIMPEG (Hanya NIP Ini)</p>
+                            <p className="text-xs text-on-surface-variant">
+                              Tarik jabatan, pangkat/golongan, dan unit organisasi terbaru dari SIMPEG untuk <strong>NIP {formatNip(detail.nip)}</strong>.
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="shrink-0 self-start sm:self-auto"
+                            disabled={syncing || nonJobbing}
+                            onClick={() => void refreshFromSimpeg()}
+                          >
+                            <RefreshCw className={cn("h-3.5 w-3.5", syncing && "animate-spin")} />
+                            {syncing ? "Menyinkronkan..." : "Sinkron SIMPEG"}
+                          </Button>
+                        </div>
+                      ) : null}
+
                       <div className="grid gap-3 sm:grid-cols-2">
                         <Field
                           label="Jabatan"

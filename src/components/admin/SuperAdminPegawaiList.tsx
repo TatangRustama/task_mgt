@@ -88,7 +88,6 @@ export function SuperAdminPegawaiList({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [messageError, setMessageError] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
 
@@ -117,30 +116,6 @@ export function SuperAdminPegawaiList({
     }
     setLoading(false);
   }, [page, pageSize, applied.query, applied.golongan, applied.status, applied.perangkatDaerahId, deepestUnor]);
-
-  async function pullFromSimpeg() {
-    setSyncing(true);
-    setMessageError(false);
-    setMessage("");
-    try {
-      const res = await fetch("/api/admin/pegawai/sync", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setMessageError(true);
-        setMessage(data.error || "Gagal menarik data dari Simpeg PB");
-        return;
-      }
-      setMessage(
-        `Berhasil menarik ${data.pegawaiCount ?? 0} pegawai dan ${data.userCount ?? 0} akun dari Simpeg PB.`,
-      );
-      loadData();
-    } catch {
-      setMessageError(true);
-      setMessage("Terjadi kesalahan jaringan atau waktu habis saat menyinkronkan data SIMPEG.");
-    } finally {
-      setSyncing(false);
-    }
-  }
 
   useEffect(() => {
     fetch("/api/admin/pegawai/options")
@@ -239,29 +214,14 @@ export function SuperAdminPegawaiList({
         title="Pegawai"
         subtitle={subtitle}
         action={
-          <div className="flex w-full basis-full flex-nowrap items-center gap-2 md:w-auto md:basis-auto">
-            {allowAsn ? (
-              <Button
-                type="button"
-                variant="secondary"
-                className="min-w-0 flex-1 md:flex-none md:shrink-0"
-                onClick={() => void pullFromSimpeg()}
-                disabled={syncing}
-              >
-                <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
-                {syncing ? "Menyinkronkan..." : "Sinkron SIMPEG"}
-              </Button>
-            ) : null}
-            <Button
-              type="button"
-              className="min-w-0 flex-1 md:flex-none md:shrink-0"
-              onClick={() => setAddOpen(true)}
-              disabled={syncing}
-            >
-              <Plus className="h-4 w-4" />
-              Tambah baru
-            </Button>
-          </div>
+          <Button
+            type="button"
+            className="min-w-0"
+            onClick={() => setAddOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
+            Tambah baru
+          </Button>
         }
       />
     <Card>
@@ -314,7 +274,6 @@ export function SuperAdminPegawaiList({
         </p>
 
         {loading ? <AppLoader label="Memuat pegawai" /> : null}
-        {syncing ? <AppLoader label="Menyinkronkan data SIMPEG..." /> : null}
         {!loading && rows.length === 0 ? (
           <p className="text-on-surface-variant">Tidak ada pegawai yang cocok.</p>
         ) : (

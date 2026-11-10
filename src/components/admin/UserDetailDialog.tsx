@@ -217,7 +217,7 @@ export function UserDetailDialog({
       {showLoader ? <AppLoader label="Memuat detail" /> : null}
       {showLoader ? null : (
       <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[88dvh] sm:max-w-lg overflow-y-auto pb-6">
         <DialogHeader className="pr-8 text-left">
           <DialogTitle>
             {panel === "edit"
