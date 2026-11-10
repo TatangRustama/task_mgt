@@ -47,8 +47,8 @@ zip_file = os.path.join(root, "deploy.zip")
 if os.path.exists(zip_file):
     os.remove(zip_file)
 
-print("2. Creating deploy.zip...")
-with zipfile.ZipFile(zip_file, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as zipf:
+print("2. Creating deploy.zip with maximum compression...")
+with zipfile.ZipFile(zip_file, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zipf:
     for dirpath, dirnames, filenames in os.walk(standalone):
         for filename in filenames:
             file_path = os.path.join(dirpath, filename)
@@ -58,9 +58,9 @@ with zipfile.ZipFile(zip_file, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as zi
 file_size = os.path.getsize(zip_file)
 print(f"deploy.zip created: {file_size / (1024*1024):.2f} MB")
 
-print("3. Connecting to FTP...")
-ftp = ftplib.FTP('ftp.pondokmatoa.id', timeout=60)
-ftp.login('kinerjapb@pondokmatoa.id', 'B&np^-gV8gWh=Bgg')
+CHUNK_SIZE = 8 * 1024 * 1024  # 8 MB per chunk
+num_chunks = (file_size + CHUNK_SIZE - 1) // CHUNK_SIZE
+print(f"Splitting into {num_chunks} chunks of ~8 MB each for reliable upload...")
 
 php_deploy = """<?php
 header('Content-Type: text/plain');
@@ -68,9 +68,23 @@ ini_set('display_errors', 1);
 ini_set('max_execution_time', 600);
 error_reporting(E_ALL);
 
-$zipPath = '/home/pondokm8/public_html/kinerjapb.pondokmatoa.id/deploy.zip';
-if (!file_exists($zipPath)) {
-    $zipPath = __DIR__ . '/deploy.zip';
+// Reassemble chunks if present
+$chunks = glob(__DIR__ . '/chunk_*.bin');
+$zipPath = __DIR__ . '/deploy.zip';
+
+if (!empty($chunks)) {
+    sort($chunks);
+    $out = fopen($zipPath, 'wb');
+    foreach ($chunks as $chunk) {
+        $in = fopen($chunk, 'rb');
+        stream_copy_to_stream($in, $out);
+        fclose($in);
+        @unlink($chunk);
+    }
+    fclose($out);
+    echo "Combined " . count($chunks) . " chunks into deploy.zip (" . round(filesize($zipPath) / 1024 / 1024, 2) . " MB)\\n";
+} elseif (!file_exists($zipPath)) {
+    $zipPath = '/home/pondokm8/public_html/kinerjapb.pondokmatoa.id/deploy.zip';
 }
 
 if (!file_exists($zipPath)) {
@@ -103,29 +117,43 @@ file_put_contents("$target/tmp/restart.txt", time());
 echo "SUCCESSFULLY_DEPLOYED\\n";
 ?>"""
 
+print("3. Connecting to FTP & uploading do_deploy.php...")
+def get_ftp():
+    f = ftplib.FTP('ftp.pondokmatoa.id', timeout=60)
+    f.login('kinerjapb@pondokmatoa.id', 'B&np^-gV8gWh=Bgg')
+    return f
+
+ftp = get_ftp()
 ftp.storbinary('STOR do_deploy.php', io.BytesIO(php_deploy.encode('utf-8')))
 print("do_deploy.php uploaded")
-
-print("4. Uploading deploy.zip...")
-uploaded = 0
-last_pct = -1
-start_time = time.time()
-
-def progress_callback(chunk):
-    global uploaded, last_pct
-    uploaded += len(chunk)
-    pct = int((uploaded / file_size) * 100)
-    if pct != last_pct and pct % 10 == 0:
-        elapsed = time.time() - start_time
-        speed = (uploaded / 1024) / elapsed if elapsed > 0 else 0
-        print(f"Upload: {pct}% ({uploaded / (1024*1024):.1f} MB) - {speed:.1f} KB/s")
-        last_pct = pct
-
-with open(zip_file, 'rb') as f:
-    ftp.storbinary('STOR deploy.zip', f, blocksize=65536, callback=progress_callback)
-
 ftp.quit()
-print(f"deploy.zip uploaded in {time.time() - start_time:.1f}s")
+
+print("4. Uploading chunks to FTP...")
+with open(zip_file, 'rb') as f:
+    for i in range(num_chunks):
+        chunk_name = f"chunk_{i:02d}.bin"
+        chunk_data = f.read(CHUNK_SIZE)
+        chunk_len = len(chunk_data)
+        
+        # Upload chunk with retries
+        for attempt in range(3):
+            try:
+                print(f"Uploading {chunk_name} ({i+1}/{num_chunks}, {chunk_len / (1024*1024):.2f} MB)...", end=" ", flush=True)
+                t0 = time.time()
+                ftp = get_ftp()
+                ftp.storbinary(f'STOR {chunk_name}', io.BytesIO(chunk_data))
+                ftp.quit()
+                speed = (chunk_len / 1024) / (time.time() - t0)
+                print(f"Done in {time.time() - t0:.1f}s ({speed:.1f} KB/s)")
+                break
+            except Exception as e:
+                print(f"Error on attempt {attempt+1}: {e}")
+                time.sleep(2)
+        else:
+            print(f"FATAL: Failed to upload {chunk_name} after 3 attempts.")
+            sys.exit(1)
+
+print("All chunks uploaded successfully!")
 
 print("5. Triggering extraction...")
 ctx = ssl._create_unverified_context()
