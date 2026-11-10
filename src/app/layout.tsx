@@ -19,6 +19,15 @@ export const metadata: Metadata = {
   title: "Manajemen Tugas — Peningkatan Kinerja ASN",
   description: "Delegasi tugas, board unit, bukti foto+geo-tag, dan laporan kinerja bulanan",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon.png", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png" },
+    ],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
