@@ -111,11 +111,44 @@ export async function upsertPegawaiFromSimpeg(pegawai: SimpegPegawai) {
     data.perangkatDaerahNama = unit.perangkatDaerahNama;
   }
 
-  const removed = await prisma.pegawai.findUnique({
+  const existing = await prisma.pegawai.findUnique({
     where: { nip: data.nip },
-    select: { id: true, deletedAt: true },
+    select: {
+      id: true,
+      deletedAt: true,
+      unitId: true,
+      unorId: true,
+      unorNama: true,
+      perangkatDaerahId: true,
+      perangkatDaerahNama: true,
+      jabatanNama: true,
+      jenisJabatanNama: true,
+    },
   });
-  if (removed?.deletedAt) return null;
+  if (existing?.deletedAt) return null;
+
+  // Preserve existing unit/jabatan if Simpeg returned null/empty
+  if (!data.unitId && existing?.unitId) {
+    data.unitId = existing.unitId;
+  }
+  if (!data.unorId && existing?.unorId) {
+    data.unorId = existing.unorId;
+  }
+  if (!data.unorNama && existing?.unorNama) {
+    data.unorNama = existing.unorNama;
+  }
+  if (!data.perangkatDaerahId && existing?.perangkatDaerahId) {
+    data.perangkatDaerahId = existing.perangkatDaerahId;
+  }
+  if (!data.perangkatDaerahNama && existing?.perangkatDaerahNama) {
+    data.perangkatDaerahNama = existing.perangkatDaerahNama;
+  }
+  if (!data.jabatanNama && existing?.jabatanNama) {
+    data.jabatanNama = existing.jabatanNama;
+  }
+  if (!data.jenisJabatanNama && existing?.jenisJabatanNama) {
+    data.jenisJabatanNama = existing.jenisJabatanNama;
+  }
 
   const saved = await prisma.pegawai.upsert({
     where: { nip: data.nip },
@@ -242,6 +275,18 @@ async function syncPegawai(onProgress?: ProgressFn) {
       .filter((nip): nip is string => Boolean(nip)),
   );
 
+  const existingPegawai = await prisma.pegawai.findMany({
+    select: {
+      nip: true,
+      name: true,
+      unitId: true,
+      jabatanNama: true,
+      golonganNama: true,
+      perangkatDaerahId: true,
+    },
+  });
+  const existingMap = new Map(existingPegawai.map((p) => [p.nip, p]));
+
   onProgress?.({
     step: "pegawai",
     message: `Mengambil pegawai halaman 1/${lastPage}...`,
@@ -250,49 +295,92 @@ async function syncPegawai(onProgress?: ProgressFn) {
   });
 
   async function persistPage(items: SimpegPegawai[]) {
-    for (const group of chunk(items, 15)) {
+    const toUpsert: ReturnType<typeof pegawaiRecordFromSimpeg>[] = [];
+    for (const pegawai of items) {
+      const nip = str(pegawai.nip);
+      if (!nip || removedNips.has(nip)) continue;
+      const unorId = str(pegawai.unor_id);
+      const unit = unorId ? unitMap.get(unorId) : null;
+      const unitId = unit?.id ?? null;
+      const data = pegawaiRecordFromSimpeg(pegawai, unitId, unit?.name ?? null);
+      if (!data.perangkatDaerahId && unit?.perangkatDaerahId) {
+        data.perangkatDaerahId = unit.perangkatDaerahId;
+      }
+      if (!data.perangkatDaerahNama && unit?.perangkatDaerahNama) {
+        data.perangkatDaerahNama = unit.perangkatDaerahNama;
+      }
+
+      const existing = existingMap.get(nip);
+      if (
+        existing &&
+        existing.name === data.name &&
+        existing.unitId === data.unitId &&
+        existing.jabatanNama === data.jabatanNama &&
+        existing.golonganNama === data.golonganNama &&
+        existing.perangkatDaerahId === data.perangkatDaerahId
+      ) {
+        saved += 1;
+        continue;
+      }
+      toUpsert.push(data);
+    }
+
+    for (const group of chunk(toUpsert, 20)) {
       await Promise.all(
-        group.map(async (pegawai) => {
-          const nip = str(pegawai.nip);
-          if (!nip || removedNips.has(nip)) return;
-          const unorId = str(pegawai.unor_id);
-          const unit = unorId ? unitMap.get(unorId) : null;
-          const unitId = unit?.id ?? null;
-          const data = pegawaiRecordFromSimpeg(pegawai, unitId, unit?.name ?? null);
-          if (!data.perangkatDaerahId && unit?.perangkatDaerahId) {
-            data.perangkatDaerahId = unit.perangkatDaerahId;
-          }
-          if (!data.perangkatDaerahNama && unit?.perangkatDaerahNama) {
-            data.perangkatDaerahNama = unit.perangkatDaerahNama;
-          }
+        group.map(async (data) => {
           await prisma.pegawai.upsert({
-            where: { nip },
+            where: { nip: data.nip },
             create: data,
             update: data,
           });
+          existingMap.set(data.nip, {
+            nip: data.nip,
+            name: data.name,
+            unitId: data.unitId,
+            jabatanNama: data.jabatanNama,
+            golonganNama: data.golonganNama,
+            perangkatDaerahId: data.perangkatDaerahId,
+          });
+          saved += 1;
         }),
       );
-      saved += group.filter((item) => str(item.nip)).length;
-      onProgress?.({
-        step: "pegawai",
-        message: `Menyimpan pegawai ${Math.min(saved, total)}/${total}`,
-        current: Math.min(saved, total),
-        total,
-      });
     }
+
+    onProgress?.({
+      step: "pegawai",
+      message: `Menyimpan pegawai ${Math.min(saved, total)}/${total}`,
+      current: Math.min(saved, total),
+      total,
+    });
   }
 
   await persistPage(first.items);
 
+  const pageNumbers: number[] = [];
   for (let page = 2; page <= lastPage; page += 1) {
+    pageNumbers.push(page);
+  }
+
+  for (const pageGroup of chunk(pageNumbers, 4)) {
     onProgress?.({
       step: "pegawai",
-      message: `Mengambil pegawai halaman ${page}/${lastPage}...`,
+      message: `Mengambil pegawai halaman ${pageGroup[0]}-${pageGroup[pageGroup.length - 1]}/${lastPage}...`,
       current: saved,
       total,
     });
-    const result = await fetchSimpegPegawaiPage(page);
-    await persistPage(result.items);
+    const results = await Promise.all(
+      pageGroup.map(async (page) => {
+        try {
+          return await fetchSimpegPegawaiPage(page);
+        } catch {
+          // retry once on failure
+          return await fetchSimpegPegawaiPage(page);
+        }
+      }),
+    );
+    for (const res of results) {
+      await persistPage(res.items);
+    }
   }
 
   return saved;

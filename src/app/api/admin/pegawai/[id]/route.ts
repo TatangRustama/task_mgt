@@ -30,13 +30,31 @@ const pegawaiDetailSelect = {
   perangkatDaerahNama: true,
   unitId: true,
   userId: true,
-  unit: { select: { id: true, name: true, pimpinanId: true } },
+  unit: { select: { id: true, name: true, pimpinanId: true, namaJabatan: true, perangkatDaerahNama: true } },
   user: {
     select: {
       unitId: true,
       role: true,
       jabatan: true,
+      unit: { select: { id: true, name: true, perangkatDaerahNama: true } },
       ledUnits: { select: { id: true, name: true } },
+      assignedTasks: {
+        where: { deletedAt: null },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          priority: true,
+          deadline: true,
+        },
+      },
+      _count: {
+        select: {
+          assignedTasks: { where: { deletedAt: null } },
+        },
+      },
     },
   },
 } as const;
