@@ -59,17 +59,13 @@ export function SimpegSyncCard({
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <RefreshCw className="h-5 w-5 text-primary" />
-            Bulk Sinkronisasi SIMPEG
+            Sinkronisasi Master SIMPEG
           </CardTitle>
-          <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
-            Super Admin
-          </span>
         </div>
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
-        <p className="text-on-surface-variant leading-relaxed">
-          Fitur ini menarik seluruh data unit organisasi dan pegawai ASN dari SIMPEG PB secara menyeluruh (bulk sync). 
-          Setiap pegawai ASN secara otomatis dipetakan akun login-nya dan hierarki atasan/bawahannya diperbarui.
+        <p className="text-on-surface-variant text-xs">
+          Sinkronisasi unit organisasi, data pegawai ASN, dan pemetaan hierarki dari SIMPEG.
         </p>
 
         <div className="grid grid-cols-2 gap-3">
@@ -94,7 +90,7 @@ export function SimpegSyncCard({
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-container-low px-3.5 py-2.5 text-xs text-on-surface-variant">
-          <span>Terakhir disinkronkan secara massal:</span>
+          <span>Terakhir disinkronkan:</span>
           <span className="font-medium text-on-surface">
             {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "medium" }) : "Belum pernah"}
           </span>
@@ -109,16 +105,16 @@ export function SimpegSyncCard({
               className="gap-2 font-medium"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              {loading ? "Menyinkronkan SIMPEG massal..." : "Mulai Bulk Sinkronisasi"}
+              {loading ? "Menyinkronkan..." : "Sinkronkan Sekarang"}
             </Button>
           ) : (
-            <p className="text-xs text-error font-medium">Hanya super admin yang memiliki wewenang menjalankan bulk sync.</p>
+            <p className="text-xs text-error font-medium">Hanya Super Admin yang dapat menjalankan sinkronisasi.</p>
           )}
         </div>
 
         {loading ? (
           <div className="p-4 rounded-xl border border-outline-variant/50 bg-surface-container-low">
-            <AppLoader label="Sedang menyinkronkan data SIMPEG (unit, pegawai, akun)... Mohon tunggu hingga selesai." />
+            <AppLoader label="Menyinkronkan data dari SIMPEG..." />
           </div>
         ) : null}
 

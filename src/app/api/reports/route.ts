@@ -33,5 +33,30 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unit tidak ditemukan" }, { status: 403 });
   }
 
+  const pageParam = searchParams.get("page");
+  const limitParam = searchParams.get("limit");
+
+  if (view === "harian" && (pageParam || limitParam)) {
+    const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
+    const limit = Math.max(1, Math.min(100, parseInt(limitParam || "10", 10) || 10));
+    const totalItems = data.tasks.length;
+    const totalPages = Math.ceil(totalItems / limit) || 1;
+    const startIndex = (page - 1) * limit;
+    const pagedTasks = data.tasks.slice(startIndex, startIndex + limit);
+
+    return NextResponse.json({
+      ...data,
+      tasks: pagedTasks,
+      pagination: {
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  }
+
   return NextResponse.json(data);
 }

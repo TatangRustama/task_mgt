@@ -35,6 +35,8 @@ yarn-error.log*
 
 # secrets
 token bearer simpegpb.txt
+/data/*
+!/data/.gitkeep
 
 # vercel
 .vercel

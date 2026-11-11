@@ -1,6 +1,7 @@
-import { SuperAdminMockCard } from "@/components/admin/SuperAdminMock";
 import { PageHeader, PageMain } from "@/components/layout/PageMain";
+import { ExternalApiCard } from "@/components/setting/ExternalApiCard";
 import { SimpegSyncCard } from "@/components/setting/SimpegSyncCard";
+import { getStoredApiTokens } from "@/lib/api-tokens";
 import { prisma } from "@/lib/prisma";
 import { hasSuperAdminAccess } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
@@ -19,16 +20,25 @@ export default async function SettingPage() {
       }),
     ]);
 
+    const initialTokens = getStoredApiTokens();
+
     return (
       <PageMain className="max-w-5xl space-y-6">
         <PageHeader
           title="Pengaturan Sistem"
-          subtitle="Konfigurasi aplikasi, sinkronisasi massal SIMPEG, dan manajemen instansi."
+          subtitle="Kelola integrasi API eksternal dan sinkronisasi data SIMPEG."
         />
 
-        <div className="space-y-4">
-          <h2 className="text-sm font-semibold tracking-wide uppercase text-on-surface-variant">
-            Sinkronisasi Master SIMPEG (Super Admin)
+        <div className="space-y-3">
+          <h2 className="text-xs font-semibold tracking-wider uppercase text-on-surface-variant">
+            API Eksternal
+          </h2>
+          <ExternalApiCard initialTokens={initialTokens} />
+        </div>
+
+        <div className="space-y-3">
+          <h2 className="text-xs font-semibold tracking-wider uppercase text-on-surface-variant">
+            Sinkronisasi SIMPEG
           </h2>
           <SimpegSyncCard
             isAdmin={true}
@@ -36,18 +46,6 @@ export default async function SettingPage() {
             initialPegawaiCount={pegawaiCount}
             initialLastSyncedAt={lastSynced?.syncedAt ? lastSynced.syncedAt.toISOString() : null}
           />
-        </div>
-
-        <div className="space-y-4">
-          <h2 className="text-sm font-semibold tracking-wide uppercase text-on-surface-variant">
-            Konfigurasi Lainnya
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <SuperAdminMockCard title="Instansi" value="—" hint="Profil dan kop surat" />
-            <SuperAdminMockCard title="Akses & Kebijakan" value="—" hint="Role dan kebijakan login" />
-            <SuperAdminMockCard title="Notifikasi" value="—" hint="Pengingat tugas dan persetujuan" />
-            <SuperAdminMockCard title="Audit Log" value="—" hint="Riwayat aktivitas sistem" />
-          </div>
         </div>
       </PageMain>
     );
