@@ -7,7 +7,15 @@ import { canAccessAdminConsole, canUseEmployeeApp, coerceRole, defaultHomePath, 
 
 const { auth } = NextAuth(authConfig);
 
-const publicPaths = ["/login", "/api/auth", "/api/health", "/manifest.json", "/validasi", "/sw.js"];
+const publicPaths = [
+  "/login",
+  "/api/auth",
+  "/api/health",
+  "/api/v1/external",
+  "/manifest.json",
+  "/validasi",
+  "/sw.js",
+];
 const employeePrefixes = ["/mandiri", "/board", "/pimpinan", "/laporan", "/tugas"];
 
 function adminConsoleAllowed(
