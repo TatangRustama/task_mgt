@@ -26,7 +26,12 @@ function adminConsoleAllowed(
 ) {
   if (isSuperAdmin(role) || superAdmin) return true;
   if (!isAppAdmin(role) && !opdAdmin) return false;
-  return pathname.startsWith("/admin/pegawai") || pathname.startsWith("/admin/monitoring");
+  return (
+    pathname.startsWith("/admin/pegawai") ||
+    pathname.startsWith("/admin/unit") ||
+    pathname.startsWith("/admin/monitoring") ||
+    pathname.startsWith("/admin/kepatuhan")
+  );
 }
 
 export const proxy = auth(async (request) => {
@@ -73,7 +78,7 @@ export const proxy = auth(async (request) => {
     return redirectToPath(request, home);
   }
 
-  if (pathname.startsWith("/setting") && isAppAdmin(role)) {
+  if (pathname.startsWith("/setting") && !isSuperAdmin(role) && !superAdmin) {
     return redirectToPath(request, home);
   }
 
