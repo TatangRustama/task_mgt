@@ -3,10 +3,13 @@ import {
   Users,
   ClipboardList,
   BarChart3,
-  UserPlus,
-  Settings,
   ListChecks,
   Network,
+  UserCheck,
+  MessageSquareText,
+  KeyRound,
+  RefreshCw,
+  UserPlus,
   type LucideIcon,
 } from "lucide-react";
 import { Role } from "@prisma/client";
@@ -45,19 +48,19 @@ const leaderNavItems: AppNavItem[] = [
   { href: "/laporan", label: "Laporan", icon: BarChart3 },
 ];
 
-const adminNavItems: AppNavItem[] = [
+const administrasiNavItems: AppNavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/admin/pegawai", label: "Pegawai", icon: Users },
+  { href: "/admin/unit", label: "Unit Organisasi", icon: Network },
   { href: "/admin/monitoring", label: "Monitoring", icon: ListChecks },
+  { href: "/admin/kepatuhan", label: "Kepatuhan", icon: UserCheck },
 ];
 
-const superAdminNavItems: AppNavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: Home },
-  { href: "/admin/pegawai", label: "Pegawai", icon: Users },
-  { href: "/admin/unit", label: "Unit organisasi", icon: Network },
-  { href: "/admin/monitoring", label: "Monitoring", icon: ListChecks },
+const pengaturanNavItems: AppNavItem[] = [
   { href: "/admin", label: "Pengguna", icon: UserPlus },
-  { href: "/setting", label: "Setting", icon: Settings },
+  { href: "/setting/pesan", label: "Pesan Teks", icon: MessageSquareText },
+  { href: "/setting/api", label: "API Eksternal", icon: KeyRound },
+  { href: "/setting/simpeg", label: "Sinkron SIMPEG", icon: RefreshCw },
 ];
 
 function personalGroups(options?: NavOptions): AppNavGroup[] {
@@ -75,7 +78,7 @@ export function getNavGroups(role: Role, options?: NavOptions): AppNavGroup[] {
   const resolved = coerceRole(role);
 
   // Footer bar hanya menampilkan menu Home, Board, Kinerja, dan Laporan.
-  // Menu Admin OPD dan Super Admin hanya ada pada sidebar.
+  // Menu Administrasi dan Pengaturan hanya ada pada sidebar.
   if (options?.surface === "footer") {
     if (resolved !== "personal") {
       return [];
@@ -86,19 +89,23 @@ export function getNavGroups(role: Role, options?: NavOptions): AppNavGroup[] {
   if (resolved === "personal") {
     const groups: AppNavGroup[] = personalGroups(options);
     if (options?.superAdmin) {
-      groups.push({ id: "super_admin", label: "Super Admin", items: superAdminNavItems });
+      groups.push({ id: "administrasi", label: "ADMINISTRASI", items: administrasiNavItems });
+      groups.push({ id: "pengaturan", label: "PENGATURAN", items: pengaturanNavItems });
     } else if (options?.opdAdmin) {
-      groups.push({ id: "admin", label: "Admin OPD", items: adminNavItems });
+      groups.push({ id: "administrasi", label: "ADMINISTRASI", items: administrasiNavItems });
     }
     return groups;
   }
 
   if (resolved === "super_admin") {
-    return [{ id: "super_admin", label: "Super Admin", items: superAdminNavItems }];
+    return [
+      { id: "administrasi", label: "ADMINISTRASI", items: administrasiNavItems },
+      { id: "pengaturan", label: "PENGATURAN", items: pengaturanNavItems },
+    ];
   }
 
   if (resolved === "admin") {
-    return [{ id: "admin", label: null, items: adminNavItems }];
+    return [{ id: "administrasi", label: "ADMINISTRASI", items: administrasiNavItems }];
   }
 
   return personalGroups(options);

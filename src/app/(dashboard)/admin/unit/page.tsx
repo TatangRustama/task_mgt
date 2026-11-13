@@ -1,14 +1,18 @@
 import { UnitOrganisasiBrowser, type OrgUnit } from "@/components/admin/UnitOrganisasiBrowser";
 import { PageMain } from "@/components/layout/PageMain";
+import { adminScopeNotice, getAdminScope } from "@/lib/admin-scope";
 import { deriveNamaJabatan } from "@/lib/jabatan-display";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 
 export default async function UnitOrganisasiPage() {
-  await requireUser(["super_admin"]);
+  const user = await requireUser(["super_admin", "admin"]);
+  const scope = await getAdminScope(user);
+  const notice = adminScopeNotice(scope);
 
   const [units, pegawaiCounts] = await Promise.all([
     prisma.unit.findMany({
+      where: scope.unrestricted ? undefined : { id: { in: scope.unitIds } },
       select: {
         id: true,
         name: true,
@@ -26,7 +30,10 @@ export default async function UnitOrganisasiPage() {
     }),
     prisma.pegawai.groupBy({
       by: ["unorId"],
-      where: { deletedAt: null, unorId: { not: null } },
+      where: {
+        deletedAt: null,
+        unorId: scope.unrestricted ? { not: null } : { in: scope.unitIds },
+      },
       _count: { _all: true },
     }),
   ]);
@@ -52,6 +59,11 @@ export default async function UnitOrganisasiPage() {
 
   return (
     <PageMain className="max-w-4xl space-y-4">
+      {notice ? (
+        <p className="rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-3 text-sm text-on-surface-variant">
+          {notice}
+        </p>
+      ) : null}
       <UnitOrganisasiBrowser units={rows} />
     </PageMain>
   );
